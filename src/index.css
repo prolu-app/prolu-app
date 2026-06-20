@@ -1,0 +1,292 @@
+/* ════════════════════════════════════════════════════════════════
+   PROLU APP — DESIGN SYSTEM
+   Tokens, reset, atmosfera e primitivos compartilhados entre telas.
+   ════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Cores */
+  --cream: #f3f2ed;
+  --white: #ffffff;
+  --ink: #121210;
+  --ink-60: #5f5f58;
+  --ink-40: #9b9b92;
+  --ink-divider: rgba(18, 18, 16, 0.06);
+  --green: #CBE921;
+  --green-deep: #b8d40f;
+  --green-soft: #f4fad6;
+  --green-ink: #54650a;
+  --orange: #FF6B2B;
+  --orange-soft: #ffede3;
+  --orange-ink: #c2520f;
+  --blue-soft: #e7eff8;
+  --blue-ink: #3a6ea5;
+  --gray-soft: #ececea;
+  --red: #e05454;
+  --red-soft: #fde8e8;
+  --violet-soft: #f2e9f8;
+  --violet-ink: #8050a0;
+
+  /* Raios */
+  --r-lg: 22px;
+  --r-md: 14px;
+  --r-sm: 10px;
+
+  /* Sombras em camadas (profundidade sem bordas) */
+  --shadow-rest:
+    0 1px 2px rgba(18, 18, 16, 0.03),
+    0 4px 12px rgba(18, 18, 16, 0.05),
+    0 16px 40px rgba(18, 18, 16, 0.06);
+  --shadow-float:
+    0 2px 4px rgba(18, 18, 16, 0.04),
+    0 8px 24px rgba(18, 18, 16, 0.08),
+    0 24px 64px rgba(18, 18, 16, 0.10);
+  --shadow-pop:
+    0 4px 8px rgba(18, 18, 16, 0.06),
+    0 16px 48px rgba(18, 18, 16, 0.14);
+
+  /* Medidas de layout */
+  --sidebar-w: 232px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: 'Rubik', sans-serif;
+  color: var(--ink);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  background: var(--cream);
+  min-height: 100vh;
+}
+
+/* Atmosfera de fundo — brilho verde no topo, calor laranja embaixo */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(1000px 560px at 88% -8%, rgba(203, 233, 33, 0.16), transparent 60%),
+    radial-gradient(700px 500px at -10% 100%, rgba(255, 107, 43, 0.07), transparent 55%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+input, textarea, button { font-family: inherit; }
+
+/* ───────── Tipografia utilitária ───────── */
+.eyebrow {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink-40);
+}
+
+.serif { font-family: 'Abhaya Libre', serif; }
+
+/* ───────── Botões ───────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--green);
+  color: var(--ink);
+  border: none;
+  border-radius: 99px;
+  padding: 11px 22px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(184, 212, 15, 0.4);
+  transition: box-shadow 0.2s, transform 0.1s;
+  white-space: nowrap;
+}
+.btn-primary:hover { box-shadow: 0 8px 24px rgba(184, 212, 15, 0.55); transform: translateY(-1px); }
+.btn-primary:active { transform: scale(0.97); }
+.btn-primary svg { width: 14px; height: 14px; stroke: var(--ink); stroke-width: 2.6; fill: none; }
+
+.btn-cancel {
+  border: none;
+  border-radius: 99px;
+  background: var(--gray-soft);
+  color: var(--ink-60);
+  padding: 11px 20px;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-cancel:hover { background: #e0e0dc; }
+
+.btn-confirm {
+  border: none;
+  border-radius: 99px;
+  background: var(--green);
+  color: var(--ink);
+  padding: 11px 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(184, 212, 15, 0.35);
+  transition: box-shadow 0.15s;
+}
+.btn-confirm:hover { box-shadow: 0 8px 22px rgba(184, 212, 15, 0.5); }
+
+/* ───────── FAB (mobile) ───────── */
+.fab {
+  display: none;
+  position: fixed;
+  right: 18px;
+  bottom: 24px;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: var(--green);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(18, 18, 16, 0.28), 0 4px 10px rgba(184, 212, 15, 0.5);
+  z-index: 30;
+  align-items: center;
+  justify-content: center;
+}
+.fab svg { width: 24px; height: 24px; stroke: var(--ink); stroke-width: 2.5; fill: none; }
+.fab:active { transform: scale(0.93); }
+
+/* ───────── Cards genéricos ───────── */
+.card {
+  background: var(--white);
+  border-radius: var(--r-lg);
+  padding: 22px 24px;
+  box-shadow: var(--shadow-rest);
+  transition: box-shadow 0.2s;
+}
+.card:hover { box-shadow: var(--shadow-float); }
+
+.section-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--ink-40);
+  margin-bottom: 14px;
+  padding: 0 2px;
+}
+
+/* ───────── Pílulas de status (reutilizáveis) ───────── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 99px;
+  padding: 4px 11px;
+  font-size: 11.5px;
+  font-weight: 500;
+  user-select: none;
+}
+.pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+.pill-gray   { background: var(--gray-soft);   color: var(--ink-60);   }
+.pill-gray .dot   { background: var(--ink-40); }
+.pill-blue   { background: var(--blue-soft);   color: var(--blue-ink); }
+.pill-blue .dot   { background: var(--blue-ink); }
+.pill-green  { background: var(--green-soft);  color: var(--green-ink); }
+.pill-green .dot  { background: var(--green-deep); }
+.pill-orange { background: var(--orange-soft); color: var(--orange-ink); }
+.pill-orange .dot { background: var(--orange); }
+.pill-violet { background: var(--violet-soft); color: var(--violet-ink); }
+.pill-violet .dot { background: var(--violet-ink); }
+.pill-red    { background: var(--red-soft);    color: var(--red); }
+.pill-red .dot    { background: var(--red); }
+
+/* ───────── Modal base ───────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 18, 16, 0.35);
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: overlayIn 0.2s;
+  padding: 16px;
+}
+@keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal {
+  background: var(--white);
+  border-radius: var(--r-lg);
+  padding: 28px;
+  width: 420px;
+  max-width: 100%;
+  box-shadow: var(--shadow-pop);
+  animation: modalIn 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+@keyframes modalIn {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.modal-title {
+  font-family: 'Abhaya Libre', serif;
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+.modal-field { margin-bottom: 14px; }
+.modal-label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-40);
+  margin-bottom: 7px;
+  display: block;
+}
+.modal-input {
+  width: 100%;
+  padding: 11px 14px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: var(--cream);
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+  transition: box-shadow 0.15s;
+}
+.modal-input:focus { box-shadow: 0 0 0 2px var(--green); }
+textarea.modal-input { resize: none; min-height: 70px; line-height: 1.5; }
+.modal-actions { display: flex; gap: 10px; margin-top: 22px; }
+.modal-actions .btn-cancel { flex: 1; }
+.modal-actions .btn-confirm { flex: 2; }
+
+/* ───────── Toast ───────── */
+.toast {
+  position: fixed;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%) translateY(90px);
+  background: var(--ink);
+  color: var(--white);
+  border-radius: 99px;
+  padding: 12px 24px;
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.2), opacity 0.3s;
+  z-index: 200;
+  pointer-events: none;
+  max-width: calc(100vw - 32px);
+  box-shadow: 0 12px 36px rgba(18, 18, 16, 0.3);
+}
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+.toast .dot-g { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+
+/* ───────── Scrollbar discreta ───────── */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: rgba(18, 18, 16, 0.12); border-radius: 99px; border: 3px solid var(--cream); }
+::-webkit-scrollbar-track { background: transparent; }

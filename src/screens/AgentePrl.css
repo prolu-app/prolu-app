@@ -1,0 +1,183 @@
+/* ── Hero ── */
+.agp-hero {
+  background: var(--ink);
+  border-radius: var(--r-lg);
+  padding: 48px 40px;
+  margin-bottom: 36px;
+  box-shadow: var(--shadow-float);
+}
+.agp-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--green);
+  color: var(--ink);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 5px 13px;
+  border-radius: 99px;
+  margin-bottom: 22px;
+}
+.agp-tag svg { width: 12px; height: 12px; stroke: var(--ink); stroke-width: 2.2; fill: none; }
+.agp-tag.dark { background: var(--gray-soft); color: var(--ink-60); margin-bottom: 18px; }
+
+.agp-title {
+  font-family: 'Abhaya Libre', serif;
+  font-weight: 600;
+  font-size: clamp(28px, 3.6vw, 42px);
+  color: var(--white);
+  line-height: 1.12;
+  max-width: 680px;
+  letter-spacing: -0.6px;
+}
+.agp-title em { font-style: normal; color: var(--green); }
+.agp-sub { color: rgba(255, 255, 255, 0.55); max-width: 480px; font-size: 15px; line-height: 1.6; margin-top: 14px; }
+
+.agp-intro { color: var(--ink-60); max-width: 560px; font-size: 14px; line-height: 1.6; margin: -6px 0 24px; }
+
+/* ── Cards de opção ── */
+.agp-options { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 8px; }
+.agp-card {
+  background: var(--white);
+  border-radius: var(--r-lg);
+  padding: 30px 26px;
+  box-shadow: var(--shadow-rest);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: box-shadow 0.2s;
+}
+.agp-card:hover { box-shadow: var(--shadow-float); }
+.agp-card.featured { background: var(--green-soft); }
+
+.agp-badge {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--green);
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 99px;
+  width: fit-content;
+}
+.agp-badge.alt { background: var(--gray-soft); color: var(--ink-60); }
+
+.agp-card h3 { font-family: 'Abhaya Libre', serif; font-size: 22px; font-weight: 600; }
+.agp-card p { font-size: 13.5px; color: var(--ink-60); line-height: 1.55; flex: 1; }
+
+.agp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 12px 22px;
+  border-radius: 99px;
+  text-align: center;
+  transition: box-shadow 0.2s, transform 0.1s, background 0.15s, color 0.15s;
+  margin-top: 4px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.agp-btn svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2.4; fill: none; }
+.agp-btn-primary { background: var(--ink); color: var(--white); }
+.agp-btn-primary:hover { box-shadow: 0 8px 22px rgba(18, 18, 16, 0.28); transform: translateY(-1px); }
+.agp-btn-secondary { background: var(--white); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink-divider); }
+.agp-btn-secondary:hover { box-shadow: inset 0 0 0 1.5px var(--ink); }
+
+/* ── Modal de instruções (Claude) ── */
+.agp-modal {
+  background: var(--white);
+  border-radius: var(--r-lg);
+  padding: 36px;
+  width: 640px;
+  max-width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-pop);
+  animation: modalIn 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+  position: relative;
+}
+.agp-modal-close {
+  position: absolute;
+  top: 20px; right: 20px;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: var(--gray-soft);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.agp-modal-close:hover { background: #e0e0dc; }
+.agp-modal-close svg { width: 14px; height: 14px; stroke: var(--ink-60); stroke-width: 2.2; fill: none; }
+
+.agp-modal-title { font-family: 'Abhaya Libre', serif; font-size: 28px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 8px; }
+.agp-modal-title em { font-style: normal; color: var(--green-ink); }
+.agp-modal-sub { color: var(--ink-60); font-size: 14px; line-height: 1.55; margin-bottom: 30px; max-width: 480px; }
+
+.agp-label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-40);
+  margin-bottom: 6px;
+}
+.agp-h3 { font-family: 'Abhaya Libre', serif; font-size: 19px; font-weight: 600; margin-bottom: 6px; }
+.agp-p { font-size: 13.5px; color: var(--ink-60); line-height: 1.55; margin-bottom: 18px; }
+
+.agp-download-box { background: var(--cream); border-radius: var(--r-md); padding: 20px; margin-bottom: 32px; }
+.agp-download-title { font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-40); margin-bottom: 13px; }
+.agp-download-files { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.agp-download-file {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--white); border-radius: var(--r-sm);
+  padding: 13px 16px; text-decoration: none; color: var(--ink);
+  box-shadow: var(--shadow-rest); transition: box-shadow 0.15s, transform 0.1s;
+  gap: 10px;
+}
+.agp-download-file:hover { box-shadow: var(--shadow-float); transform: translateY(-1px); }
+.agp-file-name { font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 600; }
+.agp-file-desc { font-size: 11px; color: var(--ink-40); margin-top: 2px; }
+.agp-download-icon { font-size: 16px; color: var(--ink-40); flex-shrink: 0; }
+
+.agp-steps { display: flex; flex-direction: column; margin-top: 8px; }
+.agp-step { display: grid; grid-template-columns: 44px 1fr; gap: 18px; padding-bottom: 28px; position: relative; }
+.agp-step:not(:last-child)::before {
+  content: ''; position: absolute; left: 21px; top: 44px; bottom: 0;
+  width: 1px; background: var(--ink-divider);
+}
+.agp-step-number {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--ink); color: var(--green);
+  font-family: 'Montserrat', sans-serif; font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; position: relative; z-index: 1;
+}
+.agp-step-content { padding-top: 8px; }
+.agp-step-content h4 { font-family: 'Montserrat', sans-serif; font-size: 14.5px; font-weight: 700; margin-bottom: 6px; }
+.agp-step-content p { font-size: 13.5px; color: var(--ink-60); line-height: 1.55; margin: 0; }
+.agp-step-content code { background: var(--gray-soft); padding: 2px 7px; border-radius: 4px; font-size: 12px; font-family: monospace; color: var(--ink); }
+.agp-step-content em { font-style: italic; color: var(--ink-60); }
+
+.agp-modal-cta { width: 100%; margin-top: 8px; padding: 13px; }
+
+@media (max-width: 860px) {
+  .agp-hero { padding: 32px 24px; }
+  .agp-options { grid-template-columns: 1fr; }
+  .agp-download-files { grid-template-columns: 1fr; }
+  .agp-modal { padding: 24px 20px; }
+}

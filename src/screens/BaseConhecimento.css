@@ -1,0 +1,116 @@
+/* ── grid de pastas ── */
+.folders-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 24px; }
+.folder-card { background: var(--white); border-radius: var(--r-lg); box-shadow: var(--shadow-rest); cursor: pointer; transition: box-shadow 0.2s, transform 0.15s; overflow: hidden; }
+.folder-card:hover { box-shadow: var(--shadow-float); transform: translateY(-2px); }
+.folder-cover { height: 104px; position: relative; display: flex; align-items: flex-start; justify-content: space-between; padding: 16px; }
+.folder-icon { width: 42px; height: 42px; border-radius: 12px; background: rgba(255, 255, 255, 0.18); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; }
+.folder-icon svg { width: 21px; height: 21px; stroke: var(--white); stroke-width: 1.7; fill: none; }
+.folder-count { background: rgba(255, 255, 255, 0.18); backdrop-filter: blur(8px); color: var(--white); font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 99px; }
+.cover-green { background: linear-gradient(135deg, #1d2114, #121210); }
+.cover-blue { background: linear-gradient(135deg, #16202a, #121210); }
+.cover-orange { background: linear-gradient(135deg, #241712, #121210); }
+.folder-body { padding: 16px 18px 18px; }
+.folder-title { font-size: 15px; font-weight: 600; line-height: 1.3; }
+.folder-sub { font-size: 12px; color: var(--ink-40); margin-top: 4px; }
+.folder-progress { margin-top: 13px; }
+.folder-progress-head { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--ink-40); margin-bottom: 5px; }
+.folder-progress-head strong { color: var(--ink-60); font-weight: 500; }
+.folder-progress-track { height: 5px; background: var(--gray-soft); border-radius: 99px; overflow: hidden; }
+.folder-progress-fill { height: 100%; background: var(--green-deep); border-radius: 99px; transition: width 0.6s; }
+.folder-card-add { display: flex; align-items: center; justify-content: center; gap: 10px; flex-direction: column; background: rgba(255, 255, 255, 0.5); border-radius: var(--r-lg); color: var(--ink-40); cursor: pointer; transition: all 0.15s; min-height: 206px; font-size: 13.5px; }
+.folder-card-add:hover { background: var(--green-soft); color: var(--ink); box-shadow: var(--shadow-rest); }
+.folder-card-add svg { width: 24px; height: 24px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+
+/* ── dentro da pasta ── */
+.back-link { display: flex; align-items: center; gap: 7px; color: var(--ink-60); font-size: 13px; cursor: pointer; margin-bottom: 18px; width: fit-content; transition: color 0.15s; }
+.back-link:hover { color: var(--ink); }
+.back-link svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2.2; fill: none; }
+
+.kb-progress { background: var(--ink); border-radius: var(--r-lg); padding: 20px 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 20px; box-shadow: var(--shadow-float); }
+.kb-progress-ring { flex-shrink: 0; }
+.kb-progress-text { flex: 1; }
+.kb-progress-label { font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(255, 255, 255, 0.45); }
+.kb-progress-val { font-family: 'Abhaya Libre', serif; font-size: 22px; font-weight: 600; color: var(--white); margin-top: 4px; }
+.kb-progress-val span { color: var(--green); }
+.kb-progress-sub { font-size: 12px; color: rgba(255, 255, 255, 0.5); margin-top: 4px; }
+
+.module-card { background: var(--white); border-radius: var(--r-lg); box-shadow: var(--shadow-rest); margin-bottom: 12px; overflow: hidden; transition: box-shadow 0.2s; }
+.module-card:hover { box-shadow: var(--shadow-float); }
+.module-head { display: flex; align-items: center; gap: 16px; padding: 18px 22px; cursor: pointer; }
+.module-number { width: 38px; height: 38px; border-radius: 11px; background: var(--green-soft); color: var(--green-ink); display: flex; align-items: center; justify-content: center; font-family: 'Abhaya Libre', serif; font-weight: 600; font-size: 15px; flex-shrink: 0; }
+.module-info { flex: 1; min-width: 0; }
+.module-title { font-size: 15px; font-weight: 600; }
+.module-meta { font-size: 12px; color: var(--ink-40); margin-top: 2px; }
+.module-progress-mini { display: flex; align-items: center; gap: 8px; }
+.module-progress-track { width: 60px; height: 5px; background: var(--gray-soft); border-radius: 99px; overflow: hidden; }
+.module-progress-fill { height: 100%; background: var(--green-deep); border-radius: 99px; transition: width 0.6s; }
+.module-progress-pct { font-size: 11.5px; color: var(--ink-40); font-weight: 500; min-width: 30px; }
+.module-chevron { width: 18px; height: 18px; stroke: var(--ink-40); stroke-width: 2; fill: none; transition: transform 0.25s; flex-shrink: 0; }
+.module-card.expanded .module-chevron { transform: rotate(180deg); }
+.module-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.icon-btn { width: 30px; height: 30px; border-radius: 8px; border: none; background: var(--gray-soft); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+.icon-btn:hover { background: #e0e0dc; }
+.icon-btn svg { width: 13px; height: 13px; stroke: var(--ink-60); stroke-width: 2; fill: none; }
+.lessons-list { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+.module-card.expanded .lessons-list { max-height: 800px; }
+.lesson-row { display: flex; align-items: center; gap: 14px; padding: 13px 22px 13px 60px; border-top: 1px solid var(--ink-divider); cursor: pointer; transition: background 0.15s; }
+.lesson-row:hover { background: #fafaf6; }
+.lesson-check { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.lesson-check.done { background: var(--green-deep); }
+.lesson-check.done svg { width: 11px; height: 11px; stroke: var(--white); stroke-width: 3; fill: none; }
+.lesson-check.pend { background: var(--gray-soft); border: 1.5px solid var(--ink-divider); }
+.lesson-info { flex: 1; min-width: 0; }
+.lesson-title { font-size: 13.5px; font-weight: 500; }
+.lesson-meta { font-size: 11.5px; color: var(--ink-40); margin-top: 1px; }
+.lesson-pdf-tag { display: inline-flex; align-items: center; gap: 3px; background: var(--orange-soft); color: var(--orange-ink); border-radius: 99px; padding: 1px 7px; font-size: 10.5px; font-weight: 500; }
+.lesson-play { width: 30px; height: 30px; border-radius: 50%; background: var(--gray-soft); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.15s; }
+.lesson-row:hover .lesson-play { background: var(--ink); }
+.lesson-play svg { width: 11px; height: 11px; stroke: var(--ink-60); fill: var(--ink-60); transition: all 0.15s; margin-left: 1px; }
+.lesson-row:hover .lesson-play svg { stroke: var(--green); fill: var(--green); }
+.add-lesson-row { display: flex; align-items: center; gap: 10px; padding: 13px 22px 13px 60px; border-top: 1px solid var(--ink-divider); color: var(--ink-40); cursor: pointer; font-size: 13px; }
+.add-lesson-row:hover { color: var(--ink); background: var(--green-soft); }
+.add-lesson-row svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2.2; fill: none; }
+.add-module-row { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px; border-radius: var(--r-lg); background: rgba(255, 255, 255, 0.5); color: var(--ink-40); cursor: pointer; font-size: 13.5px; transition: background 0.15s, color 0.15s, box-shadow 0.15s; }
+.add-module-row:hover { color: var(--ink); background: var(--green-soft); box-shadow: var(--shadow-rest); }
+.add-module-row svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 2.2; fill: none; }
+
+/* ── player ── */
+.player-overlay { position: fixed; inset: 0; background: rgba(18, 18, 16, 0.7); z-index: 90; display: flex; align-items: center; justify-content: center; padding: 24px; backdrop-filter: blur(6px); animation: overlayIn 0.2s; }
+.player-modal { background: var(--white); border-radius: var(--r-lg); width: 100%; max-width: 800px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-pop); animation: modalIn 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.1); }
+.player-video { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: var(--r-lg) var(--r-lg) 0 0; display: flex; align-items: center; justify-content: center; position: relative; }
+.player-video-fake { color: rgba(255, 255, 255, 0.3); font-size: 13px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.player-close { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 50%; background: rgba(0, 0, 0, 0.4); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 5; }
+.player-close svg { width: 16px; height: 16px; stroke: var(--white); stroke-width: 2.2; fill: none; }
+.player-body { padding: 24px 28px 28px; }
+.player-title { font-family: 'Abhaya Libre', serif; font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+.player-desc { font-size: 13.5px; color: var(--ink-60); line-height: 1.6; margin-bottom: 18px; }
+.player-pdfs { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.player-pdf-item { display: flex; align-items: center; gap: 10px; background: var(--cream); border-radius: var(--r-sm); padding: 11px 14px; text-decoration: none; color: var(--ink); transition: background 0.15s; }
+.player-pdf-item:hover { background: var(--orange-soft); }
+.pdf-icon { width: 30px; height: 30px; border-radius: 8px; background: var(--orange-soft); color: var(--orange-ink); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.pdf-icon svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
+.pdf-name { font-size: 13px; font-weight: 500; flex: 1; }
+.pdf-dl { font-size: 11.5px; color: var(--ink-40); }
+.player-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid var(--ink-divider); padding-top: 18px; }
+.mark-done-btn { display: flex; align-items: center; gap: 7px; background: var(--green); color: var(--ink); border: none; border-radius: 99px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; transition: box-shadow 0.15s; }
+.mark-done-btn:hover { box-shadow: 0 4px 14px rgba(184, 212, 15, 0.4); }
+.mark-done-btn.is-done { background: var(--green-soft); color: var(--green-ink); }
+.mark-done-btn svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2.6; fill: none; }
+.nav-lessons { display: flex; gap: 8px; }
+.nav-lesson-btn { width: 34px; height: 34px; border-radius: 50%; background: var(--gray-soft); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+.nav-lesson-btn:hover { background: var(--ink); }
+.nav-lesson-btn:hover svg { stroke: var(--green); }
+.nav-lesson-btn svg { width: 14px; height: 14px; stroke: var(--ink-60); stroke-width: 2.2; fill: none; }
+
+.icon-color-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.icon-color-pill { padding: 7px 14px; border-radius: 99px; font-size: 13px; cursor: pointer; background: var(--gray-soft); color: var(--ink-60); border: none; transition: all 0.15s; }
+.icon-color-pill.selected { background: var(--ink); color: var(--white); }
+
+@media (max-width: 860px) {
+  .folders-grid { grid-template-columns: 1fr 1fr; }
+  .kb-new-btn { display: none; }
+  .lesson-row, .add-lesson-row { padding-left: 22px; }
+}
+@media (max-width: 480px) {
+  .folders-grid { grid-template-columns: 1fr; }
+}

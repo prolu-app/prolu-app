@@ -1,0 +1,63 @@
+.profiles-bar { display: flex; align-items: center; gap: 10px; margin: 24px 0 28px; flex-wrap: wrap; }
+.profile-tab { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 99px; font-size: 13.5px; font-weight: 500; cursor: pointer; transition: all 0.15s; border: none; white-space: nowrap; }
+.profile-tab.inactive { background: rgba(255, 255, 255, 0.7); color: var(--ink-60); box-shadow: 0 1px 3px rgba(18, 18, 16, 0.05); }
+.profile-tab.inactive:hover { background: var(--white); box-shadow: var(--shadow-rest); color: var(--ink); }
+.profile-tab.active { background: var(--ink); color: var(--white); box-shadow: 0 6px 18px rgba(18, 18, 16, 0.22); }
+.tab-dot { width: 8px; height: 8px; border-radius: 50%; }
+.btn-new-profile { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border-radius: 99px; font-size: 13px; color: var(--ink-40); background: none; border: none; cursor: pointer; transition: color 0.15s; }
+.btn-new-profile:hover { color: var(--ink); }
+.btn-new-profile svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2.4; fill: none; }
+
+.icp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding-bottom: 40px; }
+.icp-card { background: var(--white); border-radius: var(--r-lg); padding: 22px 24px; box-shadow: var(--shadow-rest); transition: box-shadow 0.2s; display: flex; flex-direction: column; gap: 12px; }
+.icp-card:hover { box-shadow: var(--shadow-float); }
+.icp-card.wide { grid-column: span 2; }
+.icp-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.icp-card-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.icp-card-icon svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+.icon-blue { background: var(--blue-soft); color: var(--blue-ink); }
+.icon-green { background: var(--green-soft); color: var(--green-ink); }
+.icon-orange { background: var(--orange-soft); color: var(--orange-ink); }
+.icon-violet { background: var(--violet-soft); color: var(--violet-ink); }
+.icon-gray { background: var(--gray-soft); color: var(--ink-60); }
+.icp-label { font-family: 'Montserrat', sans-serif; font-size: 10.5px; font-weight: 600; letter-spacing: 1.1px; text-transform: uppercase; color: var(--ink-40); margin-bottom: 2px; }
+.icp-hint { font-size: 12px; color: var(--ink-40); line-height: 1.5; }
+.icp-field { width: 100%; border: none; background: var(--cream); border-radius: var(--r-sm); padding: 12px 14px; font-family: inherit; font-size: 13.5px; color: var(--ink); resize: none; outline: none; line-height: 1.55; transition: box-shadow 0.15s, background 0.15s; min-height: 90px; }
+.icp-field:focus { background: #f8f8f4; box-shadow: 0 0 0 2px var(--green); }
+.icp-field::placeholder { color: var(--ink-40); }
+
+.range-row { display: flex; align-items: center; gap: 12px; }
+.range-display { font-family: 'Abhaya Libre', serif; font-size: 26px; font-weight: 600; min-width: 70px; text-align: center; }
+.range-display small { font-family: 'Rubik', sans-serif; font-size: 11px; color: var(--ink-40); font-weight: 400; display: block; margin-top: -2px; }
+.range-sep { color: var(--ink-40); font-size: 12px; }
+.range-btn { width: 34px; height: 34px; border-radius: 50%; border: none; background: var(--gray-soft); cursor: pointer; font-size: 17px; display: flex; align-items: center; justify-content: center; color: var(--ink-60); transition: background 0.15s; flex-shrink: 0; }
+.range-btn:hover { background: var(--ink); color: var(--white); }
+.range-btn:active { transform: scale(0.92); }
+
+.option-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.opt-pill { padding: 7px 14px; border-radius: 99px; font-size: 13px; cursor: pointer; background: var(--gray-soft); color: var(--ink-60); border: none; transition: all 0.15s; user-select: none; }
+.opt-pill:hover { background: var(--white); box-shadow: var(--shadow-rest); color: var(--ink); }
+.opt-pill.selected { background: var(--ink); color: var(--white); box-shadow: 0 4px 12px rgba(18, 18, 16, 0.22); }
+
+.tags-input { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--cream); border-radius: var(--r-sm); padding: 10px 12px; min-height: 46px; cursor: text; transition: box-shadow 0.15s; }
+.tags-input:focus-within { box-shadow: 0 0 0 2px var(--green); background: #f8f8f4; }
+.itag { display: inline-flex; align-items: center; gap: 5px; background: var(--white); border-radius: 99px; padding: 4px 10px; font-size: 12.5px; font-weight: 500; box-shadow: 0 1px 3px rgba(18, 18, 16, 0.08); }
+.itag button { background: none; border: none; cursor: pointer; color: var(--ink-40); font-size: 13px; line-height: 1; padding: 0 1px; }
+.itag button:hover { color: var(--ink); }
+.tag-inline-input { border: none; outline: none; background: none; font-family: inherit; font-size: 13px; color: var(--ink); min-width: 80px; flex: 1; }
+.tag-inline-input::placeholder { color: var(--ink-40); }
+
+.save-bar { position: fixed; bottom: 0; left: var(--sidebar-w); right: 0; background: rgba(243, 242, 237, 0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--ink-divider); padding: 14px 44px; display: flex; align-items: center; justify-content: space-between; z-index: 20; transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.3s; transform: translateY(100%); opacity: 0; }
+.save-bar.show { transform: translateY(0); opacity: 1; }
+.save-hint { font-size: 13px; color: var(--ink-60); }
+.save-hint strong { color: var(--ink); font-weight: 500; }
+.btn-save { display: flex; align-items: center; gap: 8px; background: var(--green); color: var(--ink); border: none; border-radius: 99px; padding: 11px 24px; font-size: 13.5px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 14px rgba(184, 212, 15, 0.4); transition: box-shadow 0.2s, transform 0.1s; }
+.btn-save:hover { box-shadow: 0 8px 24px rgba(184, 212, 15, 0.55); transform: translateY(-1px); }
+.btn-save:active { transform: scale(0.97); }
+.btn-save svg { width: 14px; height: 14px; stroke: var(--ink); stroke-width: 2.6; fill: none; }
+
+@media (max-width: 860px) {
+  .icp-grid { grid-template-columns: 1fr; }
+  .icp-card.wide { grid-column: span 1; }
+  .save-bar { left: 0; padding: 14px 16px; }
+}

@@ -1,0 +1,176 @@
+/* ───────── Shell do app: sidebar fixa + drawer mobile ───────── */
+
+.app { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+/* Topbar (só mobile) */
+.topbar {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 58px;
+  background: rgba(243, 242, 237, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 40;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--ink-divider);
+}
+.burger {
+  width: 42px; height: 42px;
+  border: none; background: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border-radius: 12px;
+}
+.burger:active { background: rgba(18, 18, 16, 0.06); }
+.burger svg { width: 22px; height: 22px; stroke: var(--ink); stroke-width: 2; fill: none; }
+.topbar-logo { font-family: 'Abhaya Libre', serif; font-weight: 700; font-size: 22px; }
+.topbar-logo em {
+  font-style: normal; display: inline-block;
+  width: 6px; height: 6px; background: var(--green);
+  border-radius: 50%; margin-left: 3px; vertical-align: 2px;
+}
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar-w);
+  padding: 26px 14px 18px;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 60;
+  transition: transform 0.3s cubic-bezier(0.3, 0.8, 0.3, 1);
+}
+.scrim {
+  position: fixed; inset: 0;
+  background: rgba(18, 18, 16, 0.4);
+  z-index: 55; opacity: 0; pointer-events: none;
+  transition: opacity 0.25s;
+}
+.scrim.show { opacity: 1; pointer-events: auto; }
+
+.drawer-close {
+  display: none;
+  position: absolute; top: 16px; right: 14px;
+  width: 36px; height: 36px;
+  border: none; background: none;
+  cursor: pointer; border-radius: 10px;
+  align-items: center; justify-content: center;
+}
+.drawer-close svg { width: 18px; height: 18px; stroke: var(--ink-60); stroke-width: 2.2; fill: none; }
+
+.logo { padding: 4px 12px 26px; }
+.logo-mark {
+  font-family: 'Abhaya Libre', serif;
+  font-weight: 700; font-size: 27px;
+  letter-spacing: -0.5px; line-height: 1;
+}
+.logo-mark span { position: relative; }
+.logo-mark span::after {
+  content: ''; position: absolute;
+  bottom: 2px; right: -11px;
+  width: 7px; height: 7px;
+  background: var(--green); border-radius: 50%;
+}
+.logo-sub {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 9.5px; font-weight: 600;
+  letter-spacing: 2.4px; text-transform: uppercase;
+  color: var(--ink-40); margin-top: 6px;
+}
+
+.nav { flex: 1; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; }
+.nav-label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 1.6px; text-transform: uppercase;
+  color: var(--ink-40); padding: 18px 12px 8px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 11px;
+  padding: 11px 12px; border-radius: 12px;
+  color: var(--ink-60); text-decoration: none;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+}
+.nav-item:hover { background: rgba(255, 255, 255, 0.7); color: var(--ink); }
+.nav-item.active {
+  background: var(--ink); color: var(--white);
+  font-weight: 500; box-shadow: 0 6px 18px rgba(18, 18, 16, 0.22);
+}
+.nav-item.active .nav-icon { stroke: var(--green); }
+.nav-icon { width: 17px; height: 17px; stroke: currentColor; stroke-width: 1.8; fill: none; flex-shrink: 0; }
+
+/* Agente Prolu — item solto, fora dos grupos */
+.agent-item {
+  margin: 14px 0 10px;
+  border-top: 1px solid var(--ink-divider);
+  padding-top: 17px;
+  position: relative;
+}
+.agent-item .agent-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green); margin-left: auto; flex-shrink: 0;
+}
+.agent-item.active .agent-dot { background: var(--green); box-shadow: 0 0 8px rgba(203, 233, 33, 0.7); }
+
+.sidebar-footer {
+  padding: 12px;
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(255, 255, 255, 0.65);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-rest);
+}
+.avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--ink); color: var(--green);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 600; font-size: 13px; flex-shrink: 0;
+}
+.user-name { font-size: 13px; font-weight: 500; }
+.user-co { font-size: 11px; color: var(--ink-40); }
+.signout-btn {
+  margin-left: auto;
+  width: 28px; height: 28px;
+  border: none; background: none; cursor: pointer;
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  color: var(--ink-40); transition: background 0.15s, color 0.15s;
+}
+.signout-btn:hover { background: var(--gray-soft); color: var(--ink); }
+.signout-btn svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 2; fill: none; }
+
+/* Main */
+.main {
+  flex: 1;
+  margin-left: var(--sidebar-w);
+  padding: 38px 44px 90px;
+  width: 100%;
+}
+
+/* Cabeçalho de página padrão */
+.page-header { margin-bottom: 8px; }
+.page-header.between { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.page-title {
+  font-family: 'Abhaya Libre', serif;
+  font-weight: 600; font-size: 38px;
+  letter-spacing: -0.6px; line-height: 1.05;
+}
+.page-sub { color: var(--ink-60); margin-top: 7px; font-size: 14.5px; }
+
+/* Responsivo */
+@media (max-width: 860px) {
+  .topbar { display: flex; }
+  .sidebar {
+    transform: translateX(-100%);
+    width: 280px;
+    background: var(--cream);
+    box-shadow: 0 0 60px rgba(18, 18, 16, 0.25);
+    padding-top: 22px;
+  }
+  .sidebar.open { transform: translateX(0); }
+  .drawer-close { display: flex; }
+  .main { margin-left: 0; padding: 78px 16px 110px; }
+  .page-title { font-size: 28px; }
+}
