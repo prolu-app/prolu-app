@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
-import { QUOTES, ANNOUNCEMENTS, FOLDERS } from '../data/seed.js'
+import { QUOTES, ANNOUNCEMENTS, FOLDERS, CRM_ROWS, PLANO_ACOES } from '../data/seed.js'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import {
   IconBolt, IconAgente, IconArrowRight, IconCRM, IconBase, IconMoney, IconLock, IconClose,
@@ -14,6 +14,12 @@ const VINTE_QUATRO_H = 24 * 60 * 60 * 1000
 function getFechados() {
   try { return JSON.parse(localStorage.getItem('prolu_avisos_fechados') || '{}') }
   catch { return {} }
+}
+
+function fmtFat(v) {
+  if (!v) return '—'
+  if (v >= 1000) return `R$ ${Math.round(v / 1000)}k`
+  return `R$ ${v.toLocaleString('pt-BR')}`
 }
 
 function saudacao() {
@@ -108,6 +114,37 @@ export default function Inicio() {
     : crmStats.leads === 0
     ? 'Nenhum pedido de orçamento neste mês'
     : `${crmStats.leads} ${crmStats.leads === 1 ? 'pedido de orçamento' : 'pedidos de orçamento'} neste mês`
+
+  const [resumo, setResumo] = useState(() => {
+    const anoAtual = new Date().getFullYear().toString()
+    const faturamento = CRM_ROWS
+      .filter((r) => r.c_status === 'Fechado' && r.c_data?.startsWith(anoAtual))
+      .reduce((sum, r) => sum + (r.c_valor || 0), 0)
+    return {
+      faturamento,
+      planoDone: PLANO_ACOES.filter((a) => a.status === 'done').length,
+      planoTotal: PLANO_ACOES.length,
+    }
+  })
+
+  useEffect(() => {
+    if (!supabaseReady || !user?.empresaId) return
+    const inicioAno = `${new Date().getFullYear()}-01-01`
+    Promise.all([
+      supabase.from('crm_colunas').select('id, nome').eq('empresa_id', user.empresaId).in('tipo', ['select', 'money']),
+      supabase.from('crm_linhas').select('valores').eq('empresa_id', user.empresaId).gte('created_at', inicioAno),
+      supabase.from('plano_acoes').select('*', { count: 'exact', head: true }).eq('empresa_id', user.empresaId),
+      supabase.from('plano_acoes').select('*', { count: 'exact', head: true }).eq('empresa_id', user.empresaId).eq('status', 'done'),
+    ]).then(([{ data: colunas }, { data: linhas }, { count: planoTotal }, { count: planoDone }]) => {
+      const statusColId = colunas?.find((c) => c.nome === 'Status')?.id
+      const valorColId = colunas?.find((c) => c.nome === 'Valor proposta')?.id
+      const faturamento = statusColId && valorColId
+        ? (linhas || []).reduce((sum, l) =>
+            l.valores?.[statusColId] === 'Fechado' ? sum + (Number(l.valores?.[valorColId]) || 0) : sum, 0)
+        : 0
+      setResumo({ faturamento, planoDone: planoDone ?? 0, planoTotal: planoTotal ?? 0 })
+    })
+  }, [user?.empresaId])
 
   const quote = useMemo(() => QUOTES[Math.floor(Math.random() * QUOTES.length)], [])
   const primeiroNome = (user?.nome || 'André').split(' ')[0]
@@ -220,20 +257,36 @@ export default function Inicio() {
       <div className="pulse-card">
         <div className="pulse-metric">
           <div className="pulse-label">Faturamento YTD</div>
-          <div className="pulse-val highlight">R$ 74k</div>
-          <div className="pulse-trend">57% da meta anual</div>
+          <div className={`pulse-val${resumo.faturamento > 0 ? ' highlight' : ''}`}>
+            {fmtFat(resumo.faturamento)}
+          </div>
+          <div className="pulse-trend">
+            {resumo.faturamento > 0 ? 'em projetos fechados este ano' : 'Nenhum projeto fechado ainda'}
+          </div>
         </div>
         <div className="pulse-divider" />
         <div className="pulse-metric">
           <div className="pulse-label">Plano Prático</div>
-          <div className="pulse-val">45%</div>
-          <div className="pulse-trend">5 de 11 ações concluídas</div>
+          <div className="pulse-val">
+            {resumo.planoTotal > 0 ? `${Math.round((resumo.planoDone / resumo.planoTotal) * 100)}%` : '—'}
+          </div>
+          <div className="pulse-trend">
+            {resumo.planoTotal > 0
+              ? `${resumo.planoDone} de ${resumo.planoTotal} ações concluídas`
+              : 'Nenhuma ação cadastrada'}
+          </div>
         </div>
         <div className="pulse-divider" />
         <div className="pulse-metric">
           <div className="pulse-label">Base de Conhecimento</div>
-          <div className="pulse-val">55%</div>
-          <div className="pulse-trend">11 de 20 aulas assistidas</div>
+          <div className="pulse-val">
+            {kbStats.total > 0 ? `${kbPct}%` : '—'}
+          </div>
+          <div className="pulse-trend">
+            {kbStats.total > 0
+              ? `${kbStats.concluidas} de ${kbStats.total} aulas assistidas`
+              : 'Nenhuma aula ainda'}
+          </div>
         </div>
       </div>
 
