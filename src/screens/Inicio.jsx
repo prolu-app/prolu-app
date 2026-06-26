@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { QUOTES, ANNOUNCEMENTS } from '../data/seed.js'
+import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import {
   IconBolt, IconAgente, IconArrowRight, IconCRM, IconBase, IconMoney, IconLock, IconClose,
 } from '../components/Icons.jsx'
@@ -23,6 +24,25 @@ export default function Inicio() {
     const fechados = JSON.parse(localStorage.getItem('prolu_avisos_fechados') || '[]')
     return ANNOUNCEMENTS.filter((a) => !fechados.includes(a.id))
   })
+
+  const [kbStats, setKbStats] = useState(null)
+
+  useEffect(() => {
+    if (!supabaseReady || !user?.id) return
+    Promise.all([
+      supabase.from('kb_aulas').select('*', { count: 'exact', head: true }),
+      supabase.from('kb_progresso')
+        .select('*', { count: 'exact', head: true })
+        .eq('usuario_id', user.id)
+        .eq('concluida', true),
+    ]).then(([{ count: total }, { count: concluidas }]) => {
+      setKbStats({ total: total ?? 0, concluidas: concluidas ?? 0 })
+    })
+  }, [user?.id])
+
+  const kbPct = kbStats?.total > 0
+    ? Math.round((kbStats.concluidas / kbStats.total) * 100)
+    : 0
 
   const quote = useMemo(() => QUOTES[Math.floor(Math.random() * QUOTES.length)], [])
   const primeiroNome = (user?.nome || 'André').split(' ')[0]
@@ -104,8 +124,14 @@ export default function Inicio() {
             <div className="tile-title">Base de Conhecimento</div>
             <div className="tile-sub">O método Prolu em vídeo. Cursos, módulos e materiais extras.</div>
             <div className="tile-meta-row">
-              <div className="tile-progress-track"><div className="tile-progress-fill" style={{ width: '55%' }} /></div>
-              <span className="tile-progress-pct">55%</span>
+              {!kbStats && <span className="tile-progress-pct">—</span>}
+              {kbStats?.total === 0 && <span className="tile-progress-pct">Nenhuma aula ainda</span>}
+              {kbStats?.total > 0 && (
+                <>
+                  <div className="tile-progress-track"><div className="tile-progress-fill" style={{ width: `${kbPct}%` }} /></div>
+                  <span className="tile-progress-pct">{kbStats.concluidas} de {kbStats.total} aulas · {kbPct}%</span>
+                </>
+              )}
             </div>
           </div>
         </button>
