@@ -49,23 +49,21 @@ export default function Inicio() {
   useEffect(() => {
     if (!supabaseReady || !user?.empresaId) return
     const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
-    Promise.all([
-      supabase.from('crm_colunas').select('id, nome').eq('empresa_id', user.empresaId).eq('tipo', 'select'),
-      supabase.from('crm_linhas').select('id, created_at, valores').eq('empresa_id', user.empresaId),
-    ]).then(([{ data: colunas }, { data: linhas }]) => {
-      const rows = linhas || []
-      const statusColId = colunas?.find((c) => c.nome === 'Status')?.id
-      const leads = rows.filter((l) => l.created_at >= inicioMes).length
-      const propostas = statusColId ? rows.filter((l) => l.valores?.[statusColId] === 'Proposta').length : 0
-      setCrmStats({ leads, propostas })
-    })
+    supabase
+      .from('crm_linhas')
+      .select('*', { count: 'exact', head: true })
+      .eq('empresa_id', user.empresaId)
+      .gte('created_at', inicioMes)
+      .then(({ count }) => {
+        setCrmStats({ leads: count ?? 0 })
+      })
   }, [user?.empresaId])
 
   const crmLabel = !crmStats
     ? null
     : crmStats.leads === 0
-    ? 'Nenhum lead este mês'
-    : `${crmStats.leads} ${crmStats.leads === 1 ? 'lead' : 'leads'} este mês · ${crmStats.propostas} ${crmStats.propostas === 1 ? 'proposta aberta' : 'propostas abertas'}`
+    ? 'Nenhum pedido de orçamento neste mês'
+    : `${crmStats.leads} ${crmStats.leads === 1 ? 'pedido de orçamento' : 'pedidos de orçamento'} neste mês`
 
   const quote = useMemo(() => QUOTES[Math.floor(Math.random() * QUOTES.length)], [])
   const primeiroNome = (user?.nome || 'André').split(' ')[0]
