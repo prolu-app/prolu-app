@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
-import { QUOTES, ANNOUNCEMENTS } from '../data/seed.js'
+import { QUOTES, ANNOUNCEMENTS, FOLDERS } from '../data/seed.js'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import {
   IconBolt, IconAgente, IconArrowRight, IconCRM, IconBase, IconMoney, IconLock, IconClose,
@@ -25,7 +25,10 @@ export default function Inicio() {
     return ANNOUNCEMENTS.filter((a) => !fechados.includes(a.id))
   })
 
-  const [kbStats, setKbStats] = useState(null)
+  const [kbStats, setKbStats] = useState(() => {
+    const allLessons = FOLDERS.flatMap((f) => f.modules.flatMap((m) => m.lessons))
+    return { total: allLessons.length, concluidas: allLessons.filter((l) => l.done).length }
+  })
 
   useEffect(() => {
     if (!supabaseReady || !user?.id) return
@@ -36,7 +39,7 @@ export default function Inicio() {
         .eq('usuario_id', user.id)
         .eq('concluida', true),
     ]).then(([{ count: total }, { count: concluidas }]) => {
-      setKbStats({ total: total ?? 0, concluidas: concluidas ?? 0 })
+      if ((total ?? 0) > 0) setKbStats({ total: total ?? 0, concluidas: concluidas ?? 0 })
     })
   }, [user?.id])
 
