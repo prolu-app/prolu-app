@@ -44,6 +44,29 @@ export default function Inicio() {
     ? Math.round((kbStats.concluidas / kbStats.total) * 100)
     : 0
 
+  const [crmStats, setCrmStats] = useState(null)
+
+  useEffect(() => {
+    if (!supabaseReady || !user?.empresaId) return
+    const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+    Promise.all([
+      supabase.from('crm_colunas').select('id, nome').eq('empresa_id', user.empresaId).eq('tipo', 'select'),
+      supabase.from('crm_linhas').select('id, created_at, valores').eq('empresa_id', user.empresaId),
+    ]).then(([{ data: colunas }, { data: linhas }]) => {
+      const rows = linhas || []
+      const statusColId = colunas?.find((c) => c.nome === 'Status')?.id
+      const leads = rows.filter((l) => l.created_at >= inicioMes).length
+      const propostas = statusColId ? rows.filter((l) => l.valores?.[statusColId] === 'Proposta').length : 0
+      setCrmStats({ leads, propostas })
+    })
+  }, [user?.empresaId])
+
+  const crmLabel = !crmStats
+    ? null
+    : crmStats.leads === 0
+    ? 'Nenhum lead este mês'
+    : `${crmStats.leads} ${crmStats.leads === 1 ? 'lead' : 'leads'} este mês · ${crmStats.propostas} ${crmStats.propostas === 1 ? 'proposta aberta' : 'propostas abertas'}`
+
   const quote = useMemo(() => QUOTES[Math.floor(Math.random() * QUOTES.length)], [])
   const primeiroNome = (user?.nome || 'André').split(' ')[0]
 
@@ -111,7 +134,7 @@ export default function Inicio() {
             <div className="tile-title">Gestão Comercial</div>
             <div className="tile-sub">CRM, dashboard, plano prático, cliente ideal e indicadores num só lugar.</div>
             <div className="tile-meta-row">
-              <span className="tile-progress-pct">8 leads este mês · 3 propostas abertas</span>
+              <span className="tile-progress-pct">{crmLabel ?? '—'}</span>
             </div>
           </div>
         </button>
