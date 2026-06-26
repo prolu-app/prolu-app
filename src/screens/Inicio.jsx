@@ -19,7 +19,10 @@ export default function Inicio() {
   const { user } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
-  const [avisos, setAvisos] = useState(ANNOUNCEMENTS)
+  const [avisos, setAvisos] = useState(() => {
+    const fechados = JSON.parse(localStorage.getItem('prolu_avisos_fechados') || '[]')
+    return ANNOUNCEMENTS.filter((a) => !fechados.includes(a.id))
+  })
 
   const quote = useMemo(() => QUOTES[Math.floor(Math.random() * QUOTES.length)], [])
   const primeiroNome = (user?.nome || 'André').split(' ')[0]
@@ -39,7 +42,11 @@ export default function Inicio() {
               <span className="ann-dot" />
               <span className="ann-text">{a.text}</span>
               <span className="ann-link" onClick={() => abrirAviso(a)}>{a.linkText}</span>
-              <button className="ann-close" onClick={() => setAvisos(avisos.filter((x) => x.id !== a.id))} aria-label="Fechar aviso">
+              <button className="ann-close" onClick={() => {
+                const fechados = JSON.parse(localStorage.getItem('prolu_avisos_fechados') || '[]')
+                localStorage.setItem('prolu_avisos_fechados', JSON.stringify([...new Set([...fechados, a.id])]))
+                setAvisos(avisos.filter((x) => x.id !== a.id))
+              }} aria-label="Fechar aviso">
                 <IconClose />
               </button>
             </div>
