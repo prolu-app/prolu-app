@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import {
   IconInicio, IconBase, IconCRM, IconDashboard,
@@ -22,8 +22,9 @@ const NAV = [
 
 export default function AppLayout() {
   const [open, setOpen] = useState(false)
-  const { user, signOut } = useAuth()
+  const { user, signOut, isEmpresaMaster } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const close = () => setOpen(false)
 
   const initial = (user?.nome || 'U').trim().charAt(0).toUpperCase()
@@ -80,10 +81,17 @@ export default function AppLayout() {
           </NavLink>
 
           <div className="sidebar-footer">
-            <div className="avatar">{initial}</div>
-            <div style={{ minWidth: 0 }}>
-              <div className="user-name">{user?.nome}</div>
-              <div className="user-co">{user?.empresa || 'Prolu'}</div>
+            <div
+              className="sidebar-footer-info"
+              onClick={() => { if (isEmpresaMaster) { navigate('/equipe'); if (window.innerWidth <= 860) close() } }}
+              style={{ cursor: isEmpresaMaster ? 'pointer' : 'default' }}
+              title={isEmpresaMaster ? 'Gerenciar equipe' : undefined}
+            >
+              <div className="avatar">{initial}</div>
+              <div style={{ minWidth: 0 }}>
+                <div className="user-name">{user?.nome}</div>
+                <div className="user-co">{user?.empresa || 'Prolu'}</div>
+              </div>
             </div>
             <button className="signout-btn" onClick={signOut} aria-label="Sair" title="Sair">
               <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>

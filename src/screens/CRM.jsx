@@ -1,10 +1,13 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useToast } from '../contexts/ToastContext.jsx'
+import { useAuth } from '../contexts/AuthContext.jsx'
+import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { CRM_COLUMNS, CRM_ROWS } from '../data/seed.js'
-import { IconPlus, IconSearch, IconTrash } from '../components/Icons.jsx'
+import { IconPlus, IconSearch, IconTrash, IconEdit, IconClose } from '../components/Icons.jsx'
 import './CRM.css'
 
 const COLOR_OPTS = ['gray', 'blue', 'green', 'orange', 'violet', 'red']
+const TYPE_LABELS = { text: 'Texto', number: 'Número', money: 'Dinheiro (R$)', date: 'Data', select: 'Seleção' }
 
 function fmtMoney(v) {
   if (v === null || v === undefined || v === '') return ''
@@ -18,19 +21,74 @@ function fmtDate(v) {
   return `${d}/${m}/${y.slice(2)}`
 }
 
+// Converte uma linha do banco (id + valores jsonb) para o formato plano
+// que as telas usam: { id, c_data: ..., c_cliente: ..., ... }
+function flattenRow(dbRow) {
+  return { id: dbRow.id, ...dbRow.valores }
+}
+
 export default function CRM() {
   const toast = useToast()
-  const [columns, setColumns] = useState(CRM_COLUMNS)
-  const [rows, setRows] = useState(CRM_ROWS)
+  const { user } = useAuth()
+  const [columns, setColumns] = useState([])
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [editing, setEditing] = useState(null) // { rowId, colId }
-  const [colModal, setColModal] = useState(false)
-  const [colForm, setColForm] = useState({ name: '', type: 'text' })
+  const [colModal, setColModal] = useState(null) // null | 'new' | columnId (editando)
+  const [colForm, setColForm] = useState({ name: '', type: 'text', options: [] })
   const [statusMenu, setStatusMenu] = useState(null) // { rowId, colId, x, y }
   const inputRef = useRef(null)
 
   const statusCol = columns.find((c) => c.id === 'c_status')
+
+  // ── carregamento inicial ──
+  useEffect(() => { carregar() }, [user?.empresaId])
+
+  async function carregar() {
+    if (!supabaseReady || !user?.empresaId) {
+      // Modo demonstração: usa os dados de seed, sem persistência real.
+      setColumns(CRM_COLUMNS)
+      setRows(CRM_ROWS)
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    const [{ data: cols, error: colErr }, { data: lin, error: linErr }] = await Promise.all([
+      supabase.from('crm_colunas').select('*').eq('empresa_id', user.empresaId).order('ordem', { ascending: true }),
+      supabase.from('crm_linhas').select('*').eq('empresa_id', user.empresaId).order('created_at', { ascending: false }),
+    ])
+
+    if (colErr || linErr) {
+      toast('Não foi possível carregar o CRM')
+      setLoading(false)
+      return
+    }
+
+    // Primeira vez que essa empresa acessa o CRM: ainda não tem colunas
+    // cadastradas no banco. Semeamos com as colunas padrão.
+    if (!cols || cols.length === 0) {
+      await seedColunasPadrao()
+      return
+    }
+
+    setColumns(cols.map((c) => ({ id: c.id, name: c.nome, type: c.tipo, width: 150, options: c.opcoes || [], ordem: c.ordem })))
+    setRows((lin || []).map(flattenRow))
+    setLoading(false)
+  }
+
+  // Cria as colunas padrão no banco na primeira vez que a empresa abre o CRM.
+  async function seedColunasPadrao() {
+    const payload = CRM_COLUMNS.map((c, i) => ({
+      empresa_id: user.empresaId, nome: c.name, tipo: c.type, ordem: i, opcoes: c.options || [],
+    }))
+    const { data: created, error } = await supabase.from('crm_colunas').insert(payload).select('*')
+    if (error) { toast('Não foi possível preparar o CRM'); setLoading(false); return }
+    setColumns(created.map((c) => ({ id: c.id, name: c.nome, type: c.tipo, width: 150, options: c.opcoes || [], ordem: c.ordem })))
+    setRows([])
+    setLoading(false)
+  }
 
   useEffect(() => { if (editing && inputRef.current) { inputRef.current.focus(); inputRef.current.select?.() } }, [editing])
   useEffect(() => {
@@ -45,40 +103,121 @@ export default function CRM() {
     return matchSearch && matchStatus
   })
 
-  function updateCell(rowId, colId, value) {
+  // ── persistência de células ──
+  async function updateCell(rowId, colId, value) {
     setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, [colId]: value } : r)))
     setEditing(null)
+
+    if (!supabaseReady || !user?.empresaId) { toast('Salvo (modo demonstração)'); return }
+
+    const row = rows.find((r) => r.id === rowId)
+    const novosValores = { ...row, [colId]: value }
+    delete novosValores.id
+    const { error } = await supabase.from('crm_linhas').update({ valores: novosValores, updated_at: new Date().toISOString() }).eq('id', rowId)
+    if (error) { toast('Não foi possível salvar'); return }
     toast('Salvo automaticamente')
   }
 
-  function addRow() {
-    const newRow = { id: 'r' + Date.now() }
-    columns.forEach((c) => { newRow[c.id] = c.type === 'money' ? 0 : '' })
-    setRows((prev) => [newRow, ...prev])
+  // ── linhas ──
+  async function addRow() {
+    const novosValores = {}
+    columns.forEach((c) => { novosValores[c.id] = c.type === 'money' || c.type === 'number' ? null : '' })
+
+    if (!supabaseReady || !user?.empresaId) {
+      setRows((prev) => [{ id: 'r' + Date.now(), ...novosValores }, ...prev])
+      toast('Linha criada (modo demonstração)')
+      return
+    }
+
+    const { data, error } = await supabase.from('crm_linhas').insert({ empresa_id: user.empresaId, valores: novosValores, created_by: user.id }).select('*').single()
+    if (error) { toast('Não foi possível criar a linha'); return }
+    setRows((prev) => [flattenRow(data), ...prev])
     toast('Linha criada')
   }
 
-  function removeRow(id) {
+  async function removeRow(id) {
     setRows((prev) => prev.filter((r) => r.id !== id))
+    if (!supabaseReady || !user?.empresaId) { toast('Linha removida (modo demonstração)'); return }
+    const { error } = await supabase.from('crm_linhas').delete().eq('id', id)
+    if (error) { toast('Não foi possível remover'); carregar(); return }
     toast('Linha removida')
   }
 
-  function addColumn() {
+  // ── colunas: criar ──
+  function openNewColumn() {
+    setColForm({ name: '', type: 'text', options: [] })
+    setColModal('new')
+  }
+
+  async function confirmNewColumn() {
     if (!colForm.name.trim()) return
-    const id = 'c_' + Date.now()
-    const base = { id, name: colForm.name.trim(), type: colForm.type, width: 150 }
-    if (colForm.type === 'select') base.options = [{ value: 'Novo status', color: 'gray' }]
-    setColumns((prev) => [...prev, base])
-    setRows((prev) => prev.map((r) => ({ ...r, [id]: colForm.type === 'money' ? 0 : '' })))
-    setColModal(false)
-    setColForm({ name: '', type: 'text' })
+    const opcoes = colForm.type === 'select' ? (colForm.options.length ? colForm.options : [{ value: 'Novo status', color: 'gray' }]) : []
+
+    if (!supabaseReady || !user?.empresaId) {
+      const id = 'c_' + Date.now()
+      setColumns((prev) => [...prev, { id, name: colForm.name.trim(), type: colForm.type, width: 150, options: opcoes }])
+      setColModal(null)
+      toast('Coluna criada (modo demonstração)')
+      return
+    }
+
+    const { data, error } = await supabase.from('crm_colunas').insert({
+      empresa_id: user.empresaId, nome: colForm.name.trim(), tipo: colForm.type, ordem: columns.length, opcoes,
+    }).select('*').single()
+    if (error) { toast('Não foi possível criar a coluna'); return }
+    setColumns((prev) => [...prev, { id: data.id, name: data.nome, type: data.tipo, width: 150, options: data.opcoes || [] }])
+    setColModal(null)
     toast('Coluna criada')
   }
 
-  function addStatusOption(colId) {
+  // ── colunas: editar ──
+  function openEditColumn(col) {
+    setColForm({ name: col.name, type: col.type, options: col.options || [] })
+    setColModal(col.id)
+  }
+
+  async function confirmEditColumn() {
+    const colId = colModal
+    if (!colForm.name.trim()) return
+    const opcoes = colForm.type === 'select' ? colForm.options : []
+
+    setColumns((prev) => prev.map((c) => c.id === colId ? { ...c, name: colForm.name.trim(), type: colForm.type, options: opcoes } : c))
+    setColModal(null)
+
+    if (!supabaseReady || !user?.empresaId) { toast('Coluna atualizada (modo demonstração)'); return }
+    const { error } = await supabase.from('crm_colunas').update({ nome: colForm.name.trim(), tipo: colForm.type, opcoes }).eq('id', colId)
+    if (error) { toast('Não foi possível salvar a coluna'); return }
+    toast('Coluna atualizada')
+  }
+
+  async function removeColumn(colId) {
+    if (!window.confirm('Excluir esta coluna? Os dados dela em todos os registros serão perdidos.')) return
+    setColumns((prev) => prev.filter((c) => c.id !== colId))
+    setColModal(null)
+
+    if (!supabaseReady || !user?.empresaId) { toast('Coluna excluída (modo demonstração)'); return }
+    await supabase.from('crm_colunas').delete().eq('id', colId)
+    toast('Coluna excluída')
+  }
+
+  function addOptionToForm() {
+    const value = prompt('Nome da nova opção:')
+    if (!value) return
+    setColForm((f) => ({ ...f, options: [...f.options, { value, color: COLOR_OPTS[f.options.length % COLOR_OPTS.length] }] }))
+  }
+  function removeOptionFromForm(value) {
+    setColForm((f) => ({ ...f, options: f.options.filter((o) => o.value !== value) }))
+  }
+
+  // ── status inline (dropdown na célula) ──
+  async function addStatusOption(colId) {
     const value = prompt('Nome do novo status:')
     if (!value) return
-    setColumns((prev) => prev.map((c) => c.id !== colId ? c : { ...c, options: [...c.options, { value, color: COLOR_OPTS[c.options.length % COLOR_OPTS.length] }] }))
+    const col = columns.find((c) => c.id === colId)
+    const novasOpcoes = [...(col.options || []), { value, color: COLOR_OPTS[(col.options || []).length % COLOR_OPTS.length] }]
+    setColumns((prev) => prev.map((c) => c.id !== colId ? c : { ...c, options: novasOpcoes }))
+    if (!supabaseReady || !user?.empresaId) return
+    await supabase.from('crm_colunas').update({ opcoes: novasOpcoes }).eq('id', colId)
   }
 
   function pillClass(colId, value) {
@@ -99,6 +238,17 @@ export default function CRM() {
     e.stopPropagation()
     const r = e.currentTarget.getBoundingClientRect()
     setStatusMenu({ rowId, colId, x: r.left, y: r.bottom + 6 })
+  }
+
+  const isEditingColumn = colModal && colModal !== 'new'
+
+  if (loading) {
+    return (
+      <div className="page-header">
+        <div className="page-title">CRM</div>
+        <div className="page-sub">Carregando seus registros…</div>
+      </div>
+    )
   }
 
   return (
@@ -125,7 +275,7 @@ export default function CRM() {
             </button>
           ))}
         </div>
-        <button className="crm-addcol-btn" onClick={() => setColModal(true)}><IconPlus /> Nova coluna</button>
+        <button className="crm-addcol-btn" onClick={openNewColumn}><IconPlus /> Nova coluna</button>
       </div>
 
       {/* DESKTOP: tabela */}
@@ -133,7 +283,14 @@ export default function CRM() {
         <table className="crm-table">
           <thead>
             <tr>
-              {columns.map((c) => <th key={c.id} style={{ minWidth: c.width }}>{c.name}</th>)}
+              {columns.map((c) => (
+                <th key={c.id} style={{ minWidth: c.width }}>
+                  <span className="th-label" onClick={() => openEditColumn(c)}>
+                    {c.name}
+                    <IconEdit className="th-edit-icon" />
+                  </span>
+                </th>
+              ))}
               <th style={{ width: 40 }} />
             </tr>
           </thead>
@@ -148,9 +305,9 @@ export default function CRM() {
                         <input
                           ref={inputRef}
                           className="cell-input"
-                          type={col.type === 'money' ? 'number' : col.type === 'date' ? 'date' : 'text'}
-                          defaultValue={row[col.id]}
-                          onBlur={(e) => updateCell(row.id, col.id, col.type === 'money' ? Number(e.target.value) : e.target.value)}
+                          type={col.type === 'money' || col.type === 'number' ? 'number' : col.type === 'date' ? 'date' : 'text'}
+                          defaultValue={row[col.id] ?? ''}
+                          onBlur={(e) => updateCell(row.id, col.id, (col.type === 'money' || col.type === 'number') ? (e.target.value === '' ? null : Number(e.target.value)) : e.target.value)}
                           onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setEditing(null) }}
                         />
                       ) : col.type === 'select' ? (
@@ -207,11 +364,11 @@ export default function CRM() {
         </div>
       )}
 
-      {/* modal nova coluna */}
+      {/* modal coluna (criar ou editar) */}
       {colModal && (
-        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setColModal(false) }}>
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setColModal(null) }}>
           <div className="modal">
-            <div className="modal-title">Nova coluna</div>
+            <div className="modal-title">{isEditingColumn ? 'Editar coluna' : 'Nova coluna'}</div>
             <div className="modal-field">
               <label className="modal-label">Nome da coluna</label>
               <input className="modal-input" value={colForm.name} onChange={(e) => setColForm({ ...colForm, name: e.target.value })} placeholder="Ex: Telefone, Responsável…" autoFocus />
@@ -219,14 +376,40 @@ export default function CRM() {
             <div className="modal-field">
               <label className="modal-label">Tipo de dado</label>
               <div className="col-type-pills">
-                {[['text', 'Texto'], ['number', 'Número'], ['money', 'Dinheiro (R$)'], ['date', 'Data'], ['select', 'Seleção']].map(([t, lbl]) => (
+                {Object.entries(TYPE_LABELS).map(([t, lbl]) => (
                   <button key={t} className={`unit-pill${colForm.type === t ? ' selected' : ''}`} onClick={() => setColForm({ ...colForm, type: t })}>{lbl}</button>
                 ))}
               </div>
             </div>
+
+            {colForm.type === 'select' && (
+              <div className="modal-field">
+                <label className="modal-label">Opções</label>
+                <div className="col-options-list">
+                  {colForm.options.map((o) => (
+                    <span key={o.value} className={`pill pill-${o.color} col-option-pill`}>
+                      <span className="dot" />{o.value}
+                      <button onClick={() => removeOptionFromForm(o.value)}><IconClose /></button>
+                    </span>
+                  ))}
+                  <button className="col-option-add" onClick={addOptionToForm}><IconPlus /> Opção</button>
+                </div>
+              </div>
+            )}
+
             <div className="modal-actions">
-              <button className="btn-cancel" onClick={() => setColModal(false)}>Cancelar</button>
-              <button className="btn-confirm" onClick={addColumn}>Criar coluna</button>
+              {isEditingColumn ? (
+                <>
+                  <button className="btn-cancel col-delete-btn" onClick={() => removeColumn(colModal)}><IconTrash /></button>
+                  <button className="btn-cancel" onClick={() => setColModal(null)}>Cancelar</button>
+                  <button className="btn-confirm" onClick={confirmEditColumn}>Salvar</button>
+                </>
+              ) : (
+                <>
+                  <button className="btn-cancel" onClick={() => setColModal(null)}>Cancelar</button>
+                  <button className="btn-confirm" onClick={confirmNewColumn}>Criar coluna</button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -234,3 +417,4 @@ export default function CRM() {
     </>
   )
 }
+

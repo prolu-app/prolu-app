@@ -123,6 +123,13 @@
   border-radius: var(--r-md);
   box-shadow: var(--shadow-rest);
 }
+.sidebar-footer-info {
+  display: flex; align-items: center; gap: 10px;
+  flex: 1; min-width: 0;
+  border-radius: 8px; padding: 2px 4px; margin: -2px -4px;
+  transition: background 0.15s;
+}
+.sidebar-footer-info:hover { background: rgba(18, 18, 16, 0.04); }
 .avatar {
   width: 34px; height: 34px; border-radius: 50%;
   background: var(--ink); color: var(--green);

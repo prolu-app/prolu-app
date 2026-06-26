@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import './Login.css'
 
-export default function Login() {
+export default function Login({ onCreateAccount }) {
   const { signIn } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -58,6 +58,11 @@ export default function Login() {
         <button className="btn-primary login-btn" onClick={handleSubmit} disabled={busy}>
           {busy ? 'Entrando…' : 'Entrar'}
         </button>
+
+        <p className="login-switch">
+          Ainda não tem conta?{' '}
+          <a href="#" onClick={(e) => { e.preventDefault(); onCreateAccount?.() }}>Criar conta</a>
+        </p>
       </div>
     </div>
   )
