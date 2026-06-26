@@ -203,6 +203,51 @@ export default function Inicio() {
         </div>
       </div>
 
+      {/* resumo */}
+      <div className="section-title">Resumo do escritório</div>
+      <div className="pulse-card">
+        <div className="pulse-metric">
+          <div className="pulse-label">Faturamento YTD</div>
+          <div className={`pulse-val${resumo.faturamento > 0 ? ' highlight' : ''}`}>
+            {fmtFat(resumo.faturamento)}
+          </div>
+          <div className="pulse-trend">
+            {resumo.faturamento > 0 ? 'em projetos fechados este ano' : 'Nenhum projeto fechado ainda'}
+          </div>
+        </div>
+        <div className="pulse-divider" />
+        <div className="pulse-metric">
+          <div className="pulse-label">Plano Prático</div>
+          <div className="pulse-val">
+            {resumo.planoTotal > 0 ? `${Math.round((resumo.planoDone / resumo.planoTotal) * 100)}%` : '—'}
+          </div>
+          <div className="pulse-trend">
+            {resumo.planoTotal > 0
+              ? `${resumo.planoDone} de ${resumo.planoTotal} ações concluídas`
+              : 'Nenhuma ação cadastrada'}
+          </div>
+        </div>
+        <div className="pulse-divider" />
+        <div className="pulse-metric">
+          <div className="pulse-label">Base de Conhecimento</div>
+          <div className="pulse-val">
+            {kbStats.total > 0 ? `${kbPct}%` : '—'}
+          </div>
+          <div className="pulse-trend">
+            {kbStats.total > 0
+              ? `${kbStats.concluidas} de ${kbStats.total} aulas assistidas`
+              : 'Nenhuma aula ainda'}
+          </div>
+        </div>
+      </div>
+
+      <div className="insight-card">
+        <div className="insight-icon"><IconBolt /></div>
+        <div className="insight-text">
+          <strong>Indicação converte 38% dos leads</strong> — seu melhor canal. Antes de investir em tráfego pago, crie um processo de pedido de indicação para quem já fechou com você.
+        </div>
+      </div>
+
       {/* ferramentas */}
       <div className="section-title">Suas ferramentas</div>
       <div className="modules-grid">
@@ -250,51 +295,6 @@ export default function Inicio() {
             <div className="tile-locked-note"><IconLock />Liberado em breve</div>
           </div>
         </button>
-      </div>
-
-      {/* resumo */}
-      <div className="section-title">Resumo do escritório</div>
-      <div className="pulse-card">
-        <div className="pulse-metric">
-          <div className="pulse-label">Faturamento YTD</div>
-          <div className={`pulse-val${resumo.faturamento > 0 ? ' highlight' : ''}`}>
-            {fmtFat(resumo.faturamento)}
-          </div>
-          <div className="pulse-trend">
-            {resumo.faturamento > 0 ? 'em projetos fechados este ano' : 'Nenhum projeto fechado ainda'}
-          </div>
-        </div>
-        <div className="pulse-divider" />
-        <div className="pulse-metric">
-          <div className="pulse-label">Plano Prático</div>
-          <div className="pulse-val">
-            {resumo.planoTotal > 0 ? `${Math.round((resumo.planoDone / resumo.planoTotal) * 100)}%` : '—'}
-          </div>
-          <div className="pulse-trend">
-            {resumo.planoTotal > 0
-              ? `${resumo.planoDone} de ${resumo.planoTotal} ações concluídas`
-              : 'Nenhuma ação cadastrada'}
-          </div>
-        </div>
-        <div className="pulse-divider" />
-        <div className="pulse-metric">
-          <div className="pulse-label">Base de Conhecimento</div>
-          <div className="pulse-val">
-            {kbStats.total > 0 ? `${kbPct}%` : '—'}
-          </div>
-          <div className="pulse-trend">
-            {kbStats.total > 0
-              ? `${kbStats.concluidas} de ${kbStats.total} aulas assistidas`
-              : 'Nenhuma aula ainda'}
-          </div>
-        </div>
-      </div>
-
-      <div className="insight-card">
-        <div className="insight-icon"><IconBolt /></div>
-        <div className="insight-text">
-          <strong>Indicação converte 38% dos leads</strong> — seu melhor canal. Antes de investir em tráfego pago, crie um processo de pedido de indicação para quem já fechou com você.
-        </div>
       </div>
     </>
   )
