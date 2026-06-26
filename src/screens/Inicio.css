@@ -58,7 +58,7 @@
 .agent-bar-cta svg { width: 13px; height: 13px; stroke: var(--ink); stroke-width: 2.5; fill: none; }
 
 /* ── Ferramentas (tiles) ── */
-.modules-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 38px; }
+.modules-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 38px; }
 .module-tile {
   border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-rest);
   cursor: pointer; transition: box-shadow 0.2s, transform 0.15s;
@@ -67,30 +67,25 @@
   border: none; text-align: left; font-family: inherit;
 }
 .module-tile:hover { box-shadow: var(--shadow-float); transform: translateY(-2px); }
-.tile-comercial { background: linear-gradient(135deg, #1d2114 0%, #121210 60%); color: var(--white); }
+.tile-comercial { background: var(--white); color: var(--ink); }
 .tile-conhecimento { background: var(--white); color: var(--ink); }
 .tile-precificacao { background: var(--white); color: var(--ink); }
 .tile-top { padding: 22px 24px 0; display: flex; align-items: flex-start; justify-content: space-between; }
 .tile-icon { width: 44px; height: 44px; border-radius: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .tile-icon svg { width: 21px; height: 21px; stroke: currentColor; stroke-width: 1.7; fill: none; }
-.tile-comercial .tile-icon { background: rgba(255, 255, 255, 0.12); color: var(--green); }
+.tile-comercial .tile-icon { background: var(--green-soft); color: var(--green-ink); }
 .tile-conhecimento .tile-icon { background: var(--green-soft); color: var(--green-ink); }
 .tile-precificacao .tile-icon { background: var(--gray-soft); color: var(--ink-60); }
 .tile-badge { font-size: 10.5px; font-weight: 600; padding: 4px 10px; border-radius: 99px; }
 .badge-soon { background: var(--gray-soft); color: var(--ink-40); }
 .tile-body { padding: 14px 24px 22px; }
 .tile-title { font-size: 17px; font-weight: 600; line-height: 1.25; }
-.tile-comercial .tile-title { color: var(--white); }
-.tile-sub { font-size: 12.5px; margin-top: 6px; line-height: 1.5; }
-.tile-comercial .tile-sub { color: rgba(255, 255, 255, 0.5); }
-.tile-conhecimento .tile-sub, .tile-precificacao .tile-sub { color: var(--ink-40); }
+.tile-sub { font-size: 12.5px; margin-top: 6px; line-height: 1.5; color: var(--ink-40); }
 .tile-meta-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
 .tile-progress-track { flex: 1; height: 5px; background: rgba(255, 255, 255, 0.15); border-radius: 99px; overflow: hidden; }
 .tile-conhecimento .tile-progress-track { background: var(--gray-soft); }
 .tile-progress-fill { height: 100%; background: var(--green); border-radius: 99px; }
-.tile-progress-pct { font-size: 11.5px; font-weight: 500; }
-.tile-comercial .tile-progress-pct { color: rgba(255, 255, 255, 0.6); }
-.tile-conhecimento .tile-progress-pct { color: var(--ink-40); }
+.tile-progress-pct { font-size: 11.5px; font-weight: 500; color: var(--ink-40); }
 .tile-locked-note { font-size: 11.5px; color: var(--ink-40); display: flex; align-items: center; gap: 6px; margin-top: 14px; }
 .tile-locked-note svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 2; fill: none; }
 
@@ -116,10 +111,12 @@
 .insight-text strong { color: var(--ink); font-weight: 600; }
 
 @media (max-width: 960px) {
-  .modules-grid { grid-template-columns: 1fr; }
   .pulse-card { grid-template-columns: 1fr 1fr; gap: 16px; }
   .pulse-divider { display: none; }
   .pulse-metric { padding: 0; }
+}
+@media (max-width: 640px) {
+  .modules-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 860px) {
   .agent-bar { flex-wrap: wrap; border-radius: 20px; padding: 16px; }

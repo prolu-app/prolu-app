@@ -15,6 +15,23 @@
 .crm-table-wrap { background: var(--white); border-radius: var(--r-lg); box-shadow: var(--shadow-rest); overflow: auto; }
 .crm-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .crm-table th { text-align: left; padding: 14px 16px; font-family: 'Montserrat', sans-serif; font-size: 10.5px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--ink-40); border-bottom: 1px solid var(--ink-divider); white-space: nowrap; }
+.th-label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: color 0.15s; border-radius: 6px; padding: 2px 4px; margin: -2px -4px; }
+.th-label:hover { color: var(--ink); background: rgba(18, 18, 16, 0.04); }
+.th-edit-icon { width: 10px; height: 10px; stroke: currentColor; stroke-width: 2.2; fill: none; opacity: 0; transition: opacity 0.15s; }
+.th-label:hover .th-edit-icon { opacity: 0.6; }
+
+.col-options-list { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.col-option-pill { display: inline-flex; align-items: center; gap: 6px; }
+.col-option-pill button { background: none; border: none; cursor: pointer; color: inherit; opacity: 0.6; display: flex; align-items: center; padding: 0; }
+.col-option-pill button:hover { opacity: 1; }
+.col-option-pill button svg { width: 9px; height: 9px; stroke: currentColor; stroke-width: 2.6; fill: none; }
+.col-option-add { display: inline-flex; align-items: center; gap: 5px; border: none; background: var(--gray-soft); color: var(--ink-60); border-radius: 99px; padding: 5px 12px; font-size: 12px; cursor: pointer; transition: background 0.15s; }
+.col-option-add:hover { background: #e0e0dc; }
+.col-option-add svg { width: 11px; height: 11px; stroke: currentColor; stroke-width: 2.4; fill: none; }
+
+.col-delete-btn { flex: 0 !important; width: 42px; display: flex; align-items: center; justify-content: center; padding: 11px !important; color: var(--red); background: var(--red-soft) !important; }
+.col-delete-btn:hover { background: #fad9d9 !important; }
+.col-delete-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
 .crm-table td { padding: 0; border-bottom: 1px solid var(--ink-divider); }
 .crm-table tr:last-child td { border-bottom: none; }
 .crm-table tr:hover td { background: #fafaf6; }

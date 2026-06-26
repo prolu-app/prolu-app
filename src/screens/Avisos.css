@@ -1,0 +1,81 @@
+/* ── Lista de avisos ── */
+.avisos-empty { color: var(--ink-40); font-size: 14px; padding: 48px 0; text-align: center; }
+
+.avisos-list { display: flex; flex-direction: column; gap: 10px; }
+
+.aviso-card {
+  display: flex; align-items: flex-start; gap: 14px;
+  background: var(--white); border-radius: var(--r-md);
+  padding: 16px 18px; box-shadow: var(--shadow-rest);
+  transition: opacity 0.2s;
+}
+.aviso-card.aviso-inativo { opacity: 0.45; }
+
+.aviso-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  flex-shrink: 0; margin-top: 5px;
+}
+.aviso-green .aviso-dot  { background: var(--green-deep); }
+.aviso-orange .aviso-dot { background: var(--orange); }
+.aviso-violet .aviso-dot { background: var(--violet-ink); }
+.aviso-blue .aviso-dot   { background: var(--blue-ink); }
+
+.aviso-body { flex: 1; min-width: 0; }
+.aviso-texto { font-size: 14px; line-height: 1.5; }
+.aviso-link-info {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font-size: 12px; color: var(--ink-40); margin-top: 5px;
+}
+.aviso-link-label { font-weight: 500; color: var(--ink-60); }
+.aviso-link-url { font-style: italic; }
+.aviso-ext-badge {
+  background: var(--gray-soft); border-radius: 99px;
+  padding: 1px 8px; font-size: 10.5px; font-style: normal;
+}
+
+.aviso-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.aviso-toggle {
+  font-size: 12px; font-weight: 500; padding: 5px 13px;
+  border: none; border-radius: 99px; cursor: pointer;
+  background: var(--gray-soft); color: var(--ink-40);
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.aviso-toggle.ativo { background: var(--green-soft); color: var(--green-ink); }
+
+.aviso-del {
+  width: 30px; height: 30px; border: none; background: none;
+  border-radius: 8px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-40); transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.aviso-del:hover { background: var(--red-soft); color: var(--red); }
+.aviso-del svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
+
+/* ── Seletor de cor no modal ── */
+.cor-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.cor-pill {
+  border: none; border-radius: 99px; padding: 6px 16px;
+  font-size: 12.5px; font-weight: 500; cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.cor-pill.selected { box-shadow: 0 0 0 2.5px currentColor; font-weight: 600; }
+.cor-pill-green  { background: var(--green-soft);   color: var(--green-ink); }
+.cor-pill-orange { background: var(--orange-soft);  color: var(--orange-ink); }
+.cor-pill-violet { background: var(--violet-soft);  color: var(--violet-ink); }
+.cor-pill-blue   { background: var(--blue-soft);    color: var(--blue-ink); }
+
+/* ── Linha de checkbox no modal ── */
+.modal-check-row { display: flex; align-items: center; gap: 10px; }
+.modal-check-row label { font-size: 13.5px; color: var(--ink-60); cursor: pointer; }
+.modal-check-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--green-deep); cursor: pointer; }
+
+/* ── Estado desabilitado do botão confirmar ── */
+.btn-confirm:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+@media (max-width: 600px) {
+  .aviso-card { flex-wrap: wrap; }
+  .aviso-actions { width: 100%; justify-content: flex-end; }
+}

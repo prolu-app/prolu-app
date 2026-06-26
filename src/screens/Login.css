@@ -45,3 +45,6 @@
   padding: 13px;
 }
 .login-btn:disabled { opacity: 0.6; cursor: default; }
+.login-switch { text-align: center; font-size: 13px; color: var(--ink-40); margin-top: 18px; }
+.login-switch a { color: var(--ink); font-weight: 500; text-decoration: underline; text-underline-offset: 2px; }
+.login-info { background: var(--green-soft); color: var(--green-ink); font-size: 13px; padding: 10px 14px; border-radius: var(--r-sm); margin-bottom: 14px; line-height: 1.5; }

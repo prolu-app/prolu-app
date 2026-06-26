@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext.jsx'
 import AppLayout from './components/AppLayout.jsx'
 import Login from './screens/Login.jsx'
+import Onboarding from './screens/Onboarding.jsx'
 
 import Inicio from './screens/Inicio.jsx'
 import BaseConhecimento from './screens/BaseConhecimento.jsx'
@@ -11,9 +13,12 @@ import PlanoPratico from './screens/PlanoPratico.jsx'
 import ClienteIdeal from './screens/ClienteIdeal.jsx'
 import Indicadores from './screens/Indicadores.jsx'
 import AgentePrl from './screens/AgentePrl.jsx'
+import Equipe from './screens/Equipe.jsx'
+import Avisos from './screens/Avisos.jsx'
 
 export default function App() {
   const { user, loading } = useAuth()
+  const [showOnboarding, setShowOnboarding] = useState(false)
 
   if (loading) {
     return (
@@ -25,7 +30,15 @@ export default function App() {
     )
   }
 
-  if (!user) return <Login />
+  // Usuário autenticado no Supabase Auth, mas ainda sem registro em `usuarios`
+  // (acabou de criar conta ou está confirmando e-mail).
+  if (user?.needsOnboarding) return <Onboarding initialUser={user} />
+
+  if (!user) {
+    return showOnboarding
+      ? <Onboarding />
+      : <Login onCreateAccount={() => setShowOnboarding(true)} />
+  }
 
   return (
     <Routes>
@@ -38,6 +51,8 @@ export default function App() {
         <Route path="/cliente-ideal" element={<ClienteIdeal />} />
         <Route path="/indicadores" element={<Indicadores />} />
         <Route path="/agente-prolu" element={<AgentePrl />} />
+        <Route path="/equipe" element={<Equipe />} />
+        <Route path="/avisos" element={<Avisos />} />
       </Route>
     </Routes>
   )

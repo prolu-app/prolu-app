@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { QUOTES, ANNOUNCEMENTS } from '../data/seed.js'
+import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import {
   IconBolt, IconAgente, IconArrowRight, IconCRM, IconBase, IconMoney, IconLock, IconClose,
 } from '../components/Icons.jsx'
@@ -19,7 +20,50 @@ export default function Inicio() {
   const { user } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
-  const [avisos, setAvisos] = useState(ANNOUNCEMENTS)
+  const [avisos, setAvisos] = useState(() => {
+    const fechados = JSON.parse(localStorage.getItem('prolu_avisos_fechados') || '[]')
+    return ANNOUNCEMENTS.filter((a) => !fechados.includes(a.id))
+  })
+
+  const [kbStats, setKbStats] = useState(null)
+
+  useEffect(() => {
+    if (!supabaseReady || !user?.id) return
+    Promise.all([
+      supabase.from('kb_aulas').select('*', { count: 'exact', head: true }),
+      supabase.from('kb_progresso')
+        .select('*', { count: 'exact', head: true })
+        .eq('usuario_id', user.id)
+        .eq('concluida', true),
+    ]).then(([{ count: total }, { count: concluidas }]) => {
+      setKbStats({ total: total ?? 0, concluidas: concluidas ?? 0 })
+    })
+  }, [user?.id])
+
+  const kbPct = kbStats?.total > 0
+    ? Math.round((kbStats.concluidas / kbStats.total) * 100)
+    : 0
+
+  const [crmStats, setCrmStats] = useState(null)
+
+  useEffect(() => {
+    if (!supabaseReady || !user?.empresaId) return
+    const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+    supabase
+      .from('crm_linhas')
+      .select('*', { count: 'exact', head: true })
+      .eq('empresa_id', user.empresaId)
+      .gte('created_at', inicioMes)
+      .then(({ count }) => {
+        setCrmStats({ leads: count ?? 0 })
+      })
+  }, [user?.empresaId])
+
+  const crmLabel = !crmStats
+    ? null
+    : crmStats.leads === 0
+    ? 'Nenhum pedido de orçamento neste mês'
+    : `${crmStats.leads} ${crmStats.leads === 1 ? 'pedido de orçamento' : 'pedidos de orçamento'} neste mês`
 
   const quote = useMemo(() => QUOTES[Math.floor(Math.random() * QUOTES.length)], [])
   const primeiroNome = (user?.nome || 'André').split(' ')[0]
@@ -39,7 +83,11 @@ export default function Inicio() {
               <span className="ann-dot" />
               <span className="ann-text">{a.text}</span>
               <span className="ann-link" onClick={() => abrirAviso(a)}>{a.linkText}</span>
-              <button className="ann-close" onClick={() => setAvisos(avisos.filter((x) => x.id !== a.id))} aria-label="Fechar aviso">
+              <button className="ann-close" onClick={() => {
+                const fechados = JSON.parse(localStorage.getItem('prolu_avisos_fechados') || '[]')
+                localStorage.setItem('prolu_avisos_fechados', JSON.stringify([...new Set([...fechados, a.id])]))
+                setAvisos(avisos.filter((x) => x.id !== a.id))
+              }} aria-label="Fechar aviso">
                 <IconClose />
               </button>
             </div>
@@ -84,7 +132,7 @@ export default function Inicio() {
             <div className="tile-title">Gestão Comercial</div>
             <div className="tile-sub">CRM, dashboard, plano prático, cliente ideal e indicadores num só lugar.</div>
             <div className="tile-meta-row">
-              <span className="tile-progress-pct">8 leads este mês · 3 propostas abertas</span>
+              <span className="tile-progress-pct">{crmLabel ?? '—'}</span>
             </div>
           </div>
         </button>
@@ -97,8 +145,14 @@ export default function Inicio() {
             <div className="tile-title">Base de Conhecimento</div>
             <div className="tile-sub">O método Prolu em vídeo. Cursos, módulos e materiais extras.</div>
             <div className="tile-meta-row">
-              <div className="tile-progress-track"><div className="tile-progress-fill" style={{ width: '55%' }} /></div>
-              <span className="tile-progress-pct">55%</span>
+              {!kbStats && <span className="tile-progress-pct">—</span>}
+              {kbStats?.total === 0 && <span className="tile-progress-pct">Nenhuma aula ainda</span>}
+              {kbStats?.total > 0 && (
+                <>
+                  <div className="tile-progress-track"><div className="tile-progress-fill" style={{ width: `${kbPct}%` }} /></div>
+                  <span className="tile-progress-pct">{kbStats.concluidas} de {kbStats.total} aulas · {kbPct}%</span>
+                </>
+              )}
             </div>
           </div>
         </button>
