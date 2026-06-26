@@ -14,6 +14,7 @@ import ClienteIdeal from './screens/ClienteIdeal.jsx'
 import Indicadores from './screens/Indicadores.jsx'
 import AgentePrl from './screens/AgentePrl.jsx'
 import Equipe from './screens/Equipe.jsx'
+import Avisos from './screens/Avisos.jsx'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/indicadores" element={<Indicadores />} />
         <Route path="/agente-prolu" element={<AgentePrl />} />
         <Route path="/equipe" element={<Equipe />} />
+        <Route path="/avisos" element={<Avisos />} />
       </Route>
     </Routes>
   )

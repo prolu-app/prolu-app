@@ -148,6 +148,18 @@
 .signout-btn:hover { background: var(--gray-soft); color: var(--ink); }
 .signout-btn svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 2; fill: none; }
 
+/* Link admin (Avisos) — discreto, abaixo do Agente Prolu */
+.admin-nav-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 12px; border-radius: 10px;
+  font-size: 12px; color: var(--ink-40);
+  text-decoration: none; margin-top: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+.admin-nav-item:hover { background: rgba(255, 255, 255, 0.6); color: var(--ink-60); }
+.admin-nav-item.active { background: rgba(18, 18, 16, 0.05); color: var(--ink); font-weight: 500; }
+.admin-nav-icon { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2; fill: none; flex-shrink: 0; }
+
 /* Main */
 .main {
   flex: 1;

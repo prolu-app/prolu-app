@@ -102,3 +102,6 @@ export const IconFile = (p) => (
 export const IconGrip = (p) => (
   <svg viewBox="0 0 24 24" {...p}><path d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01" /></svg>
 )
+export const IconBell = (p) => (
+  <svg viewBox="0 0 24 24" {...p}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" /></svg>
+)

@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import {
   IconInicio, IconBase, IconCRM, IconDashboard,
-  IconPlano, IconCliente, IconIndicadores, IconBurger, IconClose, IconAgente,
+  IconPlano, IconCliente, IconIndicadores, IconBurger, IconClose, IconAgente, IconBell,
 } from './Icons.jsx'
 import './AppLayout.css'
 
@@ -22,7 +22,7 @@ const NAV = [
 
 export default function AppLayout() {
   const [open, setOpen] = useState(false)
-  const { user, signOut, isEmpresaMaster } = useAuth()
+  const { user, signOut, isEmpresaMaster, isProluAdmin } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const close = () => setOpen(false)
@@ -79,6 +79,17 @@ export default function AppLayout() {
             Agente Prolu
             <span className="agent-dot" />
           </NavLink>
+
+          {isProluAdmin && (
+            <NavLink
+              to="/avisos"
+              className={({ isActive }) => `admin-nav-item${isActive ? ' active' : ''}`}
+              onClick={() => { if (window.innerWidth <= 860) close() }}
+            >
+              <IconBell className="admin-nav-icon" />
+              Avisos
+            </NavLink>
+          )}
 
           <div className="sidebar-footer">
             <div
