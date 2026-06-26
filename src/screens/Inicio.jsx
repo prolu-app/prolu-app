@@ -9,6 +9,13 @@ import {
 } from '../components/Icons.jsx'
 import './Inicio.css'
 
+const VINTE_QUATRO_H = 24 * 60 * 60 * 1000
+
+function getFechados() {
+  try { return JSON.parse(localStorage.getItem('prolu_avisos_fechados') || '{}') }
+  catch { return {} }
+}
+
 function saudacao() {
   const h = new Date().getHours()
   if (h < 12) return 'Bom dia'
@@ -20,10 +27,44 @@ export default function Inicio() {
   const { user } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
-  const [avisos, setAvisos] = useState(() => {
-    const fechados = JSON.parse(localStorage.getItem('prolu_avisos_fechados') || '[]')
-    return ANNOUNCEMENTS.filter((a) => !fechados.includes(a.id))
-  })
+  const [avisos, setAvisos] = useState([])
+
+  useEffect(() => {
+    let alive = true
+    const fechados = getFechados()
+    const visiveis = (lista) =>
+      lista.filter((a) => {
+        const ts = fechados[a.id]
+        return !ts || Date.now() - ts >= VINTE_QUATRO_H
+      })
+
+    if (!supabaseReady) {
+      setAvisos(visiveis(ANNOUNCEMENTS))
+      return
+    }
+
+    const hoje = new Date().toISOString().slice(0, 10)
+    supabase
+      .from('avisos')
+      .select('id, texto, cor, link, link_texto, link_externo')
+      .or(`ativo_ate.is.null,ativo_ate.gte.${hoje}`)
+      .lte('ativo_de', hoje)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (!alive) return
+        const normalized = (data || []).map((a) => ({
+          id: a.id,
+          color: a.cor,
+          text: a.texto,
+          linkText: a.link_texto || '',
+          link: a.link || '',
+          external: a.link_externo,
+        }))
+        setAvisos(visiveis(normalized))
+      })
+
+    return () => { alive = false }
+  }, [])
 
   const [kbStats, setKbStats] = useState(() => {
     const allLessons = FOLDERS.flatMap((f) => f.modules.flatMap((m) => m.lessons))
@@ -87,8 +128,9 @@ export default function Inicio() {
               <span className="ann-text">{a.text}</span>
               <span className="ann-link" onClick={() => abrirAviso(a)}>{a.linkText}</span>
               <button className="ann-close" onClick={() => {
-                const fechados = JSON.parse(localStorage.getItem('prolu_avisos_fechados') || '[]')
-                localStorage.setItem('prolu_avisos_fechados', JSON.stringify([...new Set([...fechados, a.id])]))
+                const fechados = getFechados()
+                fechados[a.id] = Date.now()
+                localStorage.setItem('prolu_avisos_fechados', JSON.stringify(fechados))
                 setAvisos(avisos.filter((x) => x.id !== a.id))
               }} aria-label="Fechar aviso">
                 <IconClose />
