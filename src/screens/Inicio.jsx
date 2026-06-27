@@ -63,41 +63,52 @@ export default function Inicio() {
 
   useEffect(() => {
     let alive = true
-    const visiveis = (lista) => {
-      const fechados = getFechados()
-      return lista.filter((a) => {
-        const ts = fechados[a.id]
-        return !ts || Date.now() - ts >= VINTE_QUATRO_H
-      })
-    }
 
     if (!supabaseReady) {
-      setAvisos(visiveis(ANNOUNCEMENTS))
+      const fechados = getFechados()
+      setAvisos(ANNOUNCEMENTS.filter((a) => {
+        const ts = fechados[a.id]
+        return !ts || Date.now() - ts >= VINTE_QUATRO_H
+      }))
       return
     }
 
+    if (!user?.id) return
+
     const hoje = new Date().toISOString().slice(0, 10)
-    supabase
-      .from('avisos')
-      .select('id, texto, cor, link, link_texto, link_externo')
-      .or(`ativo_ate.is.null,ativo_ate.gte.${hoje}`)
-      .lte('ativo_de', hoje)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        if (!alive) return
-        const normalized = (data || []).map((a) => ({
-          id: a.id,
-          color: a.cor,
-          text: a.texto,
-          linkText: a.link_texto || '',
-          link: a.link || '',
-          external: a.link_externo,
-        }))
-        setAvisos(visiveis(normalized))
-      })
+    const h24ago = new Date(Date.now() - VINTE_QUATRO_H).toISOString()
+
+    Promise.all([
+      supabase
+        .from('avisos')
+        .select('id, texto, cor, link, link_texto, link_externo')
+        .or(`ativo_ate.is.null,ativo_ate.gte.${hoje}`)
+        .lte('ativo_de', hoje)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('avisos_descartados')
+        .select('aviso_id')
+        .eq('usuario_id', user.id)
+        .gte('descartado_em', h24ago),
+    ]).then(([{ data: avisoData }, { data: descartados }]) => {
+      if (!alive) return
+      const descartadosSet = new Set((descartados || []).map((d) => d.aviso_id))
+      setAvisos(
+        (avisoData || [])
+          .filter((a) => !descartadosSet.has(a.id))
+          .map((a) => ({
+            id: a.id,
+            color: a.cor,
+            text: a.texto,
+            linkText: a.link_texto || '',
+            link: a.link || '',
+            external: a.link_externo,
+          }))
+      )
+    })
 
     return () => { alive = false }
-  }, [])
+  }, [user?.id])
 
   const [kbStats, setKbStats] = useState(() => {
     const allLessons = FOLDERS.flatMap((f) => f.modules.flatMap((m) => m.lessons))
@@ -209,10 +220,17 @@ export default function Inicio() {
               <span className="ann-text">{a.text}</span>
               <span className="ann-link" onClick={() => abrirAviso(a)}>{a.linkText}</span>
               <button className="ann-close" onClick={() => {
-                const fechados = getFechados()
-                fechados[a.id] = Date.now()
-                localStorage.setItem('prolu_avisos_fechados', JSON.stringify(fechados))
                 setAvisos(avisos.filter((x) => x.id !== a.id))
+                if (supabaseReady && user?.id) {
+                  supabase.from('avisos_descartados').upsert(
+                    { usuario_id: user.id, aviso_id: a.id, descartado_em: new Date().toISOString() },
+                    { onConflict: 'usuario_id,aviso_id' }
+                  )
+                } else {
+                  const fechados = getFechados()
+                  fechados[a.id] = Date.now()
+                  try { localStorage.setItem('prolu_avisos_fechados', JSON.stringify(fechados)) } catch {}
+                }
               }} aria-label="Fechar aviso">
                 <IconClose />
               </button>
