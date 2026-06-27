@@ -63,12 +63,13 @@ export default function Inicio() {
 
   useEffect(() => {
     let alive = true
-    const fechados = getFechados()
-    const visiveis = (lista) =>
-      lista.filter((a) => {
+    const visiveis = (lista) => {
+      const fechados = getFechados()
+      return lista.filter((a) => {
         const ts = fechados[a.id]
         return !ts || Date.now() - ts >= VINTE_QUATRO_H
       })
+    }
 
     if (!supabaseReady) {
       setAvisos(visiveis(ANNOUNCEMENTS))
