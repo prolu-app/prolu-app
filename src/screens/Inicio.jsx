@@ -76,7 +76,6 @@ export default function Inicio() {
     if (!user?.id) return
 
     const hoje = new Date().toISOString().slice(0, 10)
-    const h24ago = new Date(Date.now() - VINTE_QUATRO_H).toISOString()
 
     Promise.all([
       supabase
@@ -85,17 +84,17 @@ export default function Inicio() {
         .or(`ativo_ate.is.null,ativo_ate.gte.${hoje}`)
         .lte('ativo_de', hoje)
         .order('created_at', { ascending: false }),
-      supabase
-        .from('avisos_descartados')
-        .select('aviso_id')
-        .eq('usuario_id', user.id)
-        .gte('descartado_em', h24ago),
-    ]).then(([{ data: avisoData }, { data: descartados }]) => {
+      supabase.auth.getUser(),
+    ]).then(([{ data: avisoData }, { data: authData }]) => {
       if (!alive) return
-      const descartadosSet = new Set((descartados || []).map((d) => d.aviso_id))
+      const fechados = authData?.user?.user_metadata?.avisos_fechados || {}
+      const agora = Date.now()
       setAvisos(
         (avisoData || [])
-          .filter((a) => !descartadosSet.has(a.id))
+          .filter((a) => {
+            const ts = fechados[a.id]
+            return !ts || agora - Date.parse(ts) >= VINTE_QUATRO_H
+          })
           .map((a) => ({
             id: a.id,
             color: a.cor,
@@ -221,11 +220,13 @@ export default function Inicio() {
               <span className="ann-link" onClick={() => abrirAviso(a)}>{a.linkText}</span>
               <button className="ann-close" onClick={() => {
                 setAvisos(avisos.filter((x) => x.id !== a.id))
-                if (supabaseReady && user?.id) {
-                  supabase.from('avisos_descartados').upsert(
-                    { usuario_id: user.id, aviso_id: a.id, descartado_em: new Date().toISOString() },
-                    { onConflict: 'usuario_id,aviso_id' }
-                  )
+                if (supabaseReady) {
+                  supabase.auth.getUser().then(({ data: { user: au } }) => {
+                    const prev = au?.user_metadata?.avisos_fechados || {}
+                    supabase.auth.updateUser({
+                      data: { avisos_fechados: { ...prev, [a.id]: new Date().toISOString() } },
+                    })
+                  })
                 } else {
                   const fechados = getFechados()
                   fechados[a.id] = Date.now()
