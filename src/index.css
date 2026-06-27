@@ -170,6 +170,7 @@ input, textarea, button { font-family: inherit; }
   letter-spacing: 1.4px;
   text-transform: uppercase;
   color: var(--ink-40);
+  margin-top: 32px;
   margin-bottom: 14px;
   padding: 0 2px;
 }

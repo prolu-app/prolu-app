@@ -104,7 +104,7 @@
 .pulse-val.highlight { color: var(--green-ink); }
 .pulse-trend { font-size: 11.5px; margin-top: 5px; color: var(--ink-40); }
 
-.insight-card { background: var(--white); border-radius: var(--r-lg); padding: 17px 20px; display: flex; align-items: flex-start; gap: 13px; box-shadow: var(--shadow-rest); }
+.insight-card { background: var(--white); border-radius: var(--r-lg); padding: 17px 20px; display: flex; align-items: flex-start; gap: 13px; box-shadow: var(--shadow-rest); margin-bottom: 16px; }
 .insight-icon { width: 32px; height: 32px; background: var(--green-soft); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .insight-icon svg { width: 15px; height: 15px; stroke: var(--green-ink); stroke-width: 2.2; fill: none; }
 .insight-text { font-size: 13px; color: var(--ink-60); line-height: 1.55; padding-top: 2px; }
