@@ -22,6 +22,32 @@ function fmtFat(v) {
   return `R$ ${v.toLocaleString('pt-BR')}`
 }
 
+function melhorCanal(pares) {
+  const map = {}
+  for (const { origem, fechado } of pares) {
+    if (!origem) continue
+    if (!map[origem]) map[origem] = { total: 0, fechados: 0 }
+    map[origem].total++
+    if (fechado) map[origem].fechados++
+  }
+  const totalFechados = Object.values(map).reduce((s, v) => s + v.fechados, 0)
+  if (totalFechados < 3) return null
+  let best = null
+  for (const [origem, stats] of Object.entries(map)) {
+    if (!stats.fechados) continue
+    const rate = stats.fechados / stats.total
+    if (!best || rate > best.rate) best = { origem, rate: Math.round(rate * 100) }
+  }
+  return best
+}
+
+const INSIGHT_DESC = {
+  'Indicação': 'Antes de investir em tráfego pago, crie um processo de pedido de indicação para quem já fechou com você.',
+  'Instagram': 'Mantenha conteúdo consistente e qualifique os leads antes da primeira reunião.',
+  'Google': 'Cuide das avaliações e mantenha seu perfil atualizado — a busca orgânica está trabalhando por você.',
+  'Site': 'Seu site está convertendo — certifique-se de que o posicionamento está claro para atrair o cliente certo.',
+}
+
 function saudacao() {
   const h = new Date().getHours()
   if (h < 12) return 'Bom dia'
@@ -116,6 +142,7 @@ export default function Inicio() {
     : `${crmStats.leads} ${crmStats.leads === 1 ? 'pedido de orçamento' : 'pedidos de orçamento'} neste mês`
 
   const [resumo, setResumo] = useState(() => {
+    if (supabaseReady) return { faturamento: 0, planoDone: 0, planoTotal: 0 }
     const anoAtual = new Date().getFullYear().toString()
     const faturamento = CRM_ROWS
       .filter((r) => r.c_status === 'Fechado' && r.c_data?.startsWith(anoAtual))
@@ -127,22 +154,38 @@ export default function Inicio() {
     }
   })
 
+  const [insightCanal, setInsightCanal] = useState(() =>
+    supabaseReady
+      ? undefined
+      : melhorCanal(CRM_ROWS.map((r) => ({ origem: r.c_origem, fechado: r.c_status === 'Fechado' })))
+  )
+
   useEffect(() => {
     if (!supabaseReady || !user?.empresaId) return
-    const inicioAno = `${new Date().getFullYear()}-01-01`
+    const anoAtual = new Date().getFullYear().toString()
     Promise.all([
-      supabase.from('crm_colunas').select('id, nome').eq('empresa_id', user.empresaId).in('tipo', ['select', 'money']),
-      supabase.from('crm_linhas').select('valores').eq('empresa_id', user.empresaId).gte('created_at', inicioAno),
+      supabase.from('crm_colunas').select('id, nome, tipo').eq('empresa_id', user.empresaId),
+      supabase.from('crm_linhas').select('valores').eq('empresa_id', user.empresaId),
       supabase.from('plano_acoes').select('*', { count: 'exact', head: true }).eq('empresa_id', user.empresaId),
       supabase.from('plano_acoes').select('*', { count: 'exact', head: true }).eq('empresa_id', user.empresaId).eq('status', 'done'),
     ]).then(([{ data: colunas }, { data: linhas }, { count: planoTotal }, { count: planoDone }]) => {
       const statusColId = colunas?.find((c) => c.nome === 'Status')?.id
       const valorColId = colunas?.find((c) => c.nome === 'Valor proposta')?.id
+                      ?? colunas?.find((c) => c.tipo === 'money')?.id
+      const origemColId = colunas?.find((c) => c.nome === 'Origem')?.id
+      const dataColId = colunas?.find((c) => c.tipo === 'date')?.id
       const faturamento = statusColId && valorColId
-        ? (linhas || []).reduce((sum, l) =>
-            l.valores?.[statusColId] === 'Fechado' ? sum + (Number(l.valores?.[valorColId]) || 0) : sum, 0)
+        ? (linhas || []).reduce((sum, l) => {
+            if (l.valores?.[statusColId] !== 'Fechado') return sum
+            if (dataColId && !l.valores?.[dataColId]?.startsWith(anoAtual)) return sum
+            return sum + (Number(l.valores?.[valorColId]) || 0)
+          }, 0)
         : 0
       setResumo({ faturamento, planoDone: planoDone ?? 0, planoTotal: planoTotal ?? 0 })
+      setInsightCanal(melhorCanal((linhas || []).map((l) => ({
+        origem: l.valores?.[origemColId],
+        fechado: l.valores?.[statusColId] === 'Fechado',
+      }))))
     })
   }, [user?.empresaId])
 
@@ -241,12 +284,15 @@ export default function Inicio() {
         </div>
       </div>
 
-      <div className="insight-card">
-        <div className="insight-icon"><IconBolt /></div>
-        <div className="insight-text">
-          <strong>Indicação converte 38% dos leads</strong> — seu melhor canal. Antes de investir em tráfego pago, crie um processo de pedido de indicação para quem já fechou com você.
+      {insightCanal && (
+        <div className="insight-card">
+          <div className="insight-icon"><IconBolt /></div>
+          <div className="insight-text">
+            <strong>{insightCanal.origem} converte {insightCanal.rate}% dos leads</strong> — seu melhor canal.{' '}
+            {INSIGHT_DESC[insightCanal.origem] ?? 'Entenda o que está funcionando nesse canal e replique o processo.'}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ferramentas */}
       <div className="section-title">Suas ferramentas</div>
