@@ -53,12 +53,13 @@ function fmtDate(v) {
 
 function parseCol(c) {
   const isObj = c.opcoes != null && !Array.isArray(c.opcoes)
-  const fixed = isObj && c.opcoes.fixed === true
+  // Lê `fixo` da coluna dedicada; mantém fallback para opcoes.fixed (legado)
+  const fixed = c.fixo === true || (isObj && c.opcoes.fixed === true)
   return {
     id: c.id, name: c.nome, type: c.tipo, width: 150,
     fixed, slug: isObj ? (c.opcoes.slug || null) : null,
-    editableOptions: fixed ? (c.opcoes.editableOptions !== false) : true,
-    options: fixed ? (c.opcoes.items || []) : (Array.isArray(c.opcoes) ? c.opcoes : []),
+    editableOptions: fixed ? (isObj ? c.opcoes.editableOptions !== false : false) : true,
+    options: fixed ? (isObj ? (c.opcoes.items || []) : []) : (Array.isArray(c.opcoes) ? c.opcoes : []),
     ordem: c.ordem ?? 999,
   }
 }
@@ -106,7 +107,10 @@ export default function CRM() {
     ])
     if (colErr || linErr) { toast('Não foi possível carregar o CRM'); setLoading(false); return }
 
-    const hasFixed = (cols || []).some(c => c.opcoes != null && !Array.isArray(c.opcoes) && c.opcoes.fixed === true)
+    // Detecta colunas fixas tanto pela coluna `fixo` (nova) quanto pelo campo legado em opcoes
+    const hasFixed = (cols || []).some(c =>
+      c.fixo === true || (c.opcoes != null && !Array.isArray(c.opcoes) && c.opcoes.fixed === true)
+    )
     if (!cols || cols.length === 0 || !hasFixed) {
       await seedColunasPadrao(cols || [])
       const { data: lin2 } = await supabase.from('crm_linhas').select('*').eq('empresa_id', user.empresaId).order('created_at', { ascending: true })
@@ -124,6 +128,7 @@ export default function CRM() {
     }
     const payload = FIXED_COLS_DEF.map(c => ({
       empresa_id: user.empresaId, nome: c.nome, tipo: c.tipo, ordem: c.ordem,
+      fixo: true,
       opcoes: { fixed: true, slug: c.slug, editableOptions: c.editableOptions !== false, items: c.items || [] },
     }))
     const { data: created, error } = await supabase.from('crm_colunas').insert(payload).select('*')

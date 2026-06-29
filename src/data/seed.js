@@ -69,30 +69,61 @@ export const FOLDERS = [
 ]
 
 /* ── CRM ── */
+// Colunas fixas: sempre presentes, não removíveis nem renomeáveis pelo usuário.
+// fixed: true  → protegida na UI e marcada como fixo:true no banco.
+// slug         → chave semântica usada para lógica de auto-fill e mapeamento no Início.
+// editableOptions → somente colunas select com opcoes editáveis pelo usuário.
 export const CRM_COLUMNS = [
-  { id: '__date',       name: 'Data de entrada',    type: 'date',   fixed: true, slug: 'data_entrada',   width: 130 },
-  { id: '__client',     name: 'Cliente',             type: 'client', fixed: true, slug: 'cliente',         width: 180 },
-  { id: '__tipo',       name: 'Tipo de projeto',     type: 'tags',   fixed: true, slug: 'tipo_projeto',    width: 170 },
-  { id: '__origem',     name: 'Origem',              type: 'select', fixed: true, slug: 'origem',          width: 140, editableOptions: true, options: [
-    { value: 'Indicação', color: 'green' },
-    { value: 'Instagram', color: 'violet' },
-    { value: 'Google',    color: 'blue' },
-    { value: 'Site',      color: 'orange' },
-  ]},
-  { id: '__valor',      name: 'Valor da proposta',   type: 'money',  fixed: true, slug: 'valor',           width: 150 },
-  { id: '__proposta',   name: 'Recebeu proposta?',   type: 'select', fixed: true, slug: 'proposta',        width: 160, editableOptions: false, options: [
-    { value: 'Sim',      color: 'green' },
-    { value: 'Não',      color: 'red' },
-    { value: 'Pendente', color: 'orange' },
-  ]},
-  { id: '__status',     name: 'Status',              type: 'select', fixed: true, slug: 'status',          width: 180, editableOptions: false, options: [
-    { value: 'Pedido de orçamento', color: 'blue' },
-    { value: 'Aguardando',          color: 'orange' },
-    { value: 'Proposta enviada',    color: 'violet' },
-    { value: 'Fechado',             color: 'green' },
-    { value: 'Perdido',             color: 'gray' },
-  ]},
-  { id: '__date_close', name: 'Data de fechamento',  type: 'date',   fixed: true, slug: 'data_fechamento', width: 150 },
+  {
+    id: '__date',       name: 'Data de entrada',   type: 'date',   fixed: true,
+    slug: 'data_entrada',   width: 130, editableOptions: false, options: [],
+  },
+  {
+    id: '__client',     name: 'Cliente',            type: 'client', fixed: true,
+    slug: 'cliente',         width: 180, editableOptions: false, options: [],
+  },
+  {
+    id: '__tipo',       name: 'Tipo de projeto',    type: 'tags',   fixed: true,
+    slug: 'tipo_projeto',    width: 170, editableOptions: false, options: [],
+  },
+  {
+    id: '__origem',     name: 'Origem',             type: 'select', fixed: true,
+    slug: 'origem',          width: 140, editableOptions: true,
+    options: [
+      { value: 'Indicação', color: 'green'  },
+      { value: 'Instagram', color: 'violet' },
+      { value: 'Google',    color: 'blue'   },
+      { value: 'Site',      color: 'orange' },
+    ],
+  },
+  {
+    id: '__valor',      name: 'Valor da proposta',  type: 'money',  fixed: true,
+    slug: 'valor',           width: 150, editableOptions: false, options: [],
+  },
+  {
+    id: '__proposta',   name: 'Recebeu proposta?',  type: 'select', fixed: true,
+    slug: 'proposta',        width: 160, editableOptions: false,
+    options: [
+      { value: 'Sim',      color: 'green'  },
+      { value: 'Não',      color: 'red'    },
+      { value: 'Pendente', color: 'orange' },
+    ],
+  },
+  {
+    id: '__status',     name: 'Status',             type: 'select', fixed: true,
+    slug: 'status',          width: 180, editableOptions: false,
+    options: [
+      { value: 'Pedido de orçamento', color: 'blue'   },
+      { value: 'Aguardando',          color: 'orange' },
+      { value: 'Proposta enviada',    color: 'violet' },
+      { value: 'Fechado',             color: 'green'  },
+      { value: 'Perdido',             color: 'gray'   },
+    ],
+  },
+  {
+    id: '__date_close', name: 'Data de fechamento', type: 'date',   fixed: true,
+    slug: 'data_fechamento', width: 150, editableOptions: false, options: [],
+  },
 ]
 
 export const CRM_ROWS = [
