@@ -18,23 +18,33 @@ const FIXED_COLS_DEF = [
   { nome: 'Data de entrada',   tipo: 'date',   slug: 'data_entrada',   ordem: 0 },
   { nome: 'Cliente',           tipo: 'client', slug: 'cliente',         ordem: 1 },
   { nome: 'Cidade',            tipo: 'text',   slug: 'cidade',          ordem: 2 },
-  { nome: 'Tipo de projeto',   tipo: 'tags',   slug: 'tipo_projeto',    ordem: 3 },
-  { nome: 'Origem',            tipo: 'select', slug: 'origem',          ordem: 4, editableOptions: true, items: [
+  { nome: 'Segmento',          tipo: 'select', slug: 'segmento',        ordem: 3, editableOptions: true, items: [
+    { value: 'Residencial', color: 'blue'   },
+    { value: 'Comercial',   color: 'orange' },
+    { value: 'Corporativo', color: 'violet' },
+  ]},
+  { nome: 'Tipo de projeto',   tipo: 'select', slug: 'tipo_projeto',    ordem: 4, editableOptions: true, items: [
+    { value: 'Interiores',                  color: 'green'  },
+    { value: 'Arquitetônico',               color: 'blue'   },
+    { value: 'Arquitetônico + Interiores',  color: 'violet' },
+    { value: 'Projeto Executivo',           color: 'gray'   },
+  ]},
+  { nome: 'Origem',            tipo: 'select', slug: 'origem',          ordem: 5, editableOptions: true, items: [
     { value: 'Indicação', color: 'green' }, { value: 'Instagram', color: 'violet' },
     { value: 'Google',    color: 'blue'  }, { value: 'Site',      color: 'orange' },
   ]},
-  { nome: 'Valor da proposta', tipo: 'money',  slug: 'valor',           ordem: 5 },
-  { nome: 'Recebeu proposta?', tipo: 'select', slug: 'proposta',        ordem: 6, editableOptions: false, items: [
+  { nome: 'Valor da proposta', tipo: 'money',  slug: 'valor',           ordem: 6 },
+  { nome: 'Recebeu proposta?', tipo: 'select', slug: 'proposta',        ordem: 7, editableOptions: false, items: [
     { value: 'Sim', color: 'green' }, { value: 'Não', color: 'red' }, { value: 'Pendente', color: 'orange' },
   ]},
-  { nome: 'Status',            tipo: 'select', slug: 'status',          ordem: 7, editableOptions: false, items: [
+  { nome: 'Status',            tipo: 'select', slug: 'status',          ordem: 8, editableOptions: false, items: [
     { value: 'Pedido de orçamento', color: 'blue'   },
     { value: 'Aguardando',          color: 'orange' },
     { value: 'Proposta enviada',    color: 'violet' },
     { value: 'Fechado',             color: 'green'  },
     { value: 'Perdido',             color: 'gray'   },
   ]},
-  { nome: 'Data de fechamento', tipo: 'date',  slug: 'data_fechamento', ordem: 8 },
+  { nome: 'Data de fechamento', tipo: 'date',  slug: 'data_fechamento', ordem: 9 },
 ]
 
 function todayISO() { return new Date().toISOString().split('T')[0] }
@@ -58,8 +68,11 @@ function parseCol(c) {
   return {
     id: c.id, name: c.nome, type: c.tipo, width: 150,
     fixed, slug: isObj ? (c.opcoes.slug || null) : null,
-    editableOptions: fixed ? (isObj ? c.opcoes.editableOptions !== false : false) : true,
-    options: fixed ? (isObj ? (c.opcoes.items || []) : []) : (Array.isArray(c.opcoes) ? c.opcoes : []),
+    // colunas fixas inseridas via SQL têm opcoes como array simples → editableOptions true por padrão
+    editableOptions: fixed ? (isObj ? c.opcoes.editableOptions !== false : true) : true,
+    options: fixed
+      ? (isObj ? (c.opcoes.items || []) : (Array.isArray(c.opcoes) ? c.opcoes : []))
+      : (Array.isArray(c.opcoes) ? c.opcoes : []),
     ordem: c.ordem ?? 999,
   }
 }

@@ -87,8 +87,23 @@ export const CRM_COLUMNS = [
     slug: 'cidade',          width: 130, editableOptions: false, options: [],
   },
   {
-    id: '__tipo',       name: 'Tipo de projeto',    type: 'tags',   fixed: true,
-    slug: 'tipo_projeto',    width: 170, editableOptions: false, options: [],
+    id: '__segmento',   name: 'Segmento',           type: 'select', fixed: true,
+    slug: 'segmento',        width: 140, editableOptions: true,
+    options: [
+      { value: 'Residencial', color: 'blue'   },
+      { value: 'Comercial',   color: 'orange' },
+      { value: 'Corporativo', color: 'violet' },
+    ],
+  },
+  {
+    id: '__tipo',       name: 'Tipo de projeto',    type: 'select', fixed: true,
+    slug: 'tipo_projeto',    width: 170, editableOptions: true,
+    options: [
+      { value: 'Interiores',                 color: 'green'  },
+      { value: 'Arquitetônico',              color: 'blue'   },
+      { value: 'Arquitetônico + Interiores', color: 'violet' },
+      { value: 'Projeto Executivo',          color: 'gray'   },
+    ],
   },
   {
     id: '__origem',     name: 'Origem',             type: 'select', fixed: true,
@@ -131,12 +146,12 @@ export const CRM_COLUMNS = [
 ]
 
 export const CRM_ROWS = [
-  { id: 'r1', __date: '2026-05-28', __client: 'Roberto Lima',      __tipo: ['Casa'],        __origem: 'Indicação', __valor: 32000, __proposta: 'Sim',      __status: 'Fechado',             __date_close: '2026-06-15' },
-  { id: 'r2', __date: '2026-06-02', __client: 'Mariana e Felipe',  __tipo: ['Apartamento'], __origem: 'Indicação', __valor: 18000, __proposta: 'Pendente', __status: 'Proposta enviada',    __date_close: '' },
-  { id: 'r3', __date: '2026-06-05', __client: 'Dra. Camila Rocha', __tipo: ['Consultório'], __origem: 'Instagram', __valor: 24000, __proposta: 'Não',      __status: 'Pedido de orçamento', __date_close: '' },
-  { id: 'r4', __date: '2026-06-10', __client: 'Júlia Mendes',      __tipo: ['Apartamento'], __origem: 'Google',    __valor: 15000, __proposta: 'Não',      __status: 'Aguardando',          __date_close: '' },
-  { id: 'r5', __date: '2026-06-14', __client: 'Studio Aurora',     __tipo: ['Comercial'],   __origem: 'Site',      __valor: 45000, __proposta: 'Pendente', __status: 'Proposta enviada',    __date_close: '' },
-  { id: 'r6', __date: '2026-05-20', __client: 'Fernando e Paula',  __tipo: ['Reforma'],     __origem: 'Instagram', __valor: 12000, __proposta: 'Sim',      __status: 'Perdido',             __date_close: '' },
+  { id: 'r1', __date: '2026-05-28', __client: 'Roberto Lima',      __segmento: 'Residencial', __tipo: 'Interiores',                 __origem: 'Indicação', __valor: 32000, __proposta: 'Sim',      __status: 'Fechado',             __date_close: '2026-06-15' },
+  { id: 'r2', __date: '2026-06-02', __client: 'Mariana e Felipe',  __segmento: 'Residencial', __tipo: 'Arquitetônico + Interiores', __origem: 'Indicação', __valor: 18000, __proposta: 'Pendente', __status: 'Proposta enviada',    __date_close: '' },
+  { id: 'r3', __date: '2026-06-05', __client: 'Dra. Camila Rocha', __segmento: 'Comercial',   __tipo: 'Interiores',                 __origem: 'Instagram', __valor: 24000, __proposta: 'Não',      __status: 'Pedido de orçamento', __date_close: '' },
+  { id: 'r4', __date: '2026-06-10', __client: 'Júlia Mendes',      __segmento: 'Residencial', __tipo: 'Arquitetônico',              __origem: 'Google',    __valor: 15000, __proposta: 'Não',      __status: 'Aguardando',          __date_close: '' },
+  { id: 'r5', __date: '2026-06-14', __client: 'Studio Aurora',     __segmento: 'Corporativo', __tipo: 'Projeto Executivo',          __origem: 'Site',      __valor: 45000, __proposta: 'Pendente', __status: 'Proposta enviada',    __date_close: '' },
+  { id: 'r6', __date: '2026-05-20', __client: 'Fernando e Paula',  __segmento: 'Residencial', __tipo: 'Arquitetônico',              __origem: 'Instagram', __valor: 12000, __proposta: 'Sim',      __status: 'Perdido',             __date_close: '' },
 ]
 
 /* ── PLANO PRÁTICO ── */
