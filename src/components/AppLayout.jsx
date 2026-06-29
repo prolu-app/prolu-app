@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import {
   IconInicio, IconBase, IconCRM, IconDashboard,
-  IconPlano, IconCliente, IconIndicadores, IconBurger, IconClose, IconAgente, IconBell,
+  IconPlano, IconCliente, IconIndicadores, IconBurger, IconClose, IconAgente, IconBell, IconClientes,
 } from './Icons.jsx'
 import './AppLayout.css'
 
@@ -13,6 +13,7 @@ const NAV = [
   { to: '/base-conhecimento', label: 'Base de Conhecimento', Icon: IconBase },
   { group: 'Comercial' },
   { to: '/crm', label: 'CRM', Icon: IconCRM },
+  { to: '/clientes', label: 'Clientes', Icon: IconClientes },
   { to: '/dashboard', label: 'Dashboard', Icon: IconDashboard },
   { group: 'Método' },
   { to: '/plano-pratico', label: 'Plano Prático', Icon: IconPlano },

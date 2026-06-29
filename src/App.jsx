@@ -8,6 +8,7 @@ import Onboarding from './screens/Onboarding.jsx'
 import Inicio from './screens/Inicio.jsx'
 import BaseConhecimento from './screens/BaseConhecimento.jsx'
 import CRM from './screens/CRM.jsx'
+import Clientes from './screens/Clientes.jsx'
 import Dashboard from './screens/Dashboard.jsx'
 import PlanoPratico from './screens/PlanoPratico.jsx'
 import ClienteIdeal from './screens/ClienteIdeal.jsx'
@@ -46,6 +47,7 @@ export default function App() {
         <Route index element={<Inicio />} />
         <Route path="/base-conhecimento" element={<BaseConhecimento />} />
         <Route path="/crm" element={<CRM />} />
+        <Route path="/clientes" element={<Clientes />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/plano-pratico" element={<PlanoPratico />} />
         <Route path="/cliente-ideal" element={<ClienteIdeal />} />
