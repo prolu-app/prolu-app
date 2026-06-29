@@ -283,6 +283,9 @@ export default function CRM() {
   const [activeCell, setActiveCell] = useState(null) // { rowId, colId }
   const [colModal, setColModal] = useState(null)
   const [colForm, setColForm] = useState({ name: '', type: 'text', options: [] })
+  const [optionsModal, setOptionsModal] = useState(null) // col sendo editada
+  const [optionsForm, setOptionsForm] = useState([])     // cópia editável das opções
+  const [newOptName, setNewOptName] = useState('')
 
   const statusCol      = useMemo(() => columns.find(c => c.slug === 'status'), [columns])
   const clienteCol     = useMemo(() => columns.find(c => c.slug === 'cliente'), [columns])
@@ -401,17 +404,32 @@ export default function CRM() {
     else toast('Linha removida')
   }
 
-  async function addSelectOption(col) {
-    const value = prompt(`Nova opção para "${col.name}":`)
-    if (!value) return
-    const newOption = { value, color: COLOR_OPTS[(col.options || []).length % COLOR_OPTS.length] }
-    const newOptions = [...(col.options || []), newOption]
+  function openOptionsModal(col) {
+    setOptionsModal(col)
+    setOptionsForm([...(col.options || [])])
+    setNewOptName('')
+  }
+
+  function addToOptionsForm() {
+    const v = newOptName.trim()
+    if (!v || optionsForm.find(o => o.value === v)) return
+    setOptionsForm(f => [...f, { value: v, color: COLOR_OPTS[f.length % COLOR_OPTS.length] }])
+    setNewOptName('')
+  }
+
+  async function confirmSaveOptions() {
+    const col = optionsModal
+    const newOptions = optionsForm
     setColumns(prev => prev.map(c => c.id !== col.id ? c : { ...c, options: newOptions }))
+    setOptionsModal(null)
+    setNewOptName('')
     if (!supabaseReady || !user?.empresaId) return
     const opcoes = col.fixed
-      ? { fixed: true, slug: col.slug, editableOptions: col.editableOptions, items: newOptions }
+      ? { fixed: true, slug: col.slug, editableOptions: true, items: newOptions }
       : newOptions
-    await supabase.from('crm_colunas').update({ opcoes }).eq('id', col.id)
+    const { error } = await supabase.from('crm_colunas').update({ opcoes }).eq('id', col.id)
+    if (error) toast('Não foi possível salvar as opções')
+    else toast('Opções salvas')
   }
 
   function openNewColumn() { setColForm({ name: '', type: 'text', options: [] }); setColModal('new') }
@@ -645,12 +663,55 @@ export default function CRM() {
           columns={columns}
           onClose={() => setDrawerRowId(null)}
           onUpdateCell={(col, value) => updateCell(drawerRow.id, col, value)}
-          onAddOption={addSelectOption}
+          onAddOption={openOptionsModal}
           onDelete={() => removeRow(drawerRow.id)}
           clientes={clientes}
           user={user}
           onClientCreate={newClient => setClientes(prev => [...prev, newClient].sort((a, b) => a.nome.localeCompare(b.nome)))}
         />
+      )}
+
+      {/* Modal editar opções de select */}
+      {optionsModal && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setOptionsModal(null) }}>
+          <div className="modal">
+            <div className="modal-title">Opções — {optionsModal.name}</div>
+            <div className="modal-field">
+              <label className="modal-label">Opções atuais</label>
+              <div className="col-options-list">
+                {optionsForm.length === 0 && (
+                  <span style={{ color: 'var(--ink-40)', fontSize: 13 }}>Nenhuma opção</span>
+                )}
+                {optionsForm.map((o, i) => (
+                  <span key={i} className={`pill pill-${o.color} col-option-pill`}>
+                    <span className="dot" />{o.value}
+                    <button onClick={() => setOptionsForm(f => f.filter((_, j) => j !== i))}><IconClose /></button>
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="modal-field">
+              <label className="modal-label">Adicionar opção</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  className="modal-input"
+                  placeholder="Nome da opção…"
+                  value={newOptName}
+                  onChange={e => setNewOptName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addToOptionsForm() }}
+                  style={{ flex: 1 }}
+                />
+                <button className="col-option-add" onClick={addToOptionsForm} style={{ flexShrink: 0 }}>
+                  <IconPlus /> Adicionar
+                </button>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setOptionsModal(null)}>Cancelar</button>
+              <button className="btn-confirm" onClick={confirmSaveOptions}>Salvar</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modal coluna */}
