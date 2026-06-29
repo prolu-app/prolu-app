@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { IconClose, IconPlus } from '../components/Icons.jsx'
@@ -8,6 +8,75 @@ function fmtDateTime(iso) {
   if (!iso) return ''
   const d = new Date(iso)
   return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
+
+function ClientField({ col, value, onChange, clientes, user, onClientCreate }) {
+  const [inputVal, setInputVal] = useState(value || '')
+  const [open, setOpen] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const wrapRef = useRef(null)
+
+  useEffect(() => { setInputVal(value || '') }, [value])
+
+  const suggestions = useMemo(() => {
+    const q = inputVal.trim().toLowerCase()
+    if (!q) return []
+    return (clientes || []).filter(c => c.nome.toLowerCase().includes(q))
+  }, [inputVal, clientes])
+
+  function selectClient(nome) {
+    setInputVal(nome)
+    setOpen(false)
+    onChange(col, nome)
+  }
+
+  async function createAndSelect() {
+    const nome = inputVal.trim()
+    if (!nome) return
+    if (!supabaseReady || !user?.empresaId) { selectClient(nome); return }
+    setCreating(true)
+    const { data, error } = await supabase
+      .from('clientes')
+      .insert({ empresa_id: user.empresaId, nome })
+      .select('id, nome')
+      .single()
+    setCreating(false)
+    if (!error && data) { onClientCreate?.(data); selectClient(data.nome) }
+  }
+
+  return (
+    <div className="dr-field dr-field-wide" ref={wrapRef}>
+      <label className="dr-label">{col.name}</label>
+      <div className="dr-client-wrap">
+        <input
+          className="dr-input"
+          value={inputVal}
+          placeholder="Nome do cliente…"
+          onChange={e => { setInputVal(e.target.value); setOpen(e.target.value.length > 0) }}
+          onBlur={() => { setTimeout(() => setOpen(false), 120); onChange(col, inputVal.trim() || null) }}
+        />
+        {open && (
+          <div className="dr-client-dropdown">
+            {suggestions.length > 0
+              ? suggestions.map(c => (
+                  <button key={c.id} className="dr-client-option" type="button"
+                    onMouseDown={e => { e.preventDefault(); selectClient(c.nome) }}>
+                    {c.nome}
+                  </button>
+                ))
+              : (
+                  <button className="dr-client-option dr-client-create" type="button"
+                    onMouseDown={e => { e.preventDefault(); createAndSelect() }}
+                    disabled={creating}>
+                    {creating ? 'Criando…' : `Criar cliente: "${inputVal.trim()}"`}
+                  </button>
+                )
+            }
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function TagsField({ col, value, onChange }) {
@@ -46,7 +115,7 @@ function TagsField({ col, value, onChange }) {
   )
 }
 
-function DrawerField({ col, value, onChange, onAddOption, clientes }) {
+function DrawerField({ col, value, onChange, onAddOption, clientes, user, onClientCreate }) {
   const [localVal, setLocalVal] = useState(value ?? '')
   const inputRef = useRef(null)
 
@@ -92,24 +161,9 @@ function DrawerField({ col, value, onChange, onAddOption, clientes }) {
     )
   }
 
-  // ── client ──
+  // ── client: delegado ao componente dedicado ──
   if (col.type === 'client') {
-    return (
-      <div className="dr-field dr-field-wide">
-        <label className="dr-label">{col.name}</label>
-        <input
-          className="dr-input"
-          list="crm-clientes-drawer"
-          value={localVal}
-          onChange={e => setLocalVal(e.target.value)}
-          onBlur={e => commit(e.target.value)}
-          placeholder="Nome do cliente…"
-        />
-        <datalist id="crm-clientes-drawer">
-          {(clientes || []).map(c => <option key={c.id} value={c.nome} />)}
-        </datalist>
-      </div>
-    )
+    return <ClientField col={col} value={value} onChange={onChange} clientes={clientes} user={user} onClientCreate={onClientCreate} />
   }
 
   // ── tags: delegado ao componente separado ──
@@ -156,7 +210,7 @@ function DrawerField({ col, value, onChange, onAddOption, clientes }) {
   )
 }
 
-export default function CRMDrawer({ row, columns, onClose, onUpdateCell, onAddOption, onDelete, clientes, user }) {
+export default function CRMDrawer({ row, columns, onClose, onUpdateCell, onAddOption, onDelete, clientes, user, onClientCreate }) {
   const [comments, setComments] = useState([])
   const [commentLoading, setCommentLoading] = useState(false)
   const [newComment, setNewComment] = useState('')
@@ -223,15 +277,10 @@ export default function CRMDrawer({ row, columns, onClose, onUpdateCell, onAddOp
 
         {/* Header fixo */}
         <div className="dr-header">
+          <button className="dr-back-btn" onClick={onClose} aria-label="Voltar">
+            <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+          </button>
           <div className="dr-title">{titulo}</div>
-          <div className="dr-header-actions">
-            <button className="dr-delete-btn" onClick={handleDelete} title="Excluir oportunidade">
-              <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
-            </button>
-            <button className="dr-close-btn" onClick={onClose} aria-label="Fechar">
-              <IconClose />
-            </button>
-          </div>
         </div>
 
         {/* Corpo rolável */}
@@ -247,6 +296,8 @@ export default function CRMDrawer({ row, columns, onClose, onUpdateCell, onAddOp
                 onChange={onUpdateCell}
                 onAddOption={onAddOption}
                 clientes={clientes}
+                user={user}
+                onClientCreate={onClientCreate}
               />
             ))}
           </div>
@@ -268,6 +319,11 @@ export default function CRMDrawer({ row, columns, onClose, onUpdateCell, onAddOp
               </div>
             ))}
           </div>
+
+          {/* Excluir */}
+          <button className="dr-delete-text-btn" onClick={handleDelete}>
+            Excluir este registro
+          </button>
         </div>
 
         {/* Footer fixo — adicionar comentário */}

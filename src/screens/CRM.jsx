@@ -17,23 +17,24 @@ const TYPE_LABELS = { text: 'Texto', number: 'Número', money: 'Dinheiro (R$)', 
 const FIXED_COLS_DEF = [
   { nome: 'Data de entrada',   tipo: 'date',   slug: 'data_entrada',   ordem: 0 },
   { nome: 'Cliente',           tipo: 'client', slug: 'cliente',         ordem: 1 },
-  { nome: 'Tipo de projeto',   tipo: 'tags',   slug: 'tipo_projeto',    ordem: 2 },
-  { nome: 'Origem',            tipo: 'select', slug: 'origem',          ordem: 3, editableOptions: true, items: [
+  { nome: 'Cidade',            tipo: 'text',   slug: 'cidade',          ordem: 2 },
+  { nome: 'Tipo de projeto',   tipo: 'tags',   slug: 'tipo_projeto',    ordem: 3 },
+  { nome: 'Origem',            tipo: 'select', slug: 'origem',          ordem: 4, editableOptions: true, items: [
     { value: 'Indicação', color: 'green' }, { value: 'Instagram', color: 'violet' },
     { value: 'Google',    color: 'blue'  }, { value: 'Site',      color: 'orange' },
   ]},
-  { nome: 'Valor da proposta', tipo: 'money',  slug: 'valor',           ordem: 4 },
-  { nome: 'Recebeu proposta?', tipo: 'select', slug: 'proposta',        ordem: 5, editableOptions: false, items: [
+  { nome: 'Valor da proposta', tipo: 'money',  slug: 'valor',           ordem: 5 },
+  { nome: 'Recebeu proposta?', tipo: 'select', slug: 'proposta',        ordem: 6, editableOptions: false, items: [
     { value: 'Sim', color: 'green' }, { value: 'Não', color: 'red' }, { value: 'Pendente', color: 'orange' },
   ]},
-  { nome: 'Status',            tipo: 'select', slug: 'status',          ordem: 6, editableOptions: false, items: [
+  { nome: 'Status',            tipo: 'select', slug: 'status',          ordem: 7, editableOptions: false, items: [
     { value: 'Pedido de orçamento', color: 'blue'   },
     { value: 'Aguardando',          color: 'orange' },
     { value: 'Proposta enviada',    color: 'violet' },
     { value: 'Fechado',             color: 'green'  },
     { value: 'Perdido',             color: 'gray'   },
   ]},
-  { nome: 'Data de fechamento', tipo: 'date',  slug: 'data_fechamento', ordem: 7 },
+  { nome: 'Data de fechamento', tipo: 'date',  slug: 'data_fechamento', ordem: 8 },
 ]
 
 function todayISO() { return new Date().toISOString().split('T')[0] }
@@ -53,7 +54,6 @@ function fmtDate(v) {
 
 function parseCol(c) {
   const isObj = c.opcoes != null && !Array.isArray(c.opcoes)
-  // Lê `fixo` da coluna dedicada; mantém fallback para opcoes.fixed (legado)
   const fixed = c.fixo === true || (isObj && c.opcoes.fixed === true)
   return {
     id: c.id, name: c.nome, type: c.tipo, width: 150,
@@ -66,6 +66,146 @@ function parseCol(c) {
 
 function flattenRow(dbRow) { return { id: dbRow.id, ...dbRow.valores } }
 
+function pillClass(col, value) {
+  const opt = col?.options?.find(o => o.value === value)
+  return `pill-${opt?.color || 'gray'}`
+}
+
+function renderCellValue(row, col) {
+  const v = row[col.id]
+  if (col.type === 'money') return v ? fmtMoney(v) : <span className="cell-empty">—</span>
+  if (col.type === 'date')  return v ? fmtDate(v)  : <span className="cell-empty">—</span>
+  if (col.type === 'tags') {
+    const tags = Array.isArray(v) ? v : []
+    if (!tags.length) return <span className="cell-empty">—</span>
+    return <span className="tags-ro">{tags.map(t => <span key={t} className="tag-ro">{t}</span>)}</span>
+  }
+  if (col.type === 'select') {
+    return v
+      ? <span className={`pill ${pillClass(col, v)}`}><span className="dot" />{v}</span>
+      : <span className="cell-empty">—</span>
+  }
+  return v || <span className="cell-empty">—</span>
+}
+
+// ── Edição inline de célula ──
+function InlineCell({ row, col, isEditing, onActivate, onCommit, onSaveImmediate, clientes }) {
+  const [localVal, setLocalVal] = useState('')
+
+  useEffect(() => {
+    if (isEditing) setLocalVal(row[col.id] ?? '') // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isEditing])
+
+  function commit(v) {
+    let parsed = v
+    if (col.type === 'money' || col.type === 'number') {
+      parsed = (v === '' || v == null) ? null : Number(String(v).replace(/[^\d]/g, '')) || null
+    }
+    onCommit(parsed)
+  }
+
+  if (!isEditing) {
+    return (
+      <div className="cell-display cell-clickable" onClick={onActivate}>
+        {renderCellValue(row, col)}
+      </div>
+    )
+  }
+
+  if (col.type === 'date') {
+    return (
+      <input
+        className="cell-input"
+        type="date"
+        autoFocus
+        value={localVal || ''}
+        onChange={e => setLocalVal(e.target.value)}
+        onBlur={e => commit(e.target.value)}
+      />
+    )
+  }
+
+  if (col.type === 'select') {
+    return (
+      <select
+        className="cell-input cell-select"
+        autoFocus
+        value={localVal}
+        onChange={e => commit(e.target.value)}
+      >
+        <option value="">—</option>
+        {(col.options || []).map(o => <option key={o.value} value={o.value}>{o.value}</option>)}
+      </select>
+    )
+  }
+
+  if (col.type === 'client') {
+    return (
+      <>
+        <input
+          className="cell-input"
+          list="crm-clientes-inline"
+          autoFocus
+          value={localVal}
+          onChange={e => setLocalVal(e.target.value)}
+          onBlur={e => commit(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
+        />
+        <datalist id="crm-clientes-inline">
+          {(clientes || []).map(c => <option key={c.id} value={c.nome} />)}
+        </datalist>
+      </>
+    )
+  }
+
+  if (col.type === 'tags') {
+    const tags = Array.isArray(row[col.id]) ? row[col.id] : []
+    return (
+      <div
+        className="cell-tags-edit"
+        tabIndex={-1}
+        onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) onCommit(row[col.id]) }}
+      >
+        {tags.map(t => (
+          <span className="tag-chip" key={t}>
+            {t}
+            <button type="button" className="tag-remove" onClick={() => onSaveImmediate(tags.filter(x => x !== t))}>
+              <IconClose />
+            </button>
+          </span>
+        ))}
+        <input
+          className="tag-input"
+          autoFocus
+          placeholder="+ tag"
+          onKeyDown={e => {
+            if (e.key === 'Enter' || e.key === ',') {
+              e.preventDefault()
+              const v = e.target.value.trim()
+              if (v && !tags.includes(v)) { onSaveImmediate([...tags, v]); e.target.value = '' }
+            }
+          }}
+        />
+      </div>
+    )
+  }
+
+  // text, number, money
+  return (
+    <input
+      className="cell-input"
+      type={col.type === 'number' || col.type === 'money' ? 'number' : 'text'}
+      min={col.type === 'money' ? 0 : undefined}
+      step={col.type === 'money' ? 100 : undefined}
+      autoFocus
+      value={localVal}
+      onChange={e => setLocalVal(e.target.value)}
+      onBlur={e => commit(e.target.value)}
+      onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
+    />
+  )
+}
+
 export default function CRM() {
   const toast = useToast()
   const { user } = useAuth()
@@ -76,6 +216,7 @@ export default function CRM() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [drawerRowId, setDrawerRowId] = useState(null)
+  const [activeCell, setActiveCell] = useState(null) // { rowId, colId }
   const [colModal, setColModal] = useState(null)
   const [colForm, setColForm] = useState({ name: '', type: 'text', options: [] })
 
@@ -107,7 +248,6 @@ export default function CRM() {
     ])
     if (colErr || linErr) { toast('Não foi possível carregar o CRM'); setLoading(false); return }
 
-    // Detecta colunas fixas tanto pela coluna `fixo` (nova) quanto pelo campo legado em opcoes
     const hasFixed = (cols || []).some(c =>
       c.fixo === true || (c.opcoes != null && !Array.isArray(c.opcoes) && c.opcoes.fixed === true)
     )
@@ -130,8 +270,6 @@ export default function CRM() {
       empresa_id: user.empresaId, nome: c.nome, tipo: c.tipo, ordem: c.ordem,
       opcoes: { fixed: true, slug: c.slug, editableOptions: c.editableOptions !== false, items: c.items || [] },
     }))
-    // Tenta com fixo: true (coluna adicionada pela migration_003).
-    // Se a migration ainda não foi rodada, cai para o insert sem o campo.
     let { data: created, error } = await supabase
       .from('crm_colunas')
       .insert(basePayload.map(c => ({ ...c, fixo: true })))
@@ -147,7 +285,6 @@ export default function CRM() {
     setLoading(false)
   }
 
-  // ── persistência de células (chamada pelo drawer) ──
   async function updateCell(rowId, col, value) {
     let extra = {}
     if (col.slug === 'status' && value === 'Fechado' && dataFechCol) {
@@ -167,7 +304,6 @@ export default function CRM() {
     else toast('Salvo automaticamente')
   }
 
-  // ── linhas ──
   async function addRow() {
     const novosValores = {}
     columns.forEach(c => {
@@ -201,7 +337,6 @@ export default function CRM() {
     else toast('Linha removida')
   }
 
-  // ── adicionar opção em select editável (Origem) ──
   async function addSelectOption(col) {
     const value = prompt(`Nova opção para "${col.name}":`)
     if (!value) return
@@ -215,7 +350,6 @@ export default function CRM() {
     await supabase.from('crm_colunas').update({ opcoes }).eq('id', col.id)
   }
 
-  // ── colunas dinâmicas: criar ──
   function openNewColumn() { setColForm({ name: '', type: 'text', options: [] }); setColModal('new') }
 
   async function confirmNewColumn() {
@@ -237,7 +371,6 @@ export default function CRM() {
     toast('Coluna criada')
   }
 
-  // ── colunas dinâmicas: editar ──
   function openEditColumn(col) {
     if (col.fixed) return
     setColForm({ name: col.name, type: col.type, options: col.options || [] })
@@ -274,29 +407,6 @@ export default function CRM() {
   }
   function removeOptionFromForm(value) {
     setColForm(f => ({ ...f, options: f.options.filter(o => o.value !== value) }))
-  }
-
-  // ── display ──
-  function pillClass(col, value) {
-    const opt = col?.options?.find(o => o.value === value)
-    return `pill-${opt?.color || 'gray'}`
-  }
-
-  function renderCellValue(row, col) {
-    const v = row[col.id]
-    if (col.type === 'money') return v ? fmtMoney(v) : <span className="cell-empty">—</span>
-    if (col.type === 'date')  return v ? fmtDate(v)  : <span className="cell-empty">—</span>
-    if (col.type === 'tags') {
-      const tags = Array.isArray(v) ? v : []
-      if (!tags.length) return <span className="cell-empty">—</span>
-      return <span className="tags-ro">{tags.map(t => <span key={t} className="tag-ro">{t}</span>)}</span>
-    }
-    if (col.type === 'select') {
-      return v
-        ? <span className={`pill ${pillClass(col, v)}`}><span className="dot" />{v}</span>
-        : <span className="cell-empty">—</span>
-    }
-    return v || <span className="cell-empty">—</span>
   }
 
   const isEditingColumn = colModal && colModal !== 'new'
@@ -353,7 +463,7 @@ export default function CRM() {
         <button className="crm-addcol-btn" onClick={openNewColumn}><IconPlus /> Nova coluna</button>
       </div>
 
-      {/* DESKTOP: tabela (read-only — edição pelo drawer) */}
+      {/* DESKTOP: tabela */}
       <div className="crm-table-wrap">
         <table className="crm-table">
           <thead>
@@ -370,22 +480,30 @@ export default function CRM() {
                   )}
                 </th>
               ))}
-              <th style={{ width: 40 }} />
+              <th style={{ width: 68 }} />
             </tr>
           </thead>
           <tbody>
             {filtered.map(row => (
-              <tr key={row.id} className="crm-clickable-row" onClick={() => setDrawerRowId(row.id)}>
+              <tr key={row.id}>
                 {columns.map(col => (
                   <td key={col.id}>
-                    <div className="cell-display">{renderCellValue(row, col)}</div>
+                    <InlineCell
+                      row={row}
+                      col={col}
+                      isEditing={activeCell?.rowId === row.id && activeCell?.colId === col.id}
+                      onActivate={() => setActiveCell({ rowId: row.id, colId: col.id })}
+                      onCommit={v => { updateCell(row.id, col, v); setActiveCell(null) }}
+                      onSaveImmediate={v => updateCell(row.id, col, v)}
+                      clientes={clientes}
+                    />
                   </td>
                 ))}
                 <td>
                   <div className="row-actions">
                     <button
                       className="row-open-btn"
-                      onClick={e => { e.stopPropagation(); setDrawerRowId(row.id) }}
+                      onClick={() => setDrawerRowId(row.id)}
                       aria-label="Abrir detalhes"
                       title="Abrir detalhes"
                     >
@@ -400,7 +518,7 @@ export default function CRM() {
                       }}
                       aria-label="Excluir"
                     >
-                      <IconClose />
+                      <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
                     </button>
                   </div>
                 </td>
@@ -436,7 +554,7 @@ export default function CRM() {
                 onClick={e => { e.stopPropagation(); removeRow(row.id) }}
                 aria-label="Excluir"
               >
-                <IconClose />
+                <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
               </button>
             </div>
             <div className="crm-card-fields">
@@ -454,7 +572,7 @@ export default function CRM() {
 
       <button className="fab" onClick={addRow} aria-label="Novo registro"><IconPlus /></button>
 
-      {/* Drawer de detalhe / edição */}
+      {/* Drawer de detalhe */}
       {drawerRow && (
         <CRMDrawer
           row={drawerRow}
@@ -465,6 +583,7 @@ export default function CRM() {
           onDelete={() => removeRow(drawerRow.id)}
           clientes={clientes}
           user={user}
+          onClientCreate={newClient => setClientes(prev => [...prev, newClient].sort((a, b) => a.nome.localeCompare(b.nome)))}
         />
       )}
 

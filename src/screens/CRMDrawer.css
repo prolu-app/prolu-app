@@ -28,8 +28,8 @@
 .dr-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 20px 20px 16px;
+  gap: 10px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--ink-divider);
   flex-shrink: 0;
 }
@@ -42,11 +42,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
-  margin-right: 12px;
 }
-.dr-header-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
-.dr-close-btn {
+.dr-back-btn {
   width: 32px;
   height: 32px;
   border-radius: 8px;
@@ -57,26 +55,26 @@
   align-items: center;
   justify-content: center;
   color: var(--ink-40);
+  flex-shrink: 0;
   transition: background 0.15s, color 0.15s;
 }
-.dr-close-btn:hover { background: var(--gray-soft); color: var(--ink); }
-.dr-close-btn svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; fill: none; }
+.dr-back-btn:hover { background: var(--gray-soft); color: var(--ink); }
+.dr-back-btn svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
 
-.dr-delete-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: none;
+.dr-delete-text-btn {
   background: none;
+  border: none;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ink-40);
-  transition: background 0.15s, color 0.15s;
+  color: var(--red, #d94f4f);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 4px 0;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+  text-align: left;
+  align-self: flex-start;
 }
-.dr-delete-btn:hover { background: var(--red-soft); color: var(--red); }
-.dr-delete-btn svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 2; fill: none; }
+.dr-delete-text-btn:hover { opacity: 1; }
 
 /* ── body ── */
 .dr-body {
@@ -156,6 +154,38 @@
 }
 .dr-select-add:hover { border-color: var(--green); color: var(--green-deep); }
 .dr-select-add svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2.4; fill: none; }
+
+/* ── client autocomplete ── */
+.dr-client-wrap { position: relative; }
+.dr-client-dropdown {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 0;
+  right: 0;
+  background: var(--white);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-pop);
+  z-index: 110;
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  animation: menuIn 0.14s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+.dr-client-option {
+  padding: 10px 14px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--ink);
+  transition: background 0.12s;
+}
+.dr-client-option:hover { background: #f6f6f2; }
+.dr-client-create { color: var(--green-deep); font-style: italic; }
+.dr-client-create:disabled { opacity: 0.6; cursor: default; }
 
 /* ── tags ── */
 .dr-tags-wrap {

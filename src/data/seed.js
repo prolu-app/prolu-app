@@ -83,6 +83,10 @@ export const CRM_COLUMNS = [
     slug: 'cliente',         width: 180, editableOptions: false, options: [],
   },
   {
+    id: '__cidade',     name: 'Cidade',             type: 'text',   fixed: true,
+    slug: 'cidade',          width: 130, editableOptions: false, options: [],
+  },
+  {
     id: '__tipo',       name: 'Tipo de projeto',    type: 'tags',   fixed: true,
     slug: 'tipo_projeto',    width: 170, editableOptions: false, options: [],
   },
