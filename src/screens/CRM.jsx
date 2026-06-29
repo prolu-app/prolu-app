@@ -101,8 +101,74 @@ function renderCellValue(row, col) {
   return v || <span className="cell-empty">—</span>
 }
 
+function InlineClientField({ value, col, onCommit, clientes, user, onClientCreate }) {
+  const [inputVal, setInputVal] = useState(value || '')
+  const [open, setOpen] = useState(false)
+  const [creating, setCreating] = useState(false)
+
+  useEffect(() => { setInputVal(value || '') }, [value])
+
+  const suggestions = useMemo(() => {
+    const q = inputVal.trim().toLowerCase()
+    if (!q) return []
+    return (clientes || []).filter(c => c.nome.toLowerCase().includes(q))
+  }, [inputVal, clientes])
+
+  function selectClient(nome) {
+    setInputVal(nome)
+    setOpen(false)
+    onCommit(nome)
+  }
+
+  async function createAndSelect() {
+    const nome = inputVal.trim()
+    if (!nome) return
+    if (!supabaseReady || !user?.empresaId) { selectClient(nome); return }
+    setCreating(true)
+    const { data, error } = await supabase
+      .from('clientes')
+      .insert({ empresa_id: user.empresaId, nome })
+      .select('id, nome')
+      .single()
+    setCreating(false)
+    if (!error && data) { onClientCreate?.(data); selectClient(data.nome) }
+  }
+
+  return (
+    <div className="cell-client-wrap">
+      <input
+        className="cell-input"
+        autoFocus
+        value={inputVal}
+        placeholder="Nome do cliente…"
+        onChange={e => { setInputVal(e.target.value); setOpen(e.target.value.length > 0) }}
+        onBlur={() => { setTimeout(() => setOpen(false), 120); onCommit(inputVal.trim() || null) }}
+      />
+      {open && (
+        <div className="dr-client-dropdown">
+          {suggestions.length > 0
+            ? suggestions.map(c => (
+                <button key={c.id} className="dr-client-option" type="button"
+                  onMouseDown={e => { e.preventDefault(); selectClient(c.nome) }}>
+                  {c.nome}
+                </button>
+              ))
+            : (
+                <button className="dr-client-option dr-client-create" type="button"
+                  onMouseDown={e => { e.preventDefault(); createAndSelect() }}
+                  disabled={creating}>
+                  {creating ? 'Criando…' : `Criar cliente: "${inputVal.trim()}"`}
+                </button>
+              )
+          }
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Edição inline de célula ──
-function InlineCell({ row, col, isEditing, onActivate, onCommit, onSaveImmediate, clientes }) {
+function InlineCell({ row, col, isEditing, onActivate, onCommit, onSaveImmediate, clientes, user, onClientCreate }) {
   const [localVal, setLocalVal] = useState('')
 
   useEffect(() => {
@@ -153,22 +219,7 @@ function InlineCell({ row, col, isEditing, onActivate, onCommit, onSaveImmediate
   }
 
   if (col.type === 'client') {
-    return (
-      <>
-        <input
-          className="cell-input"
-          list="crm-clientes-inline"
-          autoFocus
-          value={localVal}
-          onChange={e => setLocalVal(e.target.value)}
-          onBlur={e => commit(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
-        />
-        <datalist id="crm-clientes-inline">
-          {(clientes || []).map(c => <option key={c.id} value={c.nome} />)}
-        </datalist>
-      </>
-    )
+    return <InlineClientField value={row[col.id]} col={col} onCommit={onCommit} clientes={clientes} user={user} onClientCreate={onClientCreate} />
   }
 
   if (col.type === 'tags') {
@@ -509,6 +560,8 @@ export default function CRM() {
                       onCommit={v => { updateCell(row.id, col, v); setActiveCell(null) }}
                       onSaveImmediate={v => updateCell(row.id, col, v)}
                       clientes={clientes}
+                      user={user}
+                      onClientCreate={newClient => setClientes(prev => [...prev, newClient].sort((a, b) => a.nome.localeCompare(b.nome)))}
                     />
                   </td>
                 ))}
