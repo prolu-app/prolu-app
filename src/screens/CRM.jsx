@@ -393,7 +393,11 @@ export default function CRM() {
                     </button>
                     <button
                       className="row-del-btn"
-                      onClick={e => { e.stopPropagation(); removeRow(row.id) }}
+                      onClick={e => {
+                        e.stopPropagation()
+                        const nome = clienteCol ? row[clienteCol.id] : null
+                        if (window.confirm(`Excluir${nome ? ` "${nome}"` : ' este registro'}?`)) removeRow(row.id)
+                      }}
                       aria-label="Excluir"
                     >
                       <IconClose />

@@ -164,7 +164,8 @@ create table crm_colunas (
   id uuid primary key default uuid_generate_v4(),
   empresa_id uuid references empresas(id) on delete cascade,
   nome text not null,
-  tipo text not null check (tipo in ('text', 'number', 'money', 'date', 'select', 'checkbox')),
+  tipo text not null check (tipo in ('text', 'number', 'money', 'date', 'select', 'checkbox', 'client', 'tags')),
+  fixo boolean not null default false,
   ordem int default 0,
   opcoes jsonb default '[]', -- [{ value, color }] para tipo "select"
   created_at timestamptz default now()
