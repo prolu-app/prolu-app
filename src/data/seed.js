@@ -70,32 +70,38 @@ export const FOLDERS = [
 
 /* ── CRM ── */
 export const CRM_COLUMNS = [
-  { id: 'c_data', name: 'Data', type: 'date', width: 120 },
-  { id: 'c_cliente', name: 'Cliente', type: 'text', width: 180 },
-  { id: 'c_tipo', name: 'Tipo de projeto', type: 'text', width: 150 },
-  { id: 'c_origem', name: 'Origem', type: 'select', width: 130, options: [
+  { id: '__date',       name: 'Data de entrada',    type: 'date',   fixed: true, slug: 'data_entrada',   width: 130 },
+  { id: '__client',     name: 'Cliente',             type: 'client', fixed: true, slug: 'cliente',         width: 180 },
+  { id: '__tipo',       name: 'Tipo de projeto',     type: 'tags',   fixed: true, slug: 'tipo_projeto',    width: 170 },
+  { id: '__origem',     name: 'Origem',              type: 'select', fixed: true, slug: 'origem',          width: 140, editableOptions: true, options: [
     { value: 'Indicação', color: 'green' },
     { value: 'Instagram', color: 'violet' },
-    { value: 'Google', color: 'blue' },
-    { value: 'Site', color: 'orange' },
-  ] },
-  { id: 'c_valor', name: 'Valor proposta', type: 'money', width: 140 },
-  { id: 'c_status', name: 'Status', type: 'select', width: 150, options: [
-    { value: 'Conversa', color: 'blue' },
-    { value: 'Proposta', color: 'orange' },
-    { value: 'Fechado', color: 'green' },
-    { value: 'Sem resposta', color: 'violet' },
-    { value: 'Perdido', color: 'gray' },
-  ] },
+    { value: 'Google',    color: 'blue' },
+    { value: 'Site',      color: 'orange' },
+  ]},
+  { id: '__valor',      name: 'Valor da proposta',   type: 'money',  fixed: true, slug: 'valor',           width: 150 },
+  { id: '__proposta',   name: 'Recebeu proposta?',   type: 'select', fixed: true, slug: 'proposta',        width: 160, editableOptions: false, options: [
+    { value: 'Sim',      color: 'green' },
+    { value: 'Não',      color: 'red' },
+    { value: 'Pendente', color: 'orange' },
+  ]},
+  { id: '__status',     name: 'Status',              type: 'select', fixed: true, slug: 'status',          width: 180, editableOptions: false, options: [
+    { value: 'Pedido de orçamento', color: 'blue' },
+    { value: 'Aguardando',          color: 'orange' },
+    { value: 'Proposta enviada',    color: 'violet' },
+    { value: 'Fechado',             color: 'green' },
+    { value: 'Perdido',             color: 'gray' },
+  ]},
+  { id: '__date_close', name: 'Data de fechamento',  type: 'date',   fixed: true, slug: 'data_fechamento', width: 150 },
 ]
 
 export const CRM_ROWS = [
-  { id: 'r1', c_data: '2026-06-02', c_cliente: 'Mariana e Felipe', c_tipo: 'Apartamento', c_origem: 'Indicação', c_valor: 18000, c_status: 'Proposta' },
-  { id: 'r2', c_data: '2026-06-05', c_cliente: 'Dra. Camila Rocha', c_tipo: 'Consultório', c_origem: 'Instagram', c_valor: 24000, c_status: 'Conversa' },
-  { id: 'r3', c_data: '2026-05-28', c_cliente: 'Roberto Lima', c_tipo: 'Casa', c_origem: 'Indicação', c_valor: 32000, c_status: 'Fechado' },
-  { id: 'r4', c_data: '2026-06-10', c_cliente: 'Júlia Mendes', c_tipo: 'Apartamento', c_origem: 'Google', c_valor: 15000, c_status: 'Sem resposta' },
-  { id: 'r5', c_data: '2026-05-20', c_cliente: 'Fernando e Paula', c_tipo: 'Reforma', c_origem: 'Instagram', c_valor: 12000, c_status: 'Perdido' },
-  { id: 'r6', c_data: '2026-06-14', c_cliente: 'Studio Aurora', c_tipo: 'Comercial', c_origem: 'Site', c_valor: 45000, c_status: 'Proposta' },
+  { id: 'r1', __date: '2026-05-28', __client: 'Roberto Lima',      __tipo: ['Casa'],        __origem: 'Indicação', __valor: 32000, __proposta: 'Sim',      __status: 'Fechado',             __date_close: '2026-06-15' },
+  { id: 'r2', __date: '2026-06-02', __client: 'Mariana e Felipe',  __tipo: ['Apartamento'], __origem: 'Indicação', __valor: 18000, __proposta: 'Pendente', __status: 'Proposta enviada',    __date_close: '' },
+  { id: 'r3', __date: '2026-06-05', __client: 'Dra. Camila Rocha', __tipo: ['Consultório'], __origem: 'Instagram', __valor: 24000, __proposta: 'Não',      __status: 'Pedido de orçamento', __date_close: '' },
+  { id: 'r4', __date: '2026-06-10', __client: 'Júlia Mendes',      __tipo: ['Apartamento'], __origem: 'Google',    __valor: 15000, __proposta: 'Não',      __status: 'Aguardando',          __date_close: '' },
+  { id: 'r5', __date: '2026-06-14', __client: 'Studio Aurora',     __tipo: ['Comercial'],   __origem: 'Site',      __valor: 45000, __proposta: 'Pendente', __status: 'Proposta enviada',    __date_close: '' },
+  { id: 'r6', __date: '2026-05-20', __client: 'Fernando e Paula',  __tipo: ['Reforma'],     __origem: 'Instagram', __valor: 12000, __proposta: 'Sim',      __status: 'Perdido',             __date_close: '' },
 ]
 
 /* ── PLANO PRÁTICO ── */

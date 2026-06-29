@@ -156,8 +156,8 @@ export default function Inicio() {
     if (supabaseReady) return { faturamento: 0, planoDone: 0, planoTotal: 0 }
     const anoAtual = new Date().getFullYear().toString()
     const faturamento = CRM_ROWS
-      .filter((r) => r.c_status === 'Fechado' && r.c_data?.startsWith(anoAtual))
-      .reduce((sum, r) => sum + (r.c_valor || 0), 0)
+      .filter((r) => r.__status === 'Fechado' && r.__date?.startsWith(anoAtual))
+      .reduce((sum, r) => sum + (r.__valor || 0), 0)
     return {
       faturamento,
       planoDone: PLANO_ACOES.filter((a) => a.status === 'done').length,
@@ -168,7 +168,7 @@ export default function Inicio() {
   const [insightCanal, setInsightCanal] = useState(() =>
     supabaseReady
       ? undefined
-      : melhorCanal(CRM_ROWS.map((r) => ({ origem: r.c_origem, fechado: r.c_status === 'Fechado' })))
+      : melhorCanal(CRM_ROWS.map((r) => ({ origem: r.__origem, fechado: r.__status === 'Fechado' })))
   )
 
   useEffect(() => {
@@ -181,10 +181,10 @@ export default function Inicio() {
       supabase.from('plano_acoes').select('*', { count: 'exact', head: true }).eq('empresa_id', user.empresaId).eq('status', 'done'),
     ]).then(([{ data: colunas }, { data: linhas }, { count: planoTotal }, { count: planoDone }]) => {
       const statusColId = colunas?.find((c) => c.nome === 'Status')?.id
-      const valorColId = colunas?.find((c) => c.nome === 'Valor proposta')?.id
-                      ?? colunas?.find((c) => c.tipo === 'money')?.id
+      const valorColId = colunas?.find((c) => c.tipo === 'money')?.id
       const origemColId = colunas?.find((c) => c.nome === 'Origem')?.id
-      const dataColId = colunas?.find((c) => c.tipo === 'date')?.id
+      const dataColId = colunas?.find((c) => c.nome === 'Data de entrada')?.id
+                     ?? colunas?.find((c) => c.tipo === 'date')?.id
       const faturamento = statusColId && valorColId
         ? (linhas || []).reduce((sum, l) => {
             if (l.valores?.[statusColId] !== 'Fechado') return sum
