@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { IconClose, IconPlus } from '../components/Icons.jsx'
 import './CRMDrawer.css'
@@ -215,7 +216,7 @@ export default function CRMDrawer({ row, columns, onClose, onUpdateCell, onAddOp
     onDelete()
   }
 
-  return (
+  return createPortal(
     <>
       <div className="drawer-scrim" onClick={onClose} aria-hidden="true" />
       <div className="crm-drawer" role="dialog" aria-modal="true" aria-label={titulo}>
@@ -284,6 +285,7 @@ export default function CRMDrawer({ row, columns, onClose, onUpdateCell, onAddOp
           </button>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   )
 }

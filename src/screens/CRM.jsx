@@ -126,12 +126,22 @@ export default function CRM() {
     if (existingCols.length > 0) {
       await supabase.from('crm_colunas').delete().in('id', existingCols.map(c => c.id))
     }
-    const payload = FIXED_COLS_DEF.map(c => ({
+    const basePayload = FIXED_COLS_DEF.map(c => ({
       empresa_id: user.empresaId, nome: c.nome, tipo: c.tipo, ordem: c.ordem,
-      fixo: true,
       opcoes: { fixed: true, slug: c.slug, editableOptions: c.editableOptions !== false, items: c.items || [] },
     }))
-    const { data: created, error } = await supabase.from('crm_colunas').insert(payload).select('*')
+    // Tenta com fixo: true (coluna adicionada pela migration_003).
+    // Se a migration ainda não foi rodada, cai para o insert sem o campo.
+    let { data: created, error } = await supabase
+      .from('crm_colunas')
+      .insert(basePayload.map(c => ({ ...c, fixo: true })))
+      .select('*')
+    if (error) {
+      ;({ data: created, error } = await supabase
+        .from('crm_colunas')
+        .insert(basePayload)
+        .select('*'))
+    }
     if (error) { toast('Não foi possível preparar o CRM'); setLoading(false); return }
     setColumns(created.map(parseCol).sort((a, b) => a.ordem - b.ordem))
     setLoading(false)
@@ -372,13 +382,23 @@ export default function CRM() {
                   </td>
                 ))}
                 <td>
-                  <button
-                    className="row-del-btn"
-                    onClick={e => { e.stopPropagation(); removeRow(row.id) }}
-                    aria-label="Excluir"
-                  >
-                    <IconClose />
-                  </button>
+                  <div className="row-actions">
+                    <button
+                      className="row-open-btn"
+                      onClick={e => { e.stopPropagation(); setDrawerRowId(row.id) }}
+                      aria-label="Abrir detalhes"
+                      title="Abrir detalhes"
+                    >
+                      <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" /></svg>
+                    </button>
+                    <button
+                      className="row-del-btn"
+                      onClick={e => { e.stopPropagation(); removeRow(row.id) }}
+                      aria-label="Excluir"
+                    >
+                      <IconClose />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
