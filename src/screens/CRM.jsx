@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { CRM_COLUMNS, CRM_ROWS } from '../data/seed.js'
-import { IconPlus, IconSearch, IconTrash, IconEdit, IconClose } from '../components/Icons.jsx'
+import { IconPlus, IconSearch, IconEdit, IconClose } from '../components/Icons.jsx'
+import CRMDrawer from './CRMDrawer.jsx'
 import './CRM.css'
 
 const COLOR_OPTS = ['gray', 'blue', 'green', 'orange', 'violet', 'red']
@@ -13,8 +14,6 @@ const COLOR_VARS = {
 }
 const TYPE_LABELS = { text: 'Texto', number: 'Número', money: 'Dinheiro (R$)', date: 'Data', select: 'Seleção' }
 
-// Fixed columns seeded into crm_colunas on first access.
-// opcoes stored as object: { fixed: true, slug, editableOptions, items: [...] }
 const FIXED_COLS_DEF = [
   { nome: 'Data de entrada',   tipo: 'date',   slug: 'data_entrada',   ordem: 0 },
   { nome: 'Cliente',           tipo: 'client', slug: 'cliente',         ordem: 1 },
@@ -52,18 +51,12 @@ function fmtDate(v) {
   return `${d}/${m}/${y.slice(2)}`
 }
 
-// Maps a crm_colunas DB row to the shape used by the component.
-// Fixed columns have opcoes as an object; dynamic columns have opcoes as an array.
 function parseCol(c) {
   const isObj = c.opcoes != null && !Array.isArray(c.opcoes)
   const fixed = isObj && c.opcoes.fixed === true
   return {
-    id: c.id,
-    name: c.nome,
-    type: c.tipo,
-    width: 150,
-    fixed,
-    slug: isObj ? (c.opcoes.slug || null) : null,
+    id: c.id, name: c.nome, type: c.tipo, width: 150,
+    fixed, slug: isObj ? (c.opcoes.slug || null) : null,
     editableOptions: fixed ? (c.opcoes.editableOptions !== false) : true,
     options: fixed ? (c.opcoes.items || []) : (Array.isArray(c.opcoes) ? c.opcoes : []),
     ordem: c.ordem ?? 999,
@@ -81,29 +74,18 @@ export default function CRM() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [editing, setEditing] = useState(null)       // { rowId, colId }
-  const [tagEditing, setTagEditing] = useState(null) // { rowId, colId }
-  const [tagInput, setTagInput] = useState('')
-  const [colModal, setColModal] = useState(null)     // null | 'new' | colId
+  const [drawerRowId, setDrawerRowId] = useState(null)
+  const [colModal, setColModal] = useState(null)
   const [colForm, setColForm] = useState({ name: '', type: 'text', options: [] })
-  const [statusMenu, setStatusMenu] = useState(null) // { rowId, col, x, y }
-  const inputRef = useRef(null)
-  const tagInputRef = useRef(null)
 
   const statusCol      = useMemo(() => columns.find(c => c.slug === 'status'), [columns])
   const clienteCol     = useMemo(() => columns.find(c => c.slug === 'cliente'), [columns])
   const dataEntradaCol = useMemo(() => columns.find(c => c.slug === 'data_entrada'), [columns])
   const dataFechCol    = useMemo(() => columns.find(c => c.slug === 'data_fechamento'), [columns])
+  const drawerRow      = useMemo(() => rows.find(r => r.id === drawerRowId) || null, [rows, drawerRowId])
 
   useEffect(() => { carregar() }, [user?.empresaId])
   useEffect(() => { if (supabaseReady && user?.empresaId) loadClientes() }, [user?.empresaId])
-  useEffect(() => { if (editing && inputRef.current) { inputRef.current.focus(); inputRef.current.select?.() } }, [editing])
-  useEffect(() => { if (tagEditing && tagInputRef.current) tagInputRef.current.focus() }, [tagEditing])
-  useEffect(() => {
-    const close = () => setStatusMenu(null)
-    document.addEventListener('click', close)
-    return () => document.removeEventListener('click', close)
-  }, [])
 
   async function loadClientes() {
     const { data } = await supabase.from('clientes').select('id, nome').eq('empresa_id', user.empresaId).order('nome')
@@ -122,7 +104,6 @@ export default function CRM() {
       supabase.from('crm_colunas').select('*').eq('empresa_id', user.empresaId).order('ordem', { ascending: true }),
       supabase.from('crm_linhas').select('*').eq('empresa_id', user.empresaId).order('created_at', { ascending: true }),
     ])
-
     if (colErr || linErr) { toast('Não foi possível carregar o CRM'); setLoading(false); return }
 
     const hasFixed = (cols || []).some(c => c.opcoes != null && !Array.isArray(c.opcoes) && c.opcoes.fixed === true)
@@ -132,7 +113,6 @@ export default function CRM() {
       setRows((lin2 || []).map(flattenRow))
       return
     }
-
     setColumns((cols || []).map(parseCol).sort((a, b) => a.ordem - b.ordem))
     setRows((lin || []).map(flattenRow))
     setLoading(false)
@@ -143,10 +123,7 @@ export default function CRM() {
       await supabase.from('crm_colunas').delete().in('id', existingCols.map(c => c.id))
     }
     const payload = FIXED_COLS_DEF.map(c => ({
-      empresa_id: user.empresaId,
-      nome: c.nome,
-      tipo: c.tipo,
-      ordem: c.ordem,
+      empresa_id: user.empresaId, nome: c.nome, tipo: c.tipo, ordem: c.ordem,
       opcoes: { fixed: true, slug: c.slug, editableOptions: c.editableOptions !== false, items: c.items || [] },
     }))
     const { data: created, error } = await supabase.from('crm_colunas').insert(payload).select('*')
@@ -155,20 +132,15 @@ export default function CRM() {
     setLoading(false)
   }
 
-  // ── persistência de células ──
+  // ── persistência de células (chamada pelo drawer) ──
   async function updateCell(rowId, col, value) {
-    // Auto-fill data_fechamento when status → Fechado
     let extra = {}
     if (col.slug === 'status' && value === 'Fechado' && dataFechCol) {
       const row = rows.find(r => r.id === rowId)
       if (row && !row[dataFechCol.id]) extra[dataFechCol.id] = todayISO()
     }
-
     setRows(prev => prev.map(r => r.id === rowId ? { ...r, [col.id]: value, ...extra } : r))
-    setEditing(null)
-
     if (!supabaseReady || !user?.empresaId) return
-
     const row = rows.find(r => r.id === rowId)
     const novosValores = { ...row, [col.id]: value, ...extra }
     delete novosValores.id
@@ -189,25 +161,24 @@ export default function CRM() {
       else if (c.type === 'money' || c.type === 'number') novosValores[c.id] = null
       else novosValores[c.id] = ''
     })
-
     if (!supabaseReady || !user?.empresaId) {
       const id = 'r' + Date.now()
       setRows(prev => [...prev, { id, ...novosValores }])
-      if (clienteCol) setEditing({ rowId: id, colId: clienteCol.id })
+      setDrawerRowId(id)
       return
     }
-
     const { data, error } = await supabase
       .from('crm_linhas')
       .insert({ empresa_id: user.empresaId, valores: novosValores, created_by: user.id })
       .select('*').single()
     if (error) { toast('Não foi possível criar a linha'); return }
     setRows(prev => [...prev, flattenRow(data)])
-    if (clienteCol) setEditing({ rowId: data.id, colId: clienteCol.id })
+    setDrawerRowId(data.id)
     toast('Linha criada')
   }
 
   async function removeRow(id) {
+    if (drawerRowId === id) setDrawerRowId(null)
     setRows(prev => prev.filter(r => r.id !== id))
     if (!supabaseReady || !user?.empresaId) return
     const { error } = await supabase.from('crm_linhas').delete().eq('id', id)
@@ -215,20 +186,18 @@ export default function CRM() {
     else toast('Linha removida')
   }
 
-  // ── tags ──
-  async function addTag(rowId, col) {
-    if (!tagInput.trim()) { setTagEditing(null); return }
-    const row = rows.find(r => r.id === rowId)
-    const newTags = [...(Array.isArray(row?.[col.id]) ? row[col.id] : []), tagInput.trim()]
-    setTagInput('')
-    await updateCell(rowId, col, newTags)
-    setTagEditing({ rowId, colId: col.id })
-  }
-
-  function removeTag(rowId, col, tag) {
-    const row = rows.find(r => r.id === rowId)
-    const newTags = (Array.isArray(row?.[col.id]) ? row[col.id] : []).filter(t => t !== tag)
-    updateCell(rowId, col, newTags)
+  // ── adicionar opção em select editável (Origem) ──
+  async function addSelectOption(col) {
+    const value = prompt(`Nova opção para "${col.name}":`)
+    if (!value) return
+    const newOption = { value, color: COLOR_OPTS[(col.options || []).length % COLOR_OPTS.length] }
+    const newOptions = [...(col.options || []), newOption]
+    setColumns(prev => prev.map(c => c.id !== col.id ? c : { ...c, options: newOptions }))
+    if (!supabaseReady || !user?.empresaId) return
+    const opcoes = col.fixed
+      ? { fixed: true, slug: col.slug, editableOptions: col.editableOptions, items: newOptions }
+      : newOptions
+    await supabase.from('crm_colunas').update({ opcoes }).eq('id', col.id)
   }
 
   // ── colunas dinâmicas: criar ──
@@ -242,8 +211,7 @@ export default function CRM() {
     if (!supabaseReady || !user?.empresaId) {
       const id = 'c_' + Date.now()
       setColumns(prev => [...prev, { id, name: colForm.name.trim(), type: colForm.type, width: 150, fixed: false, slug: null, editableOptions: true, options: opcoes, ordem: prev.length }])
-      setColModal(null)
-      return
+      setColModal(null); return
     }
     const { data, error } = await supabase.from('crm_colunas').insert({
       empresa_id: user.empresaId, nome: colForm.name.trim(), tipo: colForm.type, ordem: columns.length, opcoes,
@@ -293,27 +261,7 @@ export default function CRM() {
     setColForm(f => ({ ...f, options: f.options.filter(o => o.value !== value) }))
   }
 
-  // ── select inline dropdown ──
-  async function addSelectOption(col) {
-    const value = prompt(`Nova opção para "${col.name}":`)
-    if (!value) return
-    const newOption = { value, color: COLOR_OPTS[(col.options || []).length % COLOR_OPTS.length] }
-    const newOptions = [...(col.options || []), newOption]
-    setColumns(prev => prev.map(c => c.id !== col.id ? c : { ...c, options: newOptions }))
-    setStatusMenu(null)
-    if (!supabaseReady || !user?.empresaId) return
-    const opcoes = col.fixed
-      ? { fixed: true, slug: col.slug, editableOptions: col.editableOptions, items: newOptions }
-      : newOptions
-    await supabase.from('crm_colunas').update({ opcoes }).eq('id', col.id)
-  }
-
-  function openStatusMenu(e, row, col) {
-    e.stopPropagation()
-    const r = e.currentTarget.getBoundingClientRect()
-    setStatusMenu({ rowId: row.id, col, x: r.left, y: r.bottom + 6 })
-  }
-
+  // ── display ──
   function pillClass(col, value) {
     const opt = col?.options?.find(o => o.value === value)
     return `pill-${opt?.color || 'gray'}`
@@ -334,50 +282,6 @@ export default function CRM() {
         : <span className="cell-empty">—</span>
     }
     return v || <span className="cell-empty">—</span>
-  }
-
-  function renderTagsCell(row, col) {
-    const isTagging = tagEditing?.rowId === row.id && tagEditing?.colId === col.id
-    const tags = Array.isArray(row[col.id]) ? row[col.id] : []
-    return (
-      <div className="tags-cell" onClick={e => e.stopPropagation()}>
-        {tags.map(tag => (
-          <span key={tag} className="tag-chip">
-            {tag}
-            <button
-              className="tag-remove"
-              onMouseDown={e => e.preventDefault()}
-              onClick={() => removeTag(row.id, col, tag)}
-              aria-label={`Remover ${tag}`}
-            >
-              <IconClose />
-            </button>
-          </span>
-        ))}
-        {isTagging ? (
-          <input
-            ref={tagInputRef}
-            className="tag-input"
-            value={tagInput}
-            onChange={e => setTagInput(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && tagInput.trim()) addTag(row.id, col)
-              if (e.key === 'Escape') { setTagEditing(null); setTagInput('') }
-            }}
-            onBlur={() => { if (tagInput.trim()) addTag(row.id, col); else setTagEditing(null) }}
-            placeholder="Nova tag…"
-          />
-        ) : (
-          <button
-            className="tag-add"
-            onClick={() => { setTagEditing({ rowId: row.id, colId: col.id }); setTagInput('') }}
-            aria-label="Adicionar tag"
-          >
-            +
-          </button>
-        )}
-      </div>
-    )
   }
 
   const isEditingColumn = colModal && colModal !== 'new'
@@ -409,11 +313,6 @@ export default function CRM() {
 
   return (
     <>
-      {/* Datalist global para autocomplete de clientes */}
-      <datalist id="crm-clientes">
-        {clientes.map(c => <option key={c.id} value={c.nome} />)}
-      </datalist>
-
       <div className="page-header between">
         <div>
           <div className="page-title">CRM</div>
@@ -439,7 +338,7 @@ export default function CRM() {
         <button className="crm-addcol-btn" onClick={openNewColumn}><IconPlus /> Nova coluna</button>
       </div>
 
-      {/* DESKTOP: tabela */}
+      {/* DESKTOP: tabela (read-only — edição pelo drawer) */}
       <div className="crm-table-wrap">
         <table className="crm-table">
           <thead>
@@ -449,7 +348,7 @@ export default function CRM() {
                   {c.fixed ? (
                     <span className="th-label th-fixed">{c.name}</span>
                   ) : (
-                    <span className="th-label" onClick={() => openEditColumn(c)}>
+                    <span className="th-label" onClick={e => { e.stopPropagation(); openEditColumn(c) }}>
                       {c.name}
                       <IconEdit className="th-edit-icon" />
                     </span>
@@ -461,62 +360,25 @@ export default function CRM() {
           </thead>
           <tbody>
             {filtered.map(row => (
-              <tr key={row.id}>
-                {columns.map(col => {
-                  const isEditing = editing?.rowId === row.id && editing?.colId === col.id
-
-                  if (col.type === 'tags') return (
-                    <td key={col.id} className="td-tags">{renderTagsCell(row, col)}</td>
-                  )
-
-                  if (col.type === 'select') return (
-                    <td key={col.id}>
-                      <div className="cell-display" onClick={e => openStatusMenu(e, row, col)} style={{ cursor: 'pointer' }}>
-                        {renderCellValue(row, col)}
-                      </div>
-                    </td>
-                  )
-
-                  return (
-                    <td key={col.id} onClick={() => !isEditing && setEditing({ rowId: row.id, colId: col.id })}>
-                      {isEditing ? (
-                        col.type === 'client' ? (
-                          <input
-                            ref={inputRef}
-                            className="cell-input"
-                            list="crm-clientes"
-                            defaultValue={row[col.id] ?? ''}
-                            onBlur={e => updateCell(row.id, col, e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setEditing(null) }}
-                            placeholder="Nome do cliente…"
-                          />
-                        ) : (
-                          <input
-                            ref={inputRef}
-                            className="cell-input"
-                            type={col.type === 'money' || col.type === 'number' ? 'number' : col.type === 'date' ? 'date' : 'text'}
-                            defaultValue={row[col.id] ?? ''}
-                            onBlur={e => updateCell(row.id, col,
-                              (col.type === 'money' || col.type === 'number')
-                                ? (e.target.value === '' ? null : Number(e.target.value))
-                                : e.target.value
-                            )}
-                            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setEditing(null) }}
-                          />
-                        )
-                      ) : (
-                        <div className="cell-display">{renderCellValue(row, col)}</div>
-                      )}
-                    </td>
-                  )
-                })}
+              <tr key={row.id} className="crm-clickable-row" onClick={() => setDrawerRowId(row.id)}>
+                {columns.map(col => (
+                  <td key={col.id}>
+                    <div className="cell-display">{renderCellValue(row, col)}</div>
+                  </td>
+                ))}
                 <td>
-                  <button className="row-del-btn" onClick={() => removeRow(row.id)}><IconTrash /></button>
+                  <button
+                    className="row-del-btn"
+                    onClick={e => { e.stopPropagation(); removeRow(row.id) }}
+                    aria-label="Excluir"
+                  >
+                    <IconClose />
+                  </button>
                 </td>
               </tr>
             ))}
 
-            {/* Linha fantasma — sempre visível, clique cria novo registro */}
+            {/* Linha fantasma */}
             {statusFilter === 'all' && !search && (
               <tr className="crm-phantom-row" onClick={addRow} title="Clique para adicionar registro">
                 {columns.map(col => (
@@ -537,10 +399,16 @@ export default function CRM() {
       {/* MOBILE: cards */}
       <div className="crm-cards">
         {filtered.map(row => (
-          <div className="crm-card" key={row.id}>
+          <div className="crm-card" key={row.id} onClick={() => setDrawerRowId(row.id)} style={{ cursor: 'pointer' }}>
             <div className="crm-card-top">
               <div className="crm-card-title">{(clienteCol ? row[clienteCol.id] : null) || 'Sem nome'}</div>
-              <button className="row-del-btn" onClick={() => removeRow(row.id)}><IconTrash /></button>
+              <button
+                className="row-del-btn"
+                onClick={e => { e.stopPropagation(); removeRow(row.id) }}
+                aria-label="Excluir"
+              >
+                <IconClose />
+              </button>
             </div>
             <div className="crm-card-fields">
               {columns.filter(c => c.slug !== 'cliente').map(col => (
@@ -557,23 +425,21 @@ export default function CRM() {
 
       <button className="fab" onClick={addRow} aria-label="Novo registro"><IconPlus /></button>
 
-      {/* Dropdown status/select inline */}
-      {statusMenu && (
-        <div className="status-dropdown" style={{ top: statusMenu.y, left: statusMenu.x }} onClick={e => e.stopPropagation()}>
-          {statusMenu.col.options.map(o => (
-            <button key={o.value} className="status-option" onClick={() => { updateCell(statusMenu.rowId, statusMenu.col, o.value); setStatusMenu(null) }}>
-              <span className={`pill pill-${o.color}`}><span className="dot" />{o.value}</span>
-            </button>
-          ))}
-          {statusMenu.col.editableOptions && (
-            <button className="status-option add-new" onClick={() => addSelectOption(statusMenu.col)}>
-              <IconPlus /> Nova opção
-            </button>
-          )}
-        </div>
+      {/* Drawer de detalhe / edição */}
+      {drawerRow && (
+        <CRMDrawer
+          row={drawerRow}
+          columns={columns}
+          onClose={() => setDrawerRowId(null)}
+          onUpdateCell={(col, value) => updateCell(drawerRow.id, col, value)}
+          onAddOption={addSelectOption}
+          onDelete={() => removeRow(drawerRow.id)}
+          clientes={clientes}
+          user={user}
+        />
       )}
 
-      {/* Modal coluna (criar ou editar dinâmica) */}
+      {/* Modal coluna */}
       {colModal && (
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setColModal(null) }}>
           <div className="modal">
@@ -607,7 +473,9 @@ export default function CRM() {
             <div className="modal-actions">
               {isEditingColumn ? (
                 <>
-                  <button className="btn-cancel col-delete-btn" onClick={() => removeColumn(colModal)}><IconTrash /></button>
+                  <button className="btn-cancel col-delete-btn" onClick={() => removeColumn(colModal)}>
+                    <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', strokeWidth: 2, fill: 'none' }}><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
+                  </button>
                   <button className="btn-cancel" onClick={() => setColModal(null)}>Cancelar</button>
                   <button className="btn-confirm" onClick={confirmEditColumn}>Salvar</button>
                 </>
