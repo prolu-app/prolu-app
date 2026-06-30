@@ -292,6 +292,9 @@ export default function CRM() {
   const [newOptName, setNewOptName] = useState('')
   const [hiddenCols, setHiddenCols] = useState(new Set())
   const [colVisOpen, setColVisOpen] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(null) // { type:'row'|'col', id, nome }
+  const [addOptInput, setAddOptInput] = useState('')
+  const [addOptColor, setAddOptColor] = useState(COLOR_OPTS[0])
 
   const statusCol      = useMemo(() => columns.find(c => c.slug === 'status'), [columns])
   const clienteCol     = useMemo(() => columns.find(c => c.slug === 'cliente'), [columns])
@@ -497,7 +500,6 @@ export default function CRM() {
   async function removeColumn(colId) {
     const col = columns.find(c => c.id === colId)
     if (col?.fixed) return
-    if (!window.confirm('Excluir esta coluna? Os dados dela em todos os registros serão perdidos.')) return
     setColumns(prev => prev.filter(c => c.id !== colId))
     setColModal(null)
     if (!supabaseReady || !user?.empresaId) return
@@ -506,9 +508,11 @@ export default function CRM() {
   }
 
   function addOptionToForm() {
-    const value = prompt('Nome da nova opção:')
-    if (!value) return
-    setColForm(f => ({ ...f, options: [...f.options, { value, color: COLOR_OPTS[f.options.length % COLOR_OPTS.length] }] }))
+    const v = addOptInput.trim()
+    if (!v) return
+    setColForm(f => ({ ...f, options: [...f.options, { value: v, color: addOptColor }] }))
+    setAddOptInput('')
+    setAddOptColor(c => COLOR_OPTS[(COLOR_OPTS.indexOf(c) + 1) % COLOR_OPTS.length])
   }
   function removeOptionFromForm(value) {
     setColForm(f => ({ ...f, options: f.options.filter(o => o.value !== value) }))
@@ -660,7 +664,7 @@ export default function CRM() {
                       onClick={e => {
                         e.stopPropagation()
                         const nome = clienteCol ? row[clienteCol.id] : null
-                        if (window.confirm(`Excluir${nome ? ` "${nome}"` : ' este registro'}?`)) removeRow(row.id)
+                        setDeleteConfirm({ type: 'row', id: row.id, nome })
                       }}
                       aria-label="Excluir"
                     >
@@ -803,14 +807,37 @@ export default function CRM() {
                       <button onClick={() => removeOptionFromForm(o.value)}><IconClose /></button>
                     </span>
                   ))}
-                  <button className="col-option-add" onClick={addOptionToForm}><IconPlus /> Opção</button>
+                </div>
+                <div className="col-opt-adder">
+                  <div className="col-opt-colors">
+                    {COLOR_OPTS.map(c => (
+                      <button key={c} type="button"
+                        className={`col-opt-dot${addOptColor === c ? ' sel' : ''}`}
+                        style={{ background: COLOR_VARS[c] }}
+                        onClick={() => setAddOptColor(c)}
+                        title={c}
+                      />
+                    ))}
+                  </div>
+                  <div className="col-opt-row">
+                    <input
+                      className="modal-input col-opt-input"
+                      placeholder="Nome da opção…"
+                      value={addOptInput}
+                      onChange={e => setAddOptInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addOptionToForm() } }}
+                    />
+                    <button className="btn-confirm col-opt-add-btn" type="button" onClick={addOptionToForm} disabled={!addOptInput.trim()}>
+                      Adicionar
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
             <div className="modal-actions">
               {isEditingColumn ? (
                 <>
-                  <button className="btn-cancel col-delete-btn" onClick={() => removeColumn(colModal)}>
+                  <button className="btn-cancel col-delete-btn" onClick={() => setDeleteConfirm({ type: 'col', id: colModal, nome: colForm.name })}>
                     <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', strokeWidth: 2, fill: 'none' }}><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
                   </button>
                   <button className="btn-cancel" onClick={() => setColModal(null)}>Cancelar</button>
@@ -822,6 +849,33 @@ export default function CRM() {
                   <button className="btn-confirm" onClick={confirmNewColumn}>Criar coluna</button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmação de exclusão (linha ou coluna) */}
+      {deleteConfirm && (
+        <div className="modal-overlay" style={{ zIndex: 100 }} onClick={e => { if (e.target === e.currentTarget) setDeleteConfirm(null) }}>
+          <div className="modal">
+            <div className="modal-title">
+              {deleteConfirm.type === 'row' ? 'Excluir registro' : 'Excluir coluna'}
+            </div>
+            {deleteConfirm.nome && (
+              <p className="modal-delete-name">{deleteConfirm.nome}</p>
+            )}
+            <p className="modal-delete-warn">
+              {deleteConfirm.type === 'col'
+                ? 'Todos os dados desta coluna em todos os registros serão perdidos.'
+                : 'Essa ação não pode ser desfeita.'}
+            </p>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setDeleteConfirm(null)}>Cancelar</button>
+              <button className="btn-danger" onClick={() => {
+                if (deleteConfirm.type === 'row') removeRow(deleteConfirm.id)
+                else removeColumn(deleteConfirm.id)
+                setDeleteConfirm(null)
+              }}>Excluir</button>
             </div>
           </div>
         </div>

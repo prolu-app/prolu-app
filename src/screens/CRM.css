@@ -113,6 +113,21 @@
 
 .col-type-pills { display: flex; gap: 8px; flex-wrap: wrap; }
 
+/* ── form inline de adicionar opção ao criar/editar coluna ── */
+.col-opt-adder { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.col-opt-colors { display: flex; gap: 6px; align-items: center; }
+.col-opt-dot {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer; padding: 0; flex-shrink: 0;
+  transition: transform 0.12s, border-color 0.12s;
+}
+.col-opt-dot:hover { transform: scale(1.2); }
+.col-opt-dot.sel { border-color: var(--ink); transform: scale(1.15); }
+.col-opt-row { display: flex; gap: 8px; align-items: center; }
+.col-opt-input { flex: 1; }
+.col-opt-add-btn { flex-shrink: 0; padding: 11px 14px; font-size: 13px; }
+
 /* ── seletor de colunas visíveis ── */
 .crm-col-vis-wrap { position: relative; }
 .crm-col-vis-btn.active { color: var(--ink); }

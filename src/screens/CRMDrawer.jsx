@@ -207,6 +207,7 @@ export default function CRMDrawer({ row, columns, onClose, onUpdateCell, onAddOp
   const [commentLoading, setCommentLoading] = useState(false)
   const [newComment, setNewComment] = useState('')
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const listRef = useRef(null)
 
   const clienteCol = columns.find(c => c.slug === 'cliente')
@@ -258,12 +259,24 @@ export default function CRMDrawer({ row, columns, onClose, onUpdateCell, onAddOp
   }
 
   function handleDelete() {
-    if (!window.confirm('Excluir esta oportunidade?')) return
-    onDelete()
+    setConfirmDelete(true)
   }
 
   return createPortal(
     <>
+      {confirmDelete && (
+        <div className="modal-overlay" style={{ zIndex: 100 }} onClick={e => { if (e.target === e.currentTarget) setConfirmDelete(false) }}>
+          <div className="modal">
+            <div className="modal-title">Excluir registro</div>
+            <p className="modal-delete-name">{titulo}</p>
+            <p className="modal-delete-warn">Essa ação não pode ser desfeita.</p>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setConfirmDelete(false)}>Cancelar</button>
+              <button className="btn-danger" onClick={() => { onDelete(); setConfirmDelete(false) }}>Excluir</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="drawer-scrim" onClick={onClose} aria-hidden="true" />
       <div className="crm-drawer" role="dialog" aria-modal="true" aria-label={titulo}>
 

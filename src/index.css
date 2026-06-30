@@ -262,6 +262,33 @@ textarea.modal-input { resize: none; min-height: 70px; line-height: 1.5; }
 .modal-actions { display: flex; gap: 10px; margin-top: 22px; }
 .modal-actions .btn-cancel { flex: 1; }
 .modal-actions .btn-confirm { flex: 2; }
+.modal-actions .btn-danger { flex: 2; }
+
+.btn-danger {
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 11px 18px;
+  background: var(--red, #d94f4f);
+  color: var(--white);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn-danger:hover { opacity: 0.85; }
+
+.modal-delete-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.modal-delete-warn {
+  font-size: 13.5px;
+  color: var(--ink-60);
+  margin-bottom: 0;
+}
 
 /* ───────── Toast ───────── */
 .toast {
