@@ -24,10 +24,14 @@ const FIXED_COLS_DEF = [
     { value: 'Corporativo', color: 'violet' },
   ]},
   { nome: 'Tipo de projeto',   tipo: 'select', slug: 'tipo_projeto',    ordem: 4, editableOptions: true, items: [
-    { value: 'Interiores',                  color: 'green'  },
     { value: 'Arquitetônico',               color: 'blue'   },
+    { value: 'Interiores',                  color: 'green'  },
     { value: 'Arquitetônico + Interiores',  color: 'violet' },
-    { value: 'Projeto Executivo',           color: 'gray'   },
+    { value: 'Reforma',                     color: 'orange' },
+    { value: 'Reforma + Interiores',        color: 'gray'   },
+    { value: 'Interiores + Acomp',          color: 'green'  },
+    { value: 'Arquitetônico + Acomp',       color: 'blue'   },
+    { value: 'Arq + Int + Acomp',           color: 'violet' },
   ]},
   { nome: 'Origem',            tipo: 'select', slug: 'origem',          ordem: 5, editableOptions: true, items: [
     { value: 'Indicação', color: 'green' }, { value: 'Instagram', color: 'violet' },
@@ -168,7 +172,7 @@ function InlineClientField({ value, col, onCommit, clientes, user, onClientCreat
 }
 
 // ── Edição inline de célula ──
-function InlineCell({ row, col, isEditing, onActivate, onCommit, onSaveImmediate, clientes, user, onClientCreate }) {
+function InlineCell({ row, col, isEditing, onActivate, onCommit, onSaveImmediate, clientes, user, onClientCreate, onEditOptions }) {
   const [localVal, setLocalVal] = useState('')
 
   useEffect(() => {
@@ -210,10 +214,14 @@ function InlineCell({ row, col, isEditing, onActivate, onCommit, onSaveImmediate
         className="cell-input cell-select"
         autoFocus
         value={localVal}
-        onChange={e => commit(e.target.value)}
+        onChange={e => {
+          if (e.target.value === '__edit__') { onEditOptions?.(col); return }
+          commit(e.target.value)
+        }}
       >
         <option value="">—</option>
         {(col.options || []).map(o => <option key={o.value} value={o.value}>{o.value}</option>)}
+        {col.editableOptions && <option value="__edit__" style={{ color: 'var(--ink-40)', fontStyle: 'italic' }}>✏ Editar lista…</option>}
       </select>
     )
   }
@@ -580,6 +588,7 @@ export default function CRM() {
                       clientes={clientes}
                       user={user}
                       onClientCreate={newClient => setClientes(prev => [...prev, newClient].sort((a, b) => a.nome.localeCompare(b.nome)))}
+                      onEditOptions={col => { setActiveCell(null); openOptionsModal(col) }}
                     />
                   </td>
                 ))}
