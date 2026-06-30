@@ -162,10 +162,11 @@
 
 /* Main */
 .main {
-  flex: 1;
   margin-left: var(--sidebar-w);
   padding: 38px 44px 90px;
-  width: 100%;
+  min-width: 0;
+  max-width: calc(100% - var(--sidebar-w));
+  box-sizing: border-box;
 }
 
 /* Cabeçalho de página padrão */
@@ -190,6 +191,6 @@
   }
   .sidebar.open { transform: translateX(0); }
   .drawer-close { display: flex; }
-  .main { margin-left: 0; padding: 78px 16px 110px; }
+  .main { margin-left: 0; padding: 78px 16px 110px; max-width: 100%; }
   .page-title { font-size: 28px; }
 }

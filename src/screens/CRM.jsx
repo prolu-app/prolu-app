@@ -335,7 +335,7 @@ export default function CRM() {
 
     // Insere colunas fixas que estejam faltando (adicionadas ao FIXED_COLS_DEF depois do seed inicial)
     let parsedCols = (cols || []).map(parseCol)
-    const missing = FIXED_COLS_DEF.filter(def => !parsedCols.some(c => c.slug === def.slug))
+    const missing = FIXED_COLS_DEF.filter(def => !parsedCols.some(c => c.slug === def.slug || c.name === def.nome))
     if (missing.length > 0) {
       const payload = missing.map(c => ({
         empresa_id: user.empresaId, nome: c.nome, tipo: c.tipo, ordem: c.ordem, fixo: true,
