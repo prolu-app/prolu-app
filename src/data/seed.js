@@ -99,10 +99,14 @@ export const CRM_COLUMNS = [
     id: '__tipo',       name: 'Tipo de projeto',    type: 'select', fixed: true,
     slug: 'tipo_projeto',    width: 170, editableOptions: true,
     options: [
-      { value: 'Interiores',                 color: 'green'  },
-      { value: 'Arquitetônico',              color: 'blue'   },
-      { value: 'Arquitetônico + Interiores', color: 'violet' },
-      { value: 'Projeto Executivo',          color: 'gray'   },
+      { value: 'Arquitetônico',               color: 'blue'   },
+      { value: 'Interiores',                  color: 'green'  },
+      { value: 'Arquitetônico + Interiores',  color: 'violet' },
+      { value: 'Reforma',                     color: 'orange' },
+      { value: 'Reforma + Interiores',        color: 'gray'   },
+      { value: 'Interiores + Acomp',          color: 'green'  },
+      { value: 'Arquitetônico + Acomp',       color: 'blue'   },
+      { value: 'Arq + Int + Acomp',           color: 'violet' },
     ],
   },
   {

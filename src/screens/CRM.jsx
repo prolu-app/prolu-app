@@ -332,7 +332,20 @@ export default function CRM() {
       setRows((lin2 || []).map(flattenRow))
       return
     }
-    setColumns((cols || []).map(parseCol).sort((a, b) => a.ordem - b.ordem))
+
+    // Insere colunas fixas que estejam faltando (adicionadas ao FIXED_COLS_DEF depois do seed inicial)
+    let parsedCols = (cols || []).map(parseCol)
+    const missing = FIXED_COLS_DEF.filter(def => !parsedCols.some(c => c.slug === def.slug))
+    if (missing.length > 0) {
+      const payload = missing.map(c => ({
+        empresa_id: user.empresaId, nome: c.nome, tipo: c.tipo, ordem: c.ordem, fixo: true,
+        opcoes: { fixed: true, slug: c.slug, editableOptions: c.editableOptions !== false, items: c.items || [] },
+      }))
+      const { data: newCols } = await supabase.from('crm_colunas').insert(payload).select('*')
+      if (newCols) parsedCols = [...parsedCols, ...newCols.map(parseCol)]
+    }
+
+    setColumns(parsedCols.sort((a, b) => a.ordem - b.ordem))
     setRows((lin || []).map(flattenRow))
     setLoading(false)
   }
