@@ -291,9 +291,11 @@ export default function CRM() {
   const [activeCell, setActiveCell] = useState(null) // { rowId, colId }
   const [colModal, setColModal] = useState(null)
   const [colForm, setColForm] = useState({ name: '', type: 'text', options: [] })
-  const [optionsModal, setOptionsModal] = useState(null) // col sendo editada
-  const [optionsForm, setOptionsForm] = useState([])     // cópia editável das opções
+  const [optionsModal, setOptionsModal] = useState(null)
+  const [optionsForm, setOptionsForm] = useState([])
   const [newOptName, setNewOptName] = useState('')
+  const [hiddenCols, setHiddenCols] = useState(new Set())
+  const [colVisOpen, setColVisOpen] = useState(false)
 
   const statusCol      = useMemo(() => columns.find(c => c.slug === 'status'), [columns])
   const clienteCol     = useMemo(() => columns.find(c => c.slug === 'cliente'), [columns])
@@ -303,6 +305,10 @@ export default function CRM() {
 
   useEffect(() => { carregar() }, [user?.empresaId])
   useEffect(() => { if (supabaseReady && user?.empresaId) loadClientes() }, [user?.empresaId])
+  useEffect(() => {
+    const key = `crm_hidden_cols_${user?.empresaId || 'demo'}`
+    try { const s = localStorage.getItem(key); if (s) setHiddenCols(new Set(JSON.parse(s))) } catch {}
+  }, [user?.empresaId])
 
   async function loadClientes() {
     const { data } = await supabase.from('clientes').select('id, nome').eq('empresa_id', user.empresaId).order('nome')
@@ -532,6 +538,18 @@ export default function CRM() {
     return true
   }), [sorted, search, statusFilter, statusCol])
 
+  const visibleCols = useMemo(() => columns.filter(c => !hiddenCols.has(c.id)), [columns, hiddenCols])
+
+  function toggleColVis(colId) {
+    setHiddenCols(prev => {
+      const next = new Set(prev)
+      if (next.has(colId)) next.delete(colId)
+      else next.add(colId)
+      localStorage.setItem(`crm_hidden_cols_${user?.empresaId || 'demo'}`, JSON.stringify([...next]))
+      return next
+    })
+  }
+
   if (loading) return (
     <div className="page-header">
       <div className="page-title">CRM</div>
@@ -563,6 +581,32 @@ export default function CRM() {
             </button>
           ))}
         </div>
+        <div className="crm-col-vis-wrap">
+          <button className={`crm-addcol-btn crm-col-vis-btn${colVisOpen ? ' active' : ''}`} onClick={() => setColVisOpen(v => !v)}>
+            <svg viewBox="0 0 24 24"><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
+            Colunas{hiddenCols.size > 0 ? ` (${columns.length - hiddenCols.size}/${columns.length})` : ''}
+          </button>
+          {colVisOpen && (
+            <>
+              <div className="crm-col-vis-scrim" onClick={() => setColVisOpen(false)} />
+              <div className="crm-col-vis-dropdown">
+                <div className="crm-col-vis-title">Colunas visíveis</div>
+                {columns.map(c => (
+                  <label key={c.id} className="crm-col-vis-item">
+                    <input type="checkbox" checked={!hiddenCols.has(c.id)} onChange={() => toggleColVis(c.id)} />
+                    <span>{c.name}</span>
+                  </label>
+                ))}
+                {hiddenCols.size > 0 && (
+                  <button className="crm-col-vis-reset" onClick={() => {
+                    setHiddenCols(new Set())
+                    localStorage.removeItem(`crm_hidden_cols_${user?.empresaId || 'demo'}`)
+                  }}>Mostrar todas</button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
         <button className="crm-addcol-btn" onClick={openNewColumn}><IconPlus /> Nova coluna</button>
       </div>
 
@@ -571,7 +615,7 @@ export default function CRM() {
         <table className="crm-table">
           <thead>
             <tr>
-              {columns.map(c => (
+              {visibleCols.map(c => (
                 <th key={c.id} style={{ minWidth: c.width }}>
                   {c.fixed ? (
                     <span className="th-label th-fixed">{c.name}</span>
@@ -583,13 +627,13 @@ export default function CRM() {
                   )}
                 </th>
               ))}
-              <th style={{ width: 68 }} />
+              <th className="th-actions" />
             </tr>
           </thead>
           <tbody>
             {filtered.map(row => (
               <tr key={row.id}>
-                {columns.map(col => (
+                {visibleCols.map(col => (
                   <td key={col.id}>
                     <InlineCell
                       row={row}
@@ -605,7 +649,7 @@ export default function CRM() {
                     />
                   </td>
                 ))}
-                <td>
+                <td className="td-actions">
                   <div className="row-actions">
                     <button
                       className="row-open-btn"
@@ -634,14 +678,14 @@ export default function CRM() {
             {/* Linha fantasma */}
             {statusFilter === 'all' && !search && (
               <tr className="crm-phantom-row" onClick={addRow} title="Clique para adicionar registro">
-                {columns.map(col => (
+                {visibleCols.map(col => (
                   <td key={col.id}>
                     {col.slug === 'data_entrada' && (
                       <span className="cell-phantom">{fmtDate(todayISO())}</span>
                     )}
                   </td>
                 ))}
-                <td />
+                <td className="td-actions" />
               </tr>
             )}
           </tbody>
