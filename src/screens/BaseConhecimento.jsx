@@ -344,13 +344,15 @@ export default function BaseConhecimento() {
               <div className="folder-card" key={p.id} onClick={() => setCurrentPastaId(p.id)}>
                 <div className={`folder-cover ${COVER_CLASS[p.cover] || 'cover-green'}`}>
                   <div className="folder-icon"><IconBase /></div>
-                  {isProluAdmin && (
-                    <div className="folder-admin-actions" onClick={e => e.stopPropagation()}>
-                      <button className="folder-admin-btn" onClick={() => openEditPasta(p)} title="Editar pasta"><IconEdit /></button>
-                      <button className="folder-admin-btn" onClick={() => setDeleteModal({ type: 'pasta', id: p.id, nome: p.title })} title="Excluir pasta"><IconTrash /></button>
-                    </div>
-                  )}
-                  <div className="folder-count">{p.modules.length} módulos</div>
+                  <div className="folder-cover-end">
+                    {isProluAdmin && (
+                      <div className="folder-admin-actions" onClick={e => e.stopPropagation()}>
+                        <button className="folder-admin-btn" onClick={() => openEditPasta(p)} title="Editar pasta"><IconEdit /></button>
+                        <button className="folder-admin-btn" onClick={() => setDeleteModal({ type: 'pasta', id: p.id, nome: p.title })} title="Excluir pasta"><IconTrash /></button>
+                      </div>
+                    )}
+                    <div className="folder-count">{p.modules.length} módulos</div>
+                  </div>
                 </div>
                 <div className="folder-body">
                   <div className="folder-title">{p.title}</div>
@@ -420,6 +422,12 @@ export default function BaseConhecimento() {
             {nextLesson ? `Continue de onde parou: ${nextLesson.title}` : 'Você concluiu todas as aulas deste curso 🎉'}
           </div>
         </div>
+        {isProluAdmin && (
+          <div className="kb-pasta-admin">
+            <button className="kb-pasta-admin-btn" onClick={() => openEditPasta(pasta)} title="Editar pasta"><IconEdit /></button>
+            <button className="kb-pasta-admin-btn" onClick={() => setDeleteModal({ type: 'pasta', id: pasta.id, nome: pasta.title })} title="Excluir pasta"><IconTrash /></button>
+          </div>
+        )}
       </div>
 
       {pasta.modules.map((m, idx) => {

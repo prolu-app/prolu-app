@@ -21,12 +21,19 @@
 .folder-card-add:hover { background: var(--green-soft); color: var(--ink); box-shadow: var(--shadow-rest); }
 .folder-card-add svg { width: 24px; height: 24px; stroke: currentColor; stroke-width: 1.8; fill: none; }
 
-/* ── admin actions overlay na capa da pasta ── */
-.folder-admin-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }
-.folder-card:hover .folder-admin-actions { opacity: 1; }
-.folder-admin-btn { width: 26px; height: 26px; border-radius: 7px; border: none; background: rgba(255,255,255,0.2); backdrop-filter: blur(4px); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; padding: 0; }
+/* ── admin actions na capa da pasta (desktop hover) ── */
+.folder-cover-end { display: flex; align-items: center; }
+.folder-admin-actions { max-width: 0; overflow: hidden; display: flex; gap: 4px; flex-shrink: 0; transition: max-width 0.2s ease, margin-right 0.2s ease; }
+.folder-card:hover .folder-admin-actions { max-width: 64px; margin-right: 6px; }
+.folder-admin-btn { width: 26px; height: 26px; border-radius: 7px; border: none; background: rgba(255,255,255,0.2); backdrop-filter: blur(4px); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; padding: 0; flex-shrink: 0; }
 .folder-admin-btn:hover { background: rgba(255,255,255,0.38); }
 .folder-admin-btn svg { width: 11px; height: 11px; stroke: currentColor; stroke-width: 2; fill: none; }
+
+/* ── botões de editar/excluir pasta no banner de progresso (sempre visíveis) ── */
+.kb-pasta-admin { display: flex; gap: 6px; margin-left: auto; align-self: flex-start; flex-shrink: 0; }
+.kb-pasta-admin-btn { width: 30px; height: 30px; border-radius: 9px; border: none; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.55); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s, color 0.15s; padding: 0; }
+.kb-pasta-admin-btn:hover { background: rgba(255,255,255,0.22); color: var(--white); }
+.kb-pasta-admin-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
 
 /* ── admin actions nas linhas de aula ── */
 .lesson-admin-actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; flex-shrink: 0; }
@@ -121,6 +128,7 @@
   .folders-grid { grid-template-columns: 1fr 1fr; }
   .kb-new-btn { display: none; }
   .lesson-row, .add-lesson-row { padding-left: 22px; }
+  .folder-admin-actions { display: none; }
 }
 @media (max-width: 480px) {
   .folders-grid { grid-template-columns: 1fr; }
