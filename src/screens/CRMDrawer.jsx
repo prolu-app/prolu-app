@@ -281,6 +281,9 @@ export default function CRMDrawer({ row, columns, onClose, onUpdateCell, onAddOp
             <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
           </button>
           <div className="dr-title">{titulo}</div>
+          <button className="dr-delete-btn" onClick={handleDelete} aria-label="Excluir registro" title="Excluir registro">
+            <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
+          </button>
         </div>
 
         {/* Corpo rolável */}
@@ -320,10 +323,6 @@ export default function CRMDrawer({ row, columns, onClose, onUpdateCell, onAddOp
             ))}
           </div>
 
-          {/* Excluir */}
-          <button className="dr-delete-text-btn" onClick={handleDelete}>
-            Excluir este registro
-          </button>
         </div>
 
         {/* Footer fixo — adicionar comentário */}

@@ -61,20 +61,22 @@
 .dr-back-btn:hover { background: var(--gray-soft); color: var(--ink); }
 .dr-back-btn svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
 
-.dr-delete-text-btn {
-  background: none;
+.dr-delete-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   border: none;
+  background: none;
   cursor: pointer;
-  color: var(--red, #d94f4f);
-  font-family: inherit;
-  font-size: 13px;
-  padding: 4px 0;
-  opacity: 0.6;
-  transition: opacity 0.15s;
-  text-align: left;
-  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-40);
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
 }
-.dr-delete-text-btn:hover { opacity: 1; }
+.dr-delete-btn:hover { background: var(--red-soft, #fdeaea); color: var(--red, #d94f4f); }
+.dr-delete-btn svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 1.8; fill: none; }
 
 /* ── body ── */
 .dr-body {
