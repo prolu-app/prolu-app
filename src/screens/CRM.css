@@ -34,18 +34,18 @@
 .col-delete-btn { flex: 0 !important; width: 42px; display: flex; align-items: center; justify-content: center; padding: 11px !important; color: var(--red); background: var(--red-soft) !important; }
 .col-delete-btn:hover { background: #fad9d9 !important; }
 .col-delete-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
-.crm-table td { padding: 0; border-bottom: 1px solid var(--ink-divider); vertical-align: middle; }
+.crm-table td { padding: 2px; border-bottom: 1px solid var(--ink-divider); vertical-align: middle; }
 .crm-table tr:last-child td { border-bottom: none; }
 .crm-table tbody tr:hover td { background: #fafaf6; }
 .crm-clickable-row { cursor: pointer; }
-.cell-display { padding: 12px 16px; min-height: 20px; }
+.cell-display { padding: 10px 14px; min-height: 20px; border-radius: var(--r-sm); }
 .cell-clickable { cursor: pointer; }
-.cell-clickable:hover { background: rgba(18, 18, 16, 0.03); }
+.cell-clickable:hover { background: #fafaf6; border-radius: var(--r-sm); }
 .cell-empty { color: var(--ink-40); }
-.cell-input { width: 100%; border: none; outline: none; background: var(--green-soft); font-family: inherit; font-size: 13.5px; padding: 12px 16px; box-shadow: inset 0 0 0 2px var(--green); display: block; box-sizing: border-box; }
+.cell-input { width: 100%; border: none; outline: none; background: #f8f8f4; font-family: inherit; font-size: 13.5px; padding: 10px 14px; box-shadow: 0 0 0 2px var(--green); border-radius: var(--r-sm); display: block; box-sizing: border-box; }
 .cell-select { appearance: auto; cursor: pointer; height: 100%; }
 .cell-client-wrap { position: relative; }
-.cell-tags-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 8px 12px; min-height: 44px; background: var(--green-soft); box-shadow: inset 0 0 0 2px var(--green); }
+.cell-tags-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 8px 12px; min-height: 44px; background: #f8f8f4; box-shadow: 0 0 0 2px var(--green); border-radius: var(--r-sm); }
 .td-actions {
   position: sticky;
   right: 0;
