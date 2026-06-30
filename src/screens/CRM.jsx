@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { CRM_COLUMNS, CRM_ROWS } from '../data/seed.js'
 import { IconPlus, IconSearch, IconEdit, IconClose } from '../components/Icons.jsx'
+import { SelectDropdown } from '../components/SelectDropdown.jsx'
 import CRMDrawer from './CRMDrawer.jsx'
 import './CRM.css'
 
@@ -187,6 +188,19 @@ function InlineCell({ row, col, isEditing, onActivate, onCommit, onSaveImmediate
     onCommit(parsed)
   }
 
+  // Select: sempre renderiza como dropdown customizado, sem precisar de isEditing
+  if (col.type === 'select') {
+    return (
+      <SelectDropdown
+        col={col}
+        value={row[col.id] || ''}
+        onChange={v => onCommit(v)}
+        onEditOptions={onEditOptions}
+        variant="cell"
+      />
+    )
+  }
+
   if (!isEditing) {
     return (
       <div className="cell-display cell-clickable" onClick={onActivate}>
@@ -205,24 +219,6 @@ function InlineCell({ row, col, isEditing, onActivate, onCommit, onSaveImmediate
         onChange={e => setLocalVal(e.target.value)}
         onBlur={e => commit(e.target.value)}
       />
-    )
-  }
-
-  if (col.type === 'select') {
-    return (
-      <select
-        className="cell-input cell-select"
-        autoFocus
-        value={localVal}
-        onChange={e => {
-          if (e.target.value === '__edit__') { onEditOptions?.(col); return }
-          commit(e.target.value)
-        }}
-      >
-        <option value="">—</option>
-        {(col.options || []).map(o => <option key={o.value} value={o.value}>{o.value}</option>)}
-        {col.editableOptions && <option value="__edit__" style={{ color: 'var(--ink-40)', fontStyle: 'italic' }}>✏ Editar lista…</option>}
-      </select>
     )
   }
 

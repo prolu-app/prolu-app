@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { IconClose } from '../components/Icons.jsx'
+import { SelectDropdown } from '../components/SelectDropdown.jsx'
 import './CRMDrawer.css'
 
 function fmtDateTime(iso) {
@@ -171,25 +172,16 @@ function DrawerField({ col, value, onChange, onAddOption, clientes, user, onClie
 
   // ── select ──
   if (col.type === 'select') {
-    const opts = col.options || []
     return (
       <div className="dr-field">
         <label className="dr-label">{col.name}</label>
-        <div className="dr-select-wrap">
-          <select
-            className="dr-select"
-            value={localVal}
-            onChange={e => { setLocalVal(e.target.value); onChange(col, e.target.value) }}
-          >
-            <option value="">—</option>
-            {opts.map(o => <option key={o.value} value={o.value}>{o.value}</option>)}
-          </select>
-          {col.editableOptions && (
-            <button className="dr-select-add" type="button" onClick={() => onAddOption(col)} title="Editar lista de opções">
-              <svg viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-            </button>
-          )}
-        </div>
+        <SelectDropdown
+          col={col}
+          value={value || ''}
+          onChange={v => onChange(col, v)}
+          onEditOptions={onAddOption}
+          variant="field"
+        />
       </div>
     )
   }
