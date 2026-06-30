@@ -23,7 +23,7 @@
   border-radius: 6px;
 }
 .sd-cell .sd-trigger:hover { background: #fafaf6; border-radius: 6px; }
-.sd-cell .sd-trigger.sd-open { background: #f8f8f4; box-shadow: 0 0 0 1.5px var(--green); border-radius: 6px; }
+.sd-cell .sd-trigger.sd-open { background: #f8f8f4; box-shadow: 0 0 0 1.5px var(--ink-divider); border-radius: 6px; }
 
 /* variante campo do drawer */
 .sd-field .sd-trigger {

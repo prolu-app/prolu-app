@@ -42,10 +42,10 @@
 .cell-clickable { cursor: pointer; }
 .cell-clickable:hover { background: #fafaf6; border-radius: 6px; }
 .cell-empty { color: var(--ink-40); }
-.cell-input { width: 100%; border: none; outline: none; background: #f8f8f4; font-family: inherit; font-size: 13.5px; padding: 10px 14px; box-shadow: 0 0 0 1.5px var(--green); border-radius: 6px; display: block; box-sizing: border-box; }
+.cell-input { width: 100%; border: none; outline: none; background: #f8f8f4; font-family: inherit; font-size: 13.5px; padding: 10px 14px; box-shadow: 0 0 0 1.5px var(--ink-divider); border-radius: 6px; display: block; box-sizing: border-box; }
 .cell-select { appearance: auto; cursor: pointer; height: 100%; }
 .cell-client-wrap { position: relative; }
-.cell-tags-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 8px 12px; min-height: 44px; background: #f8f8f4; box-shadow: 0 0 0 1.5px var(--green); border-radius: 6px; }
+.cell-tags-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 8px 12px; min-height: 44px; background: #f8f8f4; box-shadow: 0 0 0 1.5px var(--ink-divider); border-radius: 6px; }
 .td-actions {
   position: sticky;
   right: 0;
