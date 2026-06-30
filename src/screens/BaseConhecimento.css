@@ -21,6 +21,17 @@
 .folder-card-add:hover { background: var(--green-soft); color: var(--ink); box-shadow: var(--shadow-rest); }
 .folder-card-add svg { width: 24px; height: 24px; stroke: currentColor; stroke-width: 1.8; fill: none; }
 
+/* ── admin actions overlay na capa da pasta ── */
+.folder-admin-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }
+.folder-card:hover .folder-admin-actions { opacity: 1; }
+.folder-admin-btn { width: 26px; height: 26px; border-radius: 7px; border: none; background: rgba(255,255,255,0.2); backdrop-filter: blur(4px); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; padding: 0; }
+.folder-admin-btn:hover { background: rgba(255,255,255,0.38); }
+.folder-admin-btn svg { width: 11px; height: 11px; stroke: currentColor; stroke-width: 2; fill: none; }
+
+/* ── admin actions nas linhas de aula ── */
+.lesson-admin-actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; flex-shrink: 0; }
+.lesson-row:hover .lesson-admin-actions { opacity: 1; }
+
 /* ── dentro da pasta ── */
 .back-link { display: flex; align-items: center; gap: 7px; color: var(--ink-60); font-size: 13px; cursor: pointer; margin-bottom: 18px; width: fit-content; transition: color 0.15s; }
 .back-link:hover { color: var(--ink); }
