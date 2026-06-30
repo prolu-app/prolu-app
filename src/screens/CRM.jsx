@@ -408,7 +408,6 @@ export default function CRM() {
     if (!supabaseReady || !user?.empresaId) {
       const id = 'r' + Date.now()
       setRows(prev => [...prev, { id, ...novosValores }])
-      setDrawerRowId(id)
       return
     }
     const { data, error } = await supabase
@@ -417,7 +416,6 @@ export default function CRM() {
       .select('*').single()
     if (error) { toast('Não foi possível criar a linha'); return }
     setRows(prev => [...prev, flattenRow(data)])
-    setDrawerRowId(data.id)
     toast('Linha criada')
   }
 
