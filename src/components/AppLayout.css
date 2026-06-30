@@ -163,6 +163,7 @@
 /* Main */
 .main {
   margin-left: var(--sidebar-w);
+  flex: 1;
   padding: 38px 44px 90px;
   min-width: 0;
   max-width: calc(100% - var(--sidebar-w));
