@@ -23,7 +23,7 @@ function buildPastas(pastasData, modulosData, aulasData, pdfsData, progressoData
   const pdfsByAula = {}
   ;(pdfsData || []).forEach(p => {
     if (!pdfsByAula[p.aula_id]) pdfsByAula[p.aula_id] = []
-    pdfsByAula[p.aula_id].push({ id: p.id, nome: p.nome, url: p.url })
+    pdfsByAula[p.aula_id].push({ id: p.id, nome: p.nome, url: p.arquivo_url })
   })
 
   const aulasByModulo = {}
@@ -54,9 +54,9 @@ function buildPastas(pastasData, modulosData, aulasData, pdfsData, progressoData
   return (pastasData || [])
     .map(p => ({
       id: p.id,
-      title: p.nome,
+      title: p.titulo,
       sub: p.subtitulo || '',
-      cover: p.cor || 'green',
+      cover: p.cor_capa || 'green',
       ordem: p.ordem || 0,
       modules: (modulosByPasta[p.id] || []).sort((a, b) => a.ordem - b.ordem),
     }))
@@ -184,16 +184,16 @@ export default function BaseConhecimento() {
       return
     }
     if (editing) {
-      const { error } = await supabase.from('kb_pastas').update({ nome: nome.trim(), subtitulo: subtitulo.trim(), cor }).eq('id', pastaModal)
+      const { error } = await supabase.from('kb_pastas').update({ titulo: nome.trim(), subtitulo: subtitulo.trim(), cor_capa: cor }).eq('id', pastaModal)
       if (error) { toast('Erro ao salvar'); return }
       setPastas(prev => prev.map(p => p.id !== pastaModal ? p : { ...p, title: nome.trim(), sub: subtitulo.trim(), cover: cor }))
       toast('Pasta atualizada')
     } else {
       const { data, error } = await supabase.from('kb_pastas')
-        .insert({ nome: nome.trim(), subtitulo: subtitulo.trim(), cor, ordem: pastas.length })
+        .insert({ titulo: nome.trim(), subtitulo: subtitulo.trim(), cor_capa: cor, ordem: pastas.length })
         .select('*').single()
       if (error) { toast('Erro ao criar pasta'); return }
-      setPastas(prev => [...prev, { id: data.id, title: data.nome, sub: data.subtitulo || '', cover: data.cor, ordem: data.ordem, modules: [] }])
+      setPastas(prev => [...prev, { id: data.id, title: data.titulo, sub: data.subtitulo || '', cover: data.cor_capa, ordem: data.ordem, modules: [] }])
       toast('Pasta criada')
     }
     setPastaModal(null)
