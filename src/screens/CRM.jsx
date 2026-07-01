@@ -38,21 +38,21 @@ const FIXED_COLS_DEF = [
     { value: 'Indicação', color: 'green' }, { value: 'Instagram', color: 'violet' },
     { value: 'Google',    color: 'blue'  }, { value: 'Site',      color: 'orange' },
   ]},
-  { nome: 'Valor da proposta', tipo: 'money',  slug: 'valor',           ordem: 6 },
-  { nome: 'Recebeu proposta?', tipo: 'select', slug: 'proposta',        ordem: 7, editableOptions: false, items: [
+  { nome: 'ICP',               tipo: 'select', slug: 'icp',            ordem: 6, editableOptions: false, items: [
+    { value: 'Sim', color: 'green' }, { value: 'Não', color: 'red' },
+  ]},
+  { nome: 'Valor da proposta', tipo: 'money',  slug: 'valor',           ordem: 7 },
+  { nome: 'Recebeu proposta?', tipo: 'select', slug: 'proposta',        ordem: 8, editableOptions: false, items: [
     { value: 'Sim', color: 'green' }, { value: 'Não', color: 'red' }, { value: 'Pendente', color: 'orange' },
   ]},
-  { nome: 'Status',            tipo: 'select', slug: 'status',          ordem: 8, editableOptions: false, items: [
+  { nome: 'Status',            tipo: 'select', slug: 'status',          ordem: 9, editableOptions: false, items: [
     { value: 'Pedido de orçamento', color: 'blue'   },
     { value: 'Aguardando',          color: 'orange' },
     { value: 'Proposta enviada',    color: 'violet' },
     { value: 'Fechado',             color: 'green'  },
     { value: 'Perdido',             color: 'gray'   },
   ]},
-  { nome: 'Data de fechamento', tipo: 'date',  slug: 'data_fechamento', ordem: 9 },
-  { nome: 'ICP',               tipo: 'select', slug: 'icp',            ordem: 10, editableOptions: false, items: [
-    { value: 'Sim', color: 'green' }, { value: 'Não', color: 'red' },
-  ]},
+  { nome: 'Data de fechamento', tipo: 'date',  slug: 'data_fechamento', ordem: 10 },
 ]
 
 function todayISO() { return new Date().toISOString().split('T')[0] }
@@ -351,6 +351,22 @@ export default function CRM() {
       }))
       const { data: newCols } = await supabase.from('crm_colunas').insert(payload).select('*')
       if (newCols) parsedCols = [...parsedCols, ...newCols.map(parseCol)]
+    }
+
+    // Sincroniza ordem de colunas fixas cujo posicionamento mudou no FIXED_COLS_DEF
+    const toReorder = parsedCols.filter(c => {
+      const def = FIXED_COLS_DEF.find(d => d.slug === c.slug)
+      return def && def.ordem !== c.ordem
+    })
+    if (toReorder.length > 0) {
+      await Promise.all(toReorder.map(c => {
+        const def = FIXED_COLS_DEF.find(d => d.slug === c.slug)
+        return supabase.from('crm_colunas').update({ ordem: def.ordem }).eq('id', c.id)
+      }))
+      toReorder.forEach(c => {
+        const def = FIXED_COLS_DEF.find(d => d.slug === c.slug)
+        c.ordem = def.ordem
+      })
     }
 
     setColumns(parsedCols.sort((a, b) => a.ordem - b.ordem))
