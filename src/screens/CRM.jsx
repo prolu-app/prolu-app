@@ -50,6 +50,9 @@ const FIXED_COLS_DEF = [
     { value: 'Perdido',             color: 'gray'   },
   ]},
   { nome: 'Data de fechamento', tipo: 'date',  slug: 'data_fechamento', ordem: 9 },
+  { nome: 'ICP',               tipo: 'select', slug: 'icp',            ordem: 10, editableOptions: false, items: [
+    { value: 'Sim', color: 'green' }, { value: 'Não', color: 'red' },
+  ]},
 ]
 
 function todayISO() { return new Date().toISOString().split('T')[0] }
