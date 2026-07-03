@@ -5,6 +5,7 @@ import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { CRM_COLUMNS, CRM_ROWS } from '../data/seed.js'
 import { IconPlus, IconSearch, IconEdit, IconClose } from '../components/Icons.jsx'
 import { SelectDropdown } from '../components/SelectDropdown.jsx'
+import { DatePicker } from '../components/DatePicker.jsx'
 import CRMDrawer from './CRMDrawer.jsx'
 import './CRM.css'
 
@@ -191,7 +192,7 @@ function InlineCell({ row, col, isEditing, onActivate, onCommit, onSaveImmediate
     onCommit(parsed)
   }
 
-  // Select: sempre renderiza como dropdown customizado, sem precisar de isEditing
+  // Select e date: sempre renderizam sem precisar de isEditing
   if (col.type === 'select') {
     return (
       <SelectDropdown
@@ -204,24 +205,22 @@ function InlineCell({ row, col, isEditing, onActivate, onCommit, onSaveImmediate
     )
   }
 
+  if (col.type === 'date') {
+    return (
+      <DatePicker
+        value={row[col.id] || ''}
+        onChange={v => onCommit(v)}
+        placeholder="—"
+        className="dp-cell"
+      />
+    )
+  }
+
   if (!isEditing) {
     return (
       <div className="cell-display cell-clickable" onClick={onActivate}>
         {renderCellValue(row, col)}
       </div>
-    )
-  }
-
-  if (col.type === 'date') {
-    return (
-      <input
-        className="cell-input"
-        type="date"
-        autoFocus
-        value={localVal || ''}
-        onChange={e => setLocalVal(e.target.value)}
-        onBlur={e => commit(e.target.value)}
-      />
     )
   }
 

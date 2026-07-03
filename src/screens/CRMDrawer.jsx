@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { IconClose } from '../components/Icons.jsx'
 import { SelectDropdown } from '../components/SelectDropdown.jsx'
+import { DatePicker } from '../components/DatePicker.jsx'
 import './CRMDrawer.css'
 
 function fmtDateTime(iso) {
@@ -132,12 +133,10 @@ function DrawerField({ col, value, onChange, onAddOption, clientes, user, onClie
     return (
       <div className="dr-field">
         <label className="dr-label">{col.name}</label>
-        <input
-          className="dr-input"
-          type="date"
-          value={localVal || ''}
-          onChange={e => setLocalVal(e.target.value)}
-          onBlur={e => commit(e.target.value)}
+        <DatePicker
+          value={value || ''}
+          onChange={v => commit(v)}
+          className="dp-field"
         />
       </div>
     )

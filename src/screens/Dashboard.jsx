@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { CRM_COLUMNS, CRM_ROWS } from '../data/seed.js'
+import { DatePicker } from '../components/DatePicker.jsx'
 import './Dashboard.css'
 
 const COLOR_VARS = {
@@ -288,22 +289,22 @@ export default function Dashboard() {
           <div className="dash-custom-range">
 
             <span className="dash-range-label">De</span>
-            <input
-              type="date"
-              className="dash-range-input"
+            <DatePicker
               value={customRange.start}
+              onChange={v => setCustomRange(p => ({ ...p, start: v }))}
+              placeholder="Data inicial"
+              className="dash-range-input"
               max={customRange.end || toISO(new Date())}
-              onChange={e => setCustomRange(p => ({ ...p, start: e.target.value }))}
             />
             <span className="dash-range-sep">→</span>
             <span className="dash-range-label">Até</span>
-            <input
-              type="date"
-              className="dash-range-input"
+            <DatePicker
               value={customRange.end}
+              onChange={v => setCustomRange(p => ({ ...p, end: v }))}
+              placeholder="Data final"
+              className="dash-range-input"
               min={customRange.start || undefined}
               max={toISO(new Date())}
-              onChange={e => setCustomRange(p => ({ ...p, end: e.target.value }))}
             />
             {customIncomplete && (
               <span className="dash-range-hint">Selecione as duas datas para filtrar.</span>
