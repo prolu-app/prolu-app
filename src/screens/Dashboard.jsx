@@ -120,6 +120,7 @@ export default function Dashboard() {
   const { user } = useAuth()
   const [period, setPeriod] = useState('30d')
   const [customRange, setCustomRange] = useState({ start: '', end: '' })
+  const [icpFilter, setIcpFilter] = useState(false)
   const [cols, setCols] = useState([])
   const [allRows, setAllRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -162,10 +163,15 @@ export default function Dashboard() {
 
   const rows = useMemo(() => {
     const deId = colMap['data_entrada']
+    const icpId = colMap['icp']
     if (!deId) return allRows
     if (!range) return []
-    return allRows.filter(r => inPeriod(r[deId], range))
-  }, [allRows, colMap, range])
+    return allRows.filter(r => {
+      if (!inPeriod(r[deId], range)) return false
+      if (icpFilter && r[icpId] !== 'Sim') return false
+      return true
+    })
+  }, [allRows, colMap, range, icpFilter])
 
   const m = useMemo(() => {
     const sid = colMap['status']
@@ -257,20 +263,31 @@ export default function Dashboard() {
 
       {/* Filtros */}
       <div className="dash-filter-area">
-        <div className="dash-filters">
-          {PERIOD_OPTS.map(([k, lbl]) => (
-            <button
-              key={k}
-              className={`dash-filter-chip${period === k ? ' active' : ''}`}
-              onClick={() => setPeriod(k)}
-            >
-              {lbl}
-            </button>
-          ))}
+        <div className="dash-filter-row">
+          <div className="dash-filters">
+            {PERIOD_OPTS.map(([k, lbl]) => (
+              <button
+                key={k}
+                className={`dash-filter-chip${period === k ? ' active' : ''}`}
+                onClick={() => setPeriod(k)}
+              >
+                {lbl}
+              </button>
+            ))}
+          </div>
+
+          <label className={`dash-icp-toggle${icpFilter ? ' on' : ''}`}>
+            <input type="checkbox" checked={icpFilter} onChange={e => setIcpFilter(e.target.checked)} />
+            <span className="dash-icp-switch" />
+            <span className="dash-icp-label">
+              ICP <span className="dash-icp-state">{icpFilter ? 'Sim' : 'Não'}</span>
+            </span>
+          </label>
         </div>
 
         {period === 'custom' && (
           <div className="dash-custom-range">
+
             <span className="dash-range-label">De</span>
             <input
               type="date"
