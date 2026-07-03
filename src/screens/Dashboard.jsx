@@ -28,17 +28,15 @@ function getPeriodRange(period) {
   const y = now.getFullYear()
   const m = now.getMonth()
   const day = now.getDate()
-  if (period === '30d') {
-    const start = new Date(y, m, day - 29)
-    const end = new Date(y, m, day)
-    return [start, end]
-  }
-  if (period === 'mes') return [new Date(y, m, 1), new Date(y, m + 1, 0)]
+  // eod: end of day às 23:59:59 para incluir registros parseados ao meio-dia
+  const eod = (yr, mo, d) => new Date(yr, mo, d, 23, 59, 59, 999)
+  if (period === '30d') return [new Date(y, m, day - 29), eod(y, m, day)]
+  if (period === 'mes') return [new Date(y, m, 1), eod(y, m + 1, 0)]
   if (period === 'trimestre') {
     const q = Math.floor(m / 3)
-    return [new Date(y, q * 3, 1), new Date(y, q * 3 + 3, 0)]
+    return [new Date(y, q * 3, 1), eod(y, q * 3 + 3, 0)]
   }
-  return [new Date(y, 0, 1), new Date(y, 11, 31)]
+  return [new Date(y, 0, 1), eod(y, 11, 31)]
 }
 
 function inPeriod(dateStr, [start, end]) {
@@ -156,7 +154,8 @@ export default function Dashboard() {
       const s = parseDateStr(customRange.start)
       const e = parseDateStr(customRange.end)
       if (!s || !e || s > e) return null
-      return [s, e]
+      const eod = new Date(e.getFullYear(), e.getMonth(), e.getDate(), 23, 59, 59, 999)
+      return [s, eod]
     }
     return getPeriodRange(period)
   }, [period, customRange])
