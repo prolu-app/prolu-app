@@ -19,10 +19,20 @@ function parseDateStr(s) {
   return isNaN(d.getTime()) ? null : d
 }
 
+function toISO(d) {
+  return d.toISOString().split('T')[0]
+}
+
 function getPeriodRange(period) {
   const now = new Date()
   const y = now.getFullYear()
   const m = now.getMonth()
+  const day = now.getDate()
+  if (period === '30d') {
+    const start = new Date(y, m, day - 29)
+    const end = new Date(y, m, day)
+    return [start, end]
+  }
   if (period === 'mes') return [new Date(y, m, 1), new Date(y, m + 1, 0)]
   if (period === 'trimestre') {
     const q = Math.floor(m / 3)
@@ -98,9 +108,18 @@ function GroupSimple({ groups }) {
   )
 }
 
+const PERIOD_OPTS = [
+  ['30d',     'Últimos 30 dias'],
+  ['mes',     'Este mês'],
+  ['trimestre', 'Trimestre'],
+  ['ano',     'Este ano'],
+  ['custom',  'Período personalizado'],
+]
+
 export default function Dashboard() {
   const { user } = useAuth()
-  const [period, setPeriod] = useState('mes')
+  const [period, setPeriod] = useState('30d')
+  const [customRange, setCustomRange] = useState({ start: '', end: '' })
   const [cols, setCols] = useState([])
   const [allRows, setAllRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -131,11 +150,20 @@ export default function Dashboard() {
     return col?.options || []
   }, [cols])
 
-  const range = useMemo(() => getPeriodRange(period), [period])
+  const range = useMemo(() => {
+    if (period === 'custom') {
+      const s = parseDateStr(customRange.start)
+      const e = parseDateStr(customRange.end)
+      if (!s || !e || s > e) return null
+      return [s, e]
+    }
+    return getPeriodRange(period)
+  }, [period, customRange])
 
   const rows = useMemo(() => {
     const deId = colMap['data_entrada']
     if (!deId) return allRows
+    if (!range) return []
     return allRows.filter(r => inPeriod(r[deId], range))
   }, [allRows, colMap, range])
 
@@ -218,6 +246,7 @@ export default function Dashboard() {
   ]
 
   const hasTicketData = nFechados >= 1 && nPerdidosComProposta >= 1
+  const customIncomplete = period === 'custom' && !range
 
   return (
     <>
@@ -226,12 +255,45 @@ export default function Dashboard() {
         <div className="page-sub">Onde estão suas oportunidades, e o que elas estão te dizendo.</div>
       </div>
 
-      <div className="dash-filters">
-        {[['mes', 'Este mês'], ['trimestre', 'Trimestre'], ['ano', 'Este ano']].map(([k, lbl]) => (
-          <button key={k} className={`dash-filter-chip${period === k ? ' active' : ''}`} onClick={() => setPeriod(k)}>
-            {lbl}
-          </button>
-        ))}
+      {/* Filtros */}
+      <div className="dash-filter-area">
+        <div className="dash-filters">
+          {PERIOD_OPTS.map(([k, lbl]) => (
+            <button
+              key={k}
+              className={`dash-filter-chip${period === k ? ' active' : ''}`}
+              onClick={() => setPeriod(k)}
+            >
+              {lbl}
+            </button>
+          ))}
+        </div>
+
+        {period === 'custom' && (
+          <div className="dash-custom-range">
+            <span className="dash-range-label">De</span>
+            <input
+              type="date"
+              className="dash-range-input"
+              value={customRange.start}
+              max={customRange.end || toISO(new Date())}
+              onChange={e => setCustomRange(p => ({ ...p, start: e.target.value }))}
+            />
+            <span className="dash-range-sep">→</span>
+            <span className="dash-range-label">Até</span>
+            <input
+              type="date"
+              className="dash-range-input"
+              value={customRange.end}
+              min={customRange.start || undefined}
+              max={toISO(new Date())}
+              onChange={e => setCustomRange(p => ({ ...p, end: e.target.value }))}
+            />
+            {customIncomplete && (
+              <span className="dash-range-hint">Selecione as duas datas para filtrar.</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* KPIs */}
