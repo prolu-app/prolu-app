@@ -1,47 +1,223 @@
-import { useMemo, useState } from 'react'
-import { CRM_ROWS } from '../data/seed.js'
-import { IconBolt } from '../components/Icons.jsx'
+import { useEffect, useMemo, useState } from 'react'
+import { useAuth } from '../contexts/AuthContext.jsx'
+import { supabase, supabaseReady } from '../services/supabaseClient.js'
+import { CRM_COLUMNS, CRM_ROWS } from '../data/seed.js'
 import './Dashboard.css'
 
-const FUNNEL_STAGES = ['Conversa', 'Proposta', 'Fechado']
+const COLOR_VARS = {
+  gray: 'var(--ink-40)', blue: 'var(--blue-ink)', green: 'var(--green-deep)',
+  orange: 'var(--orange)', violet: 'var(--violet-ink)', red: 'var(--red)',
+}
 
 function fmtMoney(v) {
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+  return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+}
+
+function parseDateStr(s) {
+  if (!s) return null
+  const d = new Date(s + 'T12:00:00')
+  return isNaN(d.getTime()) ? null : d
+}
+
+function getPeriodRange(period) {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = now.getMonth()
+  if (period === 'mes') return [new Date(y, m, 1), new Date(y, m + 1, 0)]
+  if (period === 'trimestre') {
+    const q = Math.floor(m / 3)
+    return [new Date(y, q * 3, 1), new Date(y, q * 3 + 3, 0)]
+  }
+  return [new Date(y, 0, 1), new Date(y, 11, 31)]
+}
+
+function inPeriod(dateStr, [start, end]) {
+  const d = parseDateStr(dateStr)
+  return d ? d >= start && d <= end : false
+}
+
+function parseColForDash(c) {
+  const isObj = c.opcoes != null && !Array.isArray(c.opcoes)
+  const fixed = c.fixo === true || (isObj && c.opcoes?.fixed === true)
+  return {
+    id: c.id,
+    slug: isObj ? (c.opcoes?.slug || null) : null,
+    options: fixed
+      ? (isObj ? (c.opcoes?.items || []) : (Array.isArray(c.opcoes) ? c.opcoes : []))
+      : (Array.isArray(c.opcoes) ? c.opcoes : []),
+  }
+}
+
+function buildColMap(cols) {
+  const map = {}
+  cols.forEach(c => { if (c.slug) map[c.slug] = c.id })
+  return map
+}
+
+function groupByField(rows, fieldId, statusId, valorId, propostaId) {
+  if (!fieldId || !statusId) return []
+  const map = {}
+  rows.forEach(r => {
+    const key = r[fieldId] || '(não informado)'
+    if (!map[key]) map[key] = { name: key, total: 0, comProposta: 0, fechados: 0, perdidosComProposta: 0, somaFechado: 0 }
+    map[key].total++
+    if (r[propostaId] === 'Sim') map[key].comProposta++
+    if (r[statusId] === 'Fechado') { map[key].fechados++; map[key].somaFechado += Number(r[valorId]) || 0 }
+    if (r[statusId] === 'Perdido' && r[propostaId] === 'Sim') map[key].perdidosComProposta++
+  })
+  return Object.values(map).map(g => {
+    const denom = g.fechados + g.perdidosComProposta
+    return {
+      ...g,
+      taxa: denom > 0 ? Math.round((g.fechados / denom) * 100) : null,
+      ticketMedio: g.fechados > 0 ? Math.round(g.somaFechado / g.fechados) : null,
+    }
+  }).sort((a, b) => b.total - a.total)
+}
+
+function GroupSimple({ groups }) {
+  return (
+    <>
+      <div className="grupo-header">
+        <span className="grupo-col-name">Nome</span>
+        <span className="grupo-col-num">Conversão</span>
+        <span className="grupo-col-num">Total fechado</span>
+        <span className="grupo-col-num">Ticket médio</span>
+      </div>
+      {groups.map(g => (
+        <div className="grupo-row" key={g.name}>
+          <span className="grupo-col-name">{g.name}</span>
+          <span className={`grupo-col-num${g.taxa !== null ? ' grupo-taxa' : ''}`}>
+            {g.taxa !== null ? `${g.taxa}%` : '—'}
+          </span>
+          <span className="grupo-col-num">{g.fechados > 0 ? fmtMoney(g.somaFechado) : '—'}</span>
+          <span className="grupo-col-num">{g.ticketMedio !== null ? fmtMoney(g.ticketMedio) : '—'}</span>
+        </div>
+      ))}
+    </>
+  )
 }
 
 export default function Dashboard() {
+  const { user } = useAuth()
   const [period, setPeriod] = useState('mes')
-  const rows = CRM_ROWS // em produção: filtrar por período/origem/tipo aqui
+  const [cols, setCols] = useState([])
+  const [allRows, setAllRows] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const total = rows.length
-  const fechados = rows.filter((r) => r.c_status === 'Fechado')
-  const perdidos = rows.filter((r) => r.c_status === 'Perdido')
-  const valorPropostas = rows.filter((r) => ['Proposta', 'Conversa'].includes(r.c_status)).reduce((s, r) => s + r.c_valor, 0)
-  const valorFechado = fechados.reduce((s, r) => s + r.c_valor, 0)
-  const ticketFechados = fechados.length ? valorFechado / fechados.length : 0
-  const ticketPerdidos = perdidos.length ? perdidos.reduce((s, r) => s + r.c_valor, 0) / perdidos.length : 0
+  useEffect(() => { loadData() }, [user?.empresaId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const funnel = useMemo(() => {
-    const counts = FUNNEL_STAGES.map((stage) => {
-      if (stage === 'Conversa') return rows.length // todos passaram por "conversa"
-      if (stage === 'Proposta') return rows.filter((r) => ['Proposta', 'Fechado'].includes(r.c_status)).length
-      return rows.filter((r) => r.c_status === 'Fechado').length
-    })
-    return FUNNEL_STAGES.map((stage, i) => ({ stage, count: counts[i], pct: counts[0] ? Math.round((counts[i] / counts[0]) * 100) : 0 }))
-  }, [rows])
+  async function loadData() {
+    if (!supabaseReady || !user?.empresaId) {
+      setCols(CRM_COLUMNS)
+      setAllRows(CRM_ROWS)
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    const [{ data: dbCols }, { data: linhas }] = await Promise.all([
+      supabase.from('crm_colunas').select('*').eq('empresa_id', user.empresaId).order('ordem'),
+      supabase.from('crm_linhas').select('id, valores').eq('empresa_id', user.empresaId),
+    ])
+    setCols((dbCols || []).map(parseColForDash))
+    setAllRows((linhas || []).map(l => ({ id: l.id, ...l.valores })))
+    setLoading(false)
+  }
 
-  const porOrigem = useMemo(() => {
-    const map = {}
-    rows.forEach((r) => {
-      map[r.c_origem] = map[r.c_origem] || { total: 0, fechados: 0 }
-      map[r.c_origem].total++
-      if (r.c_status === 'Fechado') map[r.c_origem].fechados++
-    })
-    return Object.entries(map).map(([origem, v]) => ({ origem, ...v, conversao: v.total ? Math.round((v.fechados / v.total) * 100) : 0 })).sort((a, b) => b.conversao - a.conversao)
-  }, [rows])
+  const colMap = useMemo(() => buildColMap(cols), [cols])
 
-  const melhorOrigem = porOrigem[0]
-  const taxaConversao = total ? Math.round((fechados.length / total) * 100) : 0
+  const origemOptions = useMemo(() => {
+    const col = cols.find(c => c.slug === 'origem')
+    return col?.options || []
+  }, [cols])
+
+  const range = useMemo(() => getPeriodRange(period), [period])
+
+  const rows = useMemo(() => {
+    const deId = colMap['data_entrada']
+    if (!deId) return allRows
+    return allRows.filter(r => inPeriod(r[deId], range))
+  }, [allRows, colMap, range])
+
+  const m = useMemo(() => {
+    const sid = colMap['status']
+    const vid = colMap['valor']
+    const pid = colMap['proposta']
+    const dfid = colMap['data_fechamento']
+    const deid = colMap['data_entrada']
+
+    const total = rows.length
+    const comProposta = rows.filter(r => r[pid] === 'Sim')
+    const fechados = rows.filter(r => r[sid] === 'Fechado')
+    const perdidos = rows.filter(r => r[sid] === 'Perdido')
+    const perdidosComProposta = perdidos.filter(r => r[pid] === 'Sim')
+
+    const somaValor = arr => arr.reduce((s, r) => s + (Number(r[vid]) || 0), 0)
+    const mediaValor = arr => arr.length ? somaValor(arr) / arr.length : 0
+
+    const denominatorConv = fechados.length + perdidosComProposta.length
+    const taxaConversao = denominatorConv > 0 ? Math.round((fechados.length / denominatorConv) * 100) : null
+
+    let tempoMedio = null
+    if (fechados.length > 0 && dfid && deid) {
+      const dias = fechados.map(r => {
+        const de = parseDateStr(r[deid])
+        const df = parseDateStr(r[dfid])
+        return de && df ? Math.round((df - de) / 86400000) : null
+      }).filter(d => d !== null && d >= 0)
+      if (dias.length > 0) tempoMedio = Math.round(dias.reduce((s, d) => s + d, 0) / dias.length)
+    }
+
+    return {
+      total,
+      nProposta: comProposta.length,
+      nFechados: fechados.length,
+      nPerdidos: perdidos.length,
+      nPerdidosComProposta: perdidosComProposta.length,
+      valorPropostas: somaValor(comProposta),
+      valorFechado: somaValor(fechados),
+      valorPerdido: somaValor(perdidos),
+      ticketFechados: mediaValor(fechados),
+      ticketPerdidos: mediaValor(perdidosComProposta),
+      taxaConversao,
+      tempoMedio,
+    }
+  }, [rows, colMap])
+
+  const porOrigem = useMemo(
+    () => groupByField(rows, colMap['origem'], colMap['status'], colMap['valor'], colMap['proposta']),
+    [rows, colMap],
+  )
+  const porSegmento = useMemo(
+    () => groupByField(rows, colMap['segmento'], colMap['status'], colMap['valor'], colMap['proposta']),
+    [rows, colMap],
+  )
+  const porTipo = useMemo(
+    () => groupByField(rows, colMap['tipo_projeto'], colMap['status'], colMap['valor'], colMap['proposta']),
+    [rows, colMap],
+  )
+
+  if (loading) return (
+    <div className="page-header">
+      <div className="page-title">Dashboard</div>
+      <div className="page-sub">Carregando seus dados…</div>
+    </div>
+  )
+
+  const {
+    total, nProposta, nFechados, nPerdidos, nPerdidosComProposta,
+    valorPropostas, valorFechado, valorPerdido,
+    ticketFechados, ticketPerdidos,
+    taxaConversao, tempoMedio,
+  } = m
+
+  const funnelSteps = [
+    { label: 'Pedidos',   count: total },
+    { label: 'Propostas', count: nProposta },
+    { label: 'Fechados',  count: nFechados },
+  ]
+
+  const hasTicketData = nFechados >= 1 && nPerdidosComProposta >= 1
 
   return (
     <>
@@ -52,7 +228,9 @@ export default function Dashboard() {
 
       <div className="dash-filters">
         {[['mes', 'Este mês'], ['trimestre', 'Trimestre'], ['ano', 'Este ano']].map(([k, lbl]) => (
-          <button key={k} className={`dash-filter-chip${period === k ? ' active' : ''}`} onClick={() => setPeriod(k)}>{lbl}</button>
+          <button key={k} className={`dash-filter-chip${period === k ? ' active' : ''}`} onClick={() => setPeriod(k)}>
+            {lbl}
+          </button>
         ))}
       </div>
 
@@ -60,78 +238,152 @@ export default function Dashboard() {
       <div className="kpi-grid">
         <div className="kpi-box">
           <div className="kpi-box-label">Pedidos de orçamento</div>
-          <div className="kpi-box-val">{total}</div>
+          <div className="kpi-box-val">{total > 0 ? total : '—'}</div>
         </div>
         <div className="kpi-box">
           <div className="kpi-box-label">Valor em propostas</div>
-          <div className="kpi-box-val">{fmtMoney(valorPropostas)}</div>
+          <div className="kpi-box-val">{nProposta > 0 ? fmtMoney(valorPropostas) : '—'}</div>
+          {nProposta > 0 && (
+            <div className="kpi-box-sub">{nProposta} {nProposta === 1 ? 'projeto' : 'projetos'}</div>
+          )}
         </div>
         <div className="kpi-box dark">
           <div className="kpi-box-label">Fechados</div>
-          <div className="kpi-box-val">{fmtMoney(valorFechado)}</div>
-          <div className="kpi-box-sub">{fechados.length} projetos</div>
+          <div className="kpi-box-val">{nFechados > 0 ? fmtMoney(valorFechado) : '—'}</div>
+          {nFechados > 0 && (
+            <div className="kpi-box-sub">{nFechados} {nFechados === 1 ? 'projeto' : 'projetos'}</div>
+          )}
         </div>
         <div className="kpi-box">
           <div className="kpi-box-label">Perdidos</div>
-          <div className="kpi-box-val">{perdidos.length}</div>
+          <div className="kpi-box-val">{nPerdidos > 0 ? fmtMoney(valorPerdido) : '—'}</div>
+          {nPerdidos > 0 && (
+            <div className="kpi-box-sub">{nPerdidos} {nPerdidos === 1 ? 'projeto' : 'projetos'}</div>
+          )}
         </div>
       </div>
 
-      {/* funil */}
+      {/* Funil de conversão */}
       <div className="section-title">Funil de conversão</div>
       <div className="card funnel-card">
-        {funnel.map((f) => (
-          <div className="funnel-row" key={f.stage}>
-            <div className="funnel-label">{f.stage}</div>
-            <div className="funnel-bar-track">
-              <div className="funnel-bar-fill" style={{ width: `${f.pct}%` }}>
-                <span className="funnel-count">{f.count}</span>
+        {funnelSteps.map(f => {
+          const pct = total > 0 ? Math.round((f.count / total) * 100) : 0
+          return (
+            <div className="funnel-row" key={f.label}>
+              <div className="funnel-label">{f.label}</div>
+              <div className="funnel-bar-track">
+                <div className="funnel-bar-fill" style={{ width: total > 0 ? `${pct}%` : '0%' }}>
+                  {f.count > 0 && <span className="funnel-count">{f.count}</span>}
+                </div>
               </div>
+              <div className="funnel-pct">{total > 0 ? `${pct}%` : '—'}</div>
             </div>
-            <div className="funnel-pct">{f.pct}%</div>
-          </div>
-        ))}
-        <div className="funnel-summary">Taxa de conversão geral: <strong>{taxaConversao}%</strong> dos pedidos viram projeto fechado.</div>
+          )
+        })}
+        <div className="funnel-footer">
+          <p className="funnel-insight">
+            {taxaConversao !== null
+              ? <>Taxa de conversão geral: <strong>{taxaConversao}%</strong> dos pedidos viram projeto fechado.</>
+              : <span className="funnel-muted">Aguardando dados suficientes para calcular a taxa de conversão.</span>
+            }
+          </p>
+          {tempoMedio !== null && (
+            <p className="funnel-insight">
+              Tempo médio de fechamento: em média os projetos fecham em <strong>{tempoMedio} dias</strong>.
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* ticket médio */}
+      {/* Ticket médio */}
       <div className="section-title">Ticket médio</div>
       <div className="card ticket-card">
         <div className="ticket-compare">
           <div className="ticket-col">
             <div className="ticket-label">Fechados</div>
-            <div className="ticket-val green">{fmtMoney(ticketFechados)}</div>
+            <div className={`ticket-val${nFechados > 0 ? ' green' : ''}`}>
+              {nFechados > 0 ? fmtMoney(ticketFechados) : '—'}
+            </div>
           </div>
           <div className="ticket-col">
-            <div className="ticket-label">Perdidos</div>
-            <div className="ticket-val">{fmtMoney(ticketPerdidos)}</div>
+            <div className="ticket-label">Perdidos com proposta</div>
+            <div className="ticket-val">
+              {nPerdidosComProposta > 0 ? fmtMoney(ticketPerdidos) : '—'}
+            </div>
           </div>
         </div>
-        <div className="ticket-insight">
-          {ticketPerdidos > ticketFechados
-            ? <>Você está perdendo os projetos de <strong>maior valor</strong>. Vale revisar como apresenta a proposta para tickets acima de {fmtMoney(ticketPerdidos)}.</>
-            : <>Seus projetos fechados têm ticket <strong>{Math.round((ticketFechados / (ticketPerdidos || 1) - 1) * 100)}% maior</strong> que os perdidos — sinal de que o problema não é preço.</>}
-        </div>
+        {hasTicketData && (
+          <div className="ticket-insight">
+            {ticketPerdidos > ticketFechados
+              ? <>Você está perdendo os projetos de <strong>maior valor</strong>. Vale revisar como apresenta a proposta para tickets acima de {fmtMoney(ticketPerdidos)}.</>
+              : ticketFechados > ticketPerdidos
+                ? <>Seus projetos fechados têm ticket <strong>{Math.round((ticketFechados / ticketPerdidos - 1) * 100)}% maior</strong> que os perdidos com proposta — sinal de que o problema não é preço.</>
+                : <>O ticket médio dos projetos fechados e perdidos com proposta é igual.</>
+            }
+          </div>
+        )}
       </div>
 
-      {/* por origem */}
-      <div className="section-title">Por origem</div>
-      <div className="card origem-card">
-        {porOrigem.map((o) => (
-          <div className="origem-row" key={o.origem}>
-            <div className="origem-name">{o.origem}</div>
-            <div className="origem-bar-track"><div className="origem-bar-fill" style={{ width: `${o.conversao}%` }} /></div>
-            <div className="origem-stats">{o.fechados}/{o.total} <span>· {o.conversao}%</span></div>
+      {/* Por origem */}
+      {porOrigem.length > 0 && (
+        <>
+          <div className="section-title">Por origem</div>
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="grupo-scroll">
+              <div className="grupo-header grupo-header-wide">
+                <span className="grupo-col-name">Origem</span>
+                <span className="grupo-col-num">Pedidos</span>
+                <span className="grupo-col-num">Propostas</span>
+                <span className="grupo-col-num">Fechados</span>
+                <span className="grupo-col-num">Conversão</span>
+                <span className="grupo-col-num">Total fechado</span>
+                <span className="grupo-col-num">Ticket médio</span>
+              </div>
+              {porOrigem.map(g => {
+                const opt = origemOptions.find(o => o.value === g.name)
+                return (
+                  <div className="grupo-row grupo-row-wide" key={g.name}>
+                    <span className="grupo-col-name">
+                      {opt && (
+                        <span className="grupo-dot" style={{ background: COLOR_VARS[opt.color] || COLOR_VARS.gray }} />
+                      )}
+                      {g.name}
+                    </span>
+                    <span className="grupo-col-num">{g.total}</span>
+                    <span className="grupo-col-num">{g.comProposta}</span>
+                    <span className="grupo-col-num">{g.fechados}</span>
+                    <span className={`grupo-col-num${g.taxa !== null ? ' grupo-taxa' : ''}`}>
+                      {g.taxa !== null ? `${g.taxa}%` : '—'}
+                    </span>
+                    <span className="grupo-col-num">{g.fechados > 0 ? fmtMoney(g.somaFechado) : '—'}</span>
+                    <span className="grupo-col-num">{g.ticketMedio !== null ? fmtMoney(g.ticketMedio) : '—'}</span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
-      {melhorOrigem && (
-        <div className="insight-card">
-          <div className="insight-icon"><IconBolt /></div>
-          <div className="insight-text">
-            <strong>{melhorOrigem.origem} converte {melhorOrigem.conversao}% dos leads</strong> — seu melhor canal agora. Antes de testar canais novos, dobre a aposta no que já funciona.
-          </div>
+      {/* Por segmento e Por tipo de projeto */}
+      {(porSegmento.length > 0 || porTipo.length > 0) && (
+        <div className="dash-two-col">
+          {porSegmento.length > 0 && (
+            <div>
+              <div className="section-title">Por segmento</div>
+              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <GroupSimple groups={porSegmento} />
+              </div>
+            </div>
+          )}
+          {porTipo.length > 0 && (
+            <div>
+              <div className="section-title">Por tipo de projeto</div>
+              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <GroupSimple groups={porTipo} />
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>
