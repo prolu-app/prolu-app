@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { useAuth } from '../contexts/AuthContext.jsx'
+import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { PLANO_TAGS, PLANO_ACOES } from '../data/seed.js'
-import { IconPlus, IconCheck, IconGrip } from '../components/Icons.jsx'
+import { IconPlus, IconCheck, IconGrip, IconTrash } from '../components/Icons.jsx'
+import { DatePicker } from '../components/DatePicker.jsx'
 import './PlanoPratico.css'
 
 const TAG_COLORS = ['#CBE921', '#FF6B2B', '#3a6ea5', '#8050a0', '#e05454', '#4CAF82', '#e5a020', '#5f5f58']
@@ -12,11 +14,46 @@ const STATUS = {
   done: { label: 'Concluído', cls: 'pill-green' },
 }
 
+// Seed inicial de uma empresa nova (primeira vez que abre o Plano Prático).
+const DEFAULT_TAGS = [
+  { name: 'Estrutura comercial', color: '#3a6ea5' },
+  { name: 'Posicionamento', color: '#8050a0' },
+  { name: 'Metas e indicadores', color: '#4CAF82' },
+]
+
+const DEFAULT_ACOES = [
+  { text: 'Começar a usar o CRM para registrar todo pedido de orçamento', tag: 'Estrutura comercial', status: 'pend' },
+  { text: 'Criar rotina de atualizar o CRM uma vez por semana', tag: 'Estrutura comercial', status: 'pend' },
+  { text: 'Definir o Processo de Atendimento, do primeiro contato à proposta', tag: 'Estrutura comercial', status: 'prog' },
+  { text: 'Elaborar apresentação para usar na primeira reunião com o cliente', tag: 'Estrutura comercial', status: 'pend' },
+  { text: 'Definir o Perfil de Cliente Ideal do escritório', tag: 'Posicionamento', status: 'pend' },
+  { text: 'Produzir conteúdos focados no Cliente Ideal definido', tag: 'Posicionamento', status: 'pend' },
+  { text: 'Criar formulário de qualificação para o Instagram', tag: 'Posicionamento', status: 'pend' },
+  { text: 'Definir metas de faturamento e número de projetos fechados', tag: 'Metas e indicadores', status: 'pend' },
+  { text: 'Revisar indicadores de desempenho a cada trimestre', tag: 'Metas e indicadores', status: 'pend' },
+  { text: 'Estudar precificação por horas e definir valor da hora', tag: 'Metas e indicadores', status: 'pend' },
+  { text: 'Elaborar proposta usando o Modelo Prolu', tag: 'Estrutura comercial', status: 'pend' },
+]
+
+function parseTag(row) {
+  return { id: row.id, name: row.nome, color: row.cor }
+}
+
+function parseAcao(row) {
+  return { id: row.id, text: row.texto, tag: row.tag_id, status: row.status, prazo: row.prazo || '', ordem: row.ordem ?? 0 }
+}
+
+function fmtPrazo(iso) {
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y.slice(2)}`
+}
+
 export default function PlanoPratico() {
   const toast = useToast()
   const { user } = useAuth()
-  const [tags, setTags] = useState(PLANO_TAGS)
-  const [acoes, setAcoes] = useState(PLANO_ACOES)
+  const [tags, setTags] = useState([])
+  const [acoes, setAcoes] = useState([])
+  const [loading, setLoading] = useState(true)
   const [activeTag, setActiveTag] = useState('all')
   const [activeStatus, setActiveStatus] = useState('all')
   const [menu, setMenu] = useState(null) // { id, x, y }
@@ -24,6 +61,55 @@ export default function PlanoPratico() {
   const [tagForm, setTagForm] = useState({ name: '', color: TAG_COLORS[0] })
   const lastAddedRef = useRef(null)
   const initial = (user?.nome || 'A').charAt(0).toUpperCase()
+
+  useEffect(() => { carregar() }, [user?.empresaId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function carregar() {
+    if (!supabaseReady || !user?.empresaId) {
+      setTags(PLANO_TAGS)
+      setAcoes(PLANO_ACOES)
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    const [{ data: tagsData, error: tagsErr }, { data: acoesData, error: acoesErr }] = await Promise.all([
+      supabase.from('plano_tags').select('*').eq('empresa_id', user.empresaId).order('created_at', { ascending: true }),
+      supabase.from('plano_acoes').select('*').eq('empresa_id', user.empresaId).order('ordem', { ascending: true }),
+    ])
+    if (tagsErr || acoesErr) { toast('Não foi possível carregar o Plano Prático'); setLoading(false); return }
+
+    if (!acoesData || acoesData.length === 0) {
+      await seedPadrao()
+      return
+    }
+
+    setTags((tagsData || []).map(parseTag))
+    setAcoes(acoesData.map(parseAcao))
+    setLoading(false)
+  }
+
+  async function seedPadrao() {
+    const { data: newTags, error: tagErr } = await supabase
+      .from('plano_tags')
+      .insert(DEFAULT_TAGS.map((t) => ({ empresa_id: user.empresaId, nome: t.name, cor: t.color })))
+      .select('*')
+    if (tagErr) { toast('Não foi possível preparar o Plano Prático'); setLoading(false); return }
+
+    const tagIdByName = Object.fromEntries(newTags.map((t) => [t.nome, t.id]))
+    const payload = DEFAULT_ACOES.map((a, i) => ({
+      empresa_id: user.empresaId,
+      tag_id: tagIdByName[a.tag],
+      texto: a.text,
+      status: a.status,
+      ordem: i,
+    }))
+    const { data: newAcoes, error: acoesErr } = await supabase.from('plano_acoes').insert(payload).select('*')
+    if (acoesErr) { toast('Não foi possível preparar o Plano Prático'); setLoading(false); return }
+
+    setTags(newTags.map(parseTag))
+    setAcoes(newAcoes.map(parseAcao).sort((a, b) => a.ordem - b.ordem))
+    setLoading(false)
+  }
 
   const filtered = acoes.filter((a) => {
     const tagOk = activeTag === 'all' || a.tag === activeTag
@@ -40,33 +126,64 @@ export default function PlanoPratico() {
     return acoes.filter((a) => (tagId === 'all' || a.tag === tagId) && (activeStatus === 'all' || a.status === activeStatus)).length
   }
 
+  function persistAcao(id, changes) {
+    if (!supabaseReady || !user?.empresaId) return
+    supabase.from('plano_acoes').update({ ...changes, updated_at: new Date().toISOString() }).eq('id', id)
+      .then(({ error }) => { if (error) toast('Não foi possível salvar') })
+  }
+
   function toggleDone(id) {
-    setAcoes((prev) => prev.map((a) => {
-      if (a.id !== id) return a
-      const isDone = a.status === 'done'
-      return { ...a, status: isDone ? 'pend' : 'done' }
-    }))
-    const a = acoes.find((x) => x.id === id)
-    toast(a?.status === 'done' ? 'Reaberta' : 'Ação concluída 🎉')
+    const atual = acoes.find((a) => a.id === id)
+    if (!atual) return
+    const novoStatus = atual.status === 'done' ? 'pend' : 'done'
+    setAcoes((prev) => prev.map((a) => (a.id === id ? { ...a, status: novoStatus } : a)))
+    toast(novoStatus === 'done' ? 'Ação concluída 🎉' : 'Reaberta')
+    persistAcao(id, { status: novoStatus })
   }
 
   function setStatus(id, status) {
     setAcoes((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)))
     setMenu(null)
     toast('Status atualizado')
+    persistAcao(id, { status })
   }
 
   function updateText(id, text) {
     setAcoes((prev) => prev.map((a) => (a.id === id ? { ...a, text } : a)))
+    persistAcao(id, { texto: text })
   }
 
-  function addAction() {
-    const tagId = activeTag === 'all' ? tags[0].id : activeTag
-    const id = 'a' + Date.now()
-    setAcoes((prev) => [...prev, { id, text: '', tag: tagId, status: 'pend' }])
+  function updatePrazo(id, prazo) {
+    setAcoes((prev) => prev.map((a) => (a.id === id ? { ...a, prazo } : a)))
+    persistAcao(id, { prazo: prazo || null })
+  }
+
+  async function addAction() {
+    const tagId = activeTag === 'all' ? tags[0]?.id : activeTag
+    if (!supabaseReady || !user?.empresaId) {
+      const id = 'a' + Date.now()
+      setAcoes((prev) => [...prev, { id, text: '', tag: tagId, status: 'pend', prazo: '' }])
+      setActiveTag(tagId)
+      setActiveStatus('all')
+      lastAddedRef.current = id
+      return
+    }
+    const { data, error } = await supabase.from('plano_acoes').insert({
+      empresa_id: user.empresaId, tag_id: tagId, texto: '', status: 'pend', ordem: acoes.length,
+    }).select('*').single()
+    if (error) { toast('Não foi possível criar a ação'); return }
+    setAcoes((prev) => [...prev, parseAcao(data)])
     setActiveTag(tagId)
     setActiveStatus('all')
-    lastAddedRef.current = id
+    lastAddedRef.current = data.id
+  }
+
+  async function removeAction(id) {
+    setAcoes((prev) => prev.filter((a) => a.id !== id))
+    if (!supabaseReady || !user?.empresaId) return
+    const { error } = await supabase.from('plano_acoes').delete().eq('id', id)
+    if (error) { toast('Não foi possível excluir'); carregar() }
+    else toast('Ação excluída')
   }
 
   // foca no card recém-criado
@@ -86,11 +203,24 @@ export default function PlanoPratico() {
     }
   })
 
-  function criarTag() {
-    if (!tagForm.name.trim()) return
-    const id = 't' + Date.now()
-    setTags((prev) => [...prev, { id, name: tagForm.name.trim(), color: tagForm.color }])
-    setActiveTag(id)
+  async function criarTag() {
+    const nome = tagForm.name.trim()
+    if (!nome) return
+    if (!supabaseReady || !user?.empresaId) {
+      const id = 't' + Date.now()
+      setTags((prev) => [...prev, { id, name: nome, color: tagForm.color }])
+      setActiveTag(id)
+      setTagModal(false)
+      setTagForm({ name: '', color: TAG_COLORS[0] })
+      toast('Tag criada')
+      return
+    }
+    const { data, error } = await supabase.from('plano_tags').insert({
+      empresa_id: user.empresaId, nome, cor: tagForm.color,
+    }).select('*').single()
+    if (error) { toast('Não foi possível criar a tag'); return }
+    setTags((prev) => [...prev, parseTag(data)])
+    setActiveTag(data.id)
     setTagModal(false)
     setTagForm({ name: '', color: TAG_COLORS[0] })
     toast('Tag criada')
@@ -111,6 +241,13 @@ export default function PlanoPratico() {
   }, [])
 
   const tagOf = (id) => tags.find((t) => t.id === id)
+
+  if (loading) return (
+    <div className="page-header">
+      <div className="page-title">Plano Prático</div>
+      <div className="page-sub">Carregando suas ações…</div>
+    </div>
+  )
 
   return (
     <>
@@ -185,12 +322,20 @@ export default function PlanoPratico() {
                   onBlur={(e) => updateText(a.id, e.currentTarget.textContent)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
                 >{a.text}</div>
+                <DatePicker
+                  value={a.prazo || ''}
+                  onChange={(iso) => updatePrazo(a.id, iso)}
+                  placeholder="+ Definir prazo"
+                  className={`dp-plano${a.prazo ? '' : ' dp-plano-empty'}`}
+                  renderValue={(v) => v ? `Prazo: ${fmtPrazo(v)}` : <span className="dp-placeholder">+ Definir prazo</span>}
+                />
                 <div className="action-meta">
                   <span className={`pill ${st.cls} sp-click`} onClick={(e) => openMenu(e, a.id)}><span className="dot" />{st.label}</span>
                   {tag && <span className="tag-pill"><span className="d" style={{ background: tag.color }} />{tag.name}</span>}
                   <span className="resp-pill"><span className="resp-avatar">{initial}</span>{(user?.nome || 'André').split(' ')[0]}</span>
                 </div>
               </div>
+              <button className="action-del" onClick={() => removeAction(a.id)} aria-label="Excluir ação"><IconTrash /></button>
               <div className="action-drag"><IconGrip /></div>
             </div>
           )

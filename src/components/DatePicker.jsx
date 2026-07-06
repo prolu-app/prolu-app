@@ -39,6 +39,7 @@ export function DatePicker({
   disabled = false,
   min,
   max,
+  renderValue,
 }) {
   const [open, setOpen] = useState(false)
   const [viewYear, setViewYear] = useState(() => {
@@ -100,9 +101,11 @@ export function DatePicker({
         onClick={openCal}
         disabled={disabled}
       >
-        {value
-          ? fmtDisplay(value)
-          : <span className="dp-placeholder">{placeholder}</span>
+        {renderValue
+          ? renderValue(value)
+          : value
+            ? fmtDisplay(value)
+            : <span className="dp-placeholder">{placeholder}</span>
         }
       </button>
 

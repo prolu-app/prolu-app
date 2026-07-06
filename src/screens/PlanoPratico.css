@@ -52,6 +52,10 @@
 .action-drag { color: var(--ink-40); cursor: grab; padding: 4px 2px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
 .action-card:hover .action-drag { opacity: 1; }
 .action-drag svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
+.action-del { width: 28px; height: 28px; border-radius: 8px; border: none; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--ink-40); flex-shrink: 0; margin-top: 1px; opacity: 0; transition: opacity 0.15s, background 0.15s, color 0.15s; }
+.action-card:hover .action-del { opacity: 1; }
+.action-del:hover { background: var(--red-soft); color: var(--red); }
+.action-del svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.8; fill: none; }
 
 .empty-state { text-align: center; padding: 48px 24px; color: var(--ink-40); }
 .empty-state p { font-size: 14px; margin-top: 8px; }
@@ -72,4 +76,5 @@
   .plano-new-btn { display: none; }
   .fab { display: flex; }
   .action-drag { display: none; }
+  .action-del { opacity: 1; }
 }

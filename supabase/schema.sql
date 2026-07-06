@@ -208,6 +208,7 @@ create table plano_acoes (
   status text not null default 'pend' check (status in ('pend', 'prog', 'done')),
   responsavel_id uuid references usuarios(id),
   ordem int default 0,
+  prazo date,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
