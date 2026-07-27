@@ -27,6 +27,7 @@
 .icp-field::placeholder { color: var(--ink-40); }
 
 .range-row { display: flex; align-items: center; gap: 12px; }
+.range-group { display: flex; align-items: center; gap: 10px; }
 .range-display { font-family: 'Abhaya Libre', serif; font-size: 26px; font-weight: 600; min-width: 70px; text-align: center; }
 .range-display small { font-family: 'Rubik', sans-serif; font-size: 11px; color: var(--ink-40); font-weight: 400; display: block; margin-top: -2px; }
 .range-sep { color: var(--ink-40); font-size: 12px; }
