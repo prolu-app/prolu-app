@@ -260,6 +260,8 @@ create table indicadores (
   nome text not null,
   unidade text not null default 'R$' check (unidade in ('R$', '#', '%')),
   grupo text default 'Geral',
+  tipo text default 'manual' check (tipo in ('automatico', 'manual')),
+  fonte_coluna text, -- para tipo='automatico': chave do cálculo derivado do CRM (ver Indicadores.jsx)
   created_at timestamptz default now()
 );
 
