@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
-import { IconPlus, IconCRM, IconHeart, IconBolt, IconAlert, IconStar, IconSearch, IconMoney, IconTarget, IconSave } from '../components/Icons.jsx'
+import { IconPlus, IconCRM, IconHeart, IconBolt, IconAlert, IconStar, IconSearch, IconMoney, IconTarget, IconSave, IconCopy, IconTrash } from '../components/Icons.jsx'
 import './ClienteIdeal.css'
 
 const DEFAULT_COLOR = '#4CAF82'
@@ -44,6 +44,7 @@ export default function ClienteIdeal() {
   const [activeId, setActiveId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [dirty, setDirty] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => { carregar() }, [user?.empresaId]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -156,6 +157,40 @@ export default function ClienteIdeal() {
     toast('Cliente Ideal salvo ✓')
   }
 
+  async function duplicarPerfil() {
+    const copia = { ...profile, id: crypto.randomUUID(), name: profile.name ? `${profile.name} - cópia` : 'Cópia' }
+    if (!supabaseReady || !user?.empresaId) {
+      setProfiles((prev) => [...prev, copia])
+      setActiveId(copia.id)
+      toast('Perfil duplicado')
+      return
+    }
+    const { data, error } = await supabase.from('icp_perfis').insert(toRow(copia, user.empresaId)).select('*').single()
+    if (error) { toast('Não foi possível duplicar o perfil'); return }
+    const parsed = parseProfile(data)
+    setProfiles((prev) => [...prev, parsed])
+    setActiveId(parsed.id)
+    toast('Perfil duplicado')
+  }
+
+  async function apagarPerfil() {
+    const id = activeId
+    const remaining = profiles.filter((p) => p.id !== id)
+    setConfirmDelete(false)
+    if (remaining.length > 0) {
+      setProfiles(remaining)
+      setActiveId(remaining[0].id)
+    } else {
+      const p = blankProfile()
+      setProfiles([p])
+      setActiveId(p.id)
+    }
+    if (!supabaseReady || !user?.empresaId) { toast('Perfil apagado'); return }
+    const { error } = await supabase.from('icp_perfis').delete().eq('id', id)
+    if (error) { toast('Não foi possível apagar o perfil'); carregar(); return }
+    toast('Perfil apagado')
+  }
+
   if (loading) return (
     <div className="page-header">
       <div className="page-title">Cliente Ideal</div>
@@ -173,10 +208,24 @@ export default function ClienteIdeal() {
       {/* perfis */}
       <div className="profiles-bar">
         {profiles.map((p) => (
-          <button key={p.id} className={`profile-tab${p.id === activeId ? ' active' : ' inactive'}`} onClick={() => setActiveId(p.id)}>
-            <span className="tab-dot" style={{ background: p.color }} />
-            {p.name || 'Sem nome'}
-          </button>
+          p.id === activeId ? (
+            <div className="profile-tab active" key={p.id}>
+              <span className="tab-dot" style={{ background: p.color }} />
+              <input
+                className="profile-tab-input"
+                style={{ width: `${Math.max(8, (p.name || 'Nome do perfil').length + 1)}ch` }}
+                value={p.name}
+                onChange={(e) => update('name', e.target.value)}
+                onBlur={salvarCampo}
+                placeholder="Nome do perfil"
+              />
+            </div>
+          ) : (
+            <button key={p.id} className="profile-tab inactive" onClick={() => setActiveId(p.id)}>
+              <span className="tab-dot" style={{ background: p.color }} />
+              {p.name || 'Sem nome'}
+            </button>
+          )
         ))}
         <button className="btn-new-profile" onClick={novoPerfil}><IconPlus /> Novo perfil</button>
       </div>
@@ -256,10 +305,28 @@ export default function ClienteIdeal() {
         </div>
       </div>
 
+      <div className="icp-profile-actions">
+        <button className="btn-profile-action" onClick={duplicarPerfil}><IconCopy /> Duplicar perfil</button>
+        <button className="btn-profile-action danger" onClick={() => setConfirmDelete(true)}><IconTrash /> Apagar perfil</button>
+      </div>
+
       <div className={`save-bar${dirty ? ' show' : ''}`}>
         <span className="save-hint">Você tem <strong>alterações não salvas</strong></span>
         <button className="btn-save" onClick={salvar}><IconSave /> Salvar</button>
       </div>
+
+      {confirmDelete && (
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setConfirmDelete(false) }}>
+          <div className="modal">
+            <div className="modal-title">Apagar perfil</div>
+            <p className="icp-confirm-text">Apagar “{profile.name || 'Sem nome'}”? Essa ação não pode ser desfeita.</p>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setConfirmDelete(false)}>Cancelar</button>
+              <button className="btn-danger" onClick={apagarPerfil}>Apagar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

@@ -75,6 +75,9 @@ export const IconEdit = (p) => (
 export const IconTrash = (p) => (
   <svg viewBox="0 0 24 24" {...p}><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
 )
+export const IconCopy = (p) => (
+  <svg viewBox="0 0 24 24" {...p}><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" /></svg>
+)
 export const IconSearch = (p) => (
   <svg viewBox="0 0 24 24" {...p}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" /></svg>
 )
