@@ -50,15 +50,6 @@
 .tag-inline-input { border: none; outline: none; background: none; font-family: inherit; font-size: 13px; color: var(--ink); min-width: 80px; flex: 1; }
 .tag-inline-input::placeholder { color: var(--ink-40); }
 
-.save-bar { position: fixed; bottom: 0; left: var(--sidebar-w); right: 0; background: rgba(243, 242, 237, 0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--ink-divider); padding: 14px 44px; display: flex; align-items: center; justify-content: space-between; z-index: 20; transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.3s; transform: translateY(100%); opacity: 0; }
-.save-bar.show { transform: translateY(0); opacity: 1; }
-.save-hint { font-size: 13px; color: var(--ink-60); }
-.save-hint strong { color: var(--ink); font-weight: 500; }
-.btn-save { display: flex; align-items: center; gap: 8px; background: var(--green); color: var(--ink); border: none; border-radius: 99px; padding: 11px 24px; font-size: 13.5px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 14px rgba(184, 212, 15, 0.4); transition: box-shadow 0.2s, transform 0.1s; }
-.btn-save:hover { box-shadow: 0 8px 24px rgba(184, 212, 15, 0.55); transform: translateY(-1px); }
-.btn-save:active { transform: scale(0.97); }
-.btn-save svg { width: 14px; height: 14px; stroke: var(--ink); stroke-width: 2.6; fill: none; }
-
 .icp-profile-actions { display: flex; gap: 8px; justify-content: flex-end; padding: 4px 4px 48px; border-top: 1px solid var(--ink-divider); margin-top: -8px; padding-top: 20px; }
 .btn-profile-action { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 99px; font-size: 13px; color: var(--ink-60); background: none; border: none; cursor: pointer; transition: all 0.15s; }
 .btn-profile-action:hover { background: var(--gray-soft); color: var(--ink); }
@@ -70,5 +61,4 @@
 @media (max-width: 860px) {
   .icp-grid { grid-template-columns: 1fr; }
   .icp-card.wide { grid-column: span 1; }
-  .save-bar { left: 0; padding: 14px 16px; }
 }

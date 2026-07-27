@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
-import { IconPlus, IconCRM, IconHeart, IconBolt, IconAlert, IconStar, IconSearch, IconMoney, IconTarget, IconSave, IconCopy, IconTrash } from '../components/Icons.jsx'
+import { IconPlus, IconCRM, IconHeart, IconBolt, IconAlert, IconStar, IconSearch, IconMoney, IconTarget, IconCopy, IconTrash } from '../components/Icons.jsx'
 import './ClienteIdeal.css'
 
 const DEFAULT_COLOR = '#4CAF82'
@@ -43,7 +43,6 @@ export default function ClienteIdeal() {
   const [profiles, setProfiles] = useState([])
   const [activeId, setActiveId] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [dirty, setDirty] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => { carregar() }, [user?.empresaId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -95,12 +94,9 @@ export default function ClienteIdeal() {
 
   function update(field, value) {
     setProfiles((prev) => prev.map((p) => (p.id === activeId ? { ...p, [field]: value } : p)))
-    setDirty(true)
   }
 
   function salvarCampo() {
-    if (!dirty) return
-    setDirty(false)
     persist(profile)
   }
 
@@ -149,12 +145,6 @@ export default function ClienteIdeal() {
     setProfiles((prev) => [...prev, parsed])
     setActiveId(parsed.id)
     toast('Novo perfil criado — preencha os campos')
-  }
-
-  async function salvar() {
-    await persist(profile)
-    setDirty(false)
-    toast('Cliente Ideal salvo ✓')
   }
 
   async function duplicarPerfil() {
@@ -308,11 +298,6 @@ export default function ClienteIdeal() {
       <div className="icp-profile-actions">
         <button className="btn-profile-action" onClick={duplicarPerfil}><IconCopy /> Duplicar perfil</button>
         <button className="btn-profile-action danger" onClick={() => setConfirmDelete(true)}><IconTrash /> Apagar perfil</button>
-      </div>
-
-      <div className={`save-bar${dirty ? ' show' : ''}`}>
-        <span className="save-hint">Você tem <strong>alterações não salvas</strong></span>
-        <button className="btn-save" onClick={salvar}><IconSave /> Salvar</button>
       </div>
 
       {confirmDelete && (
