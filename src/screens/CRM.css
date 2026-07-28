@@ -2,11 +2,6 @@
 .crm-search { display: flex; align-items: center; gap: 8px; background: var(--white); border-radius: 99px; padding: 9px 16px; box-shadow: var(--shadow-rest); flex-shrink: 0; }
 .crm-search svg { width: 15px; height: 15px; stroke: var(--ink-40); stroke-width: 2; fill: none; flex-shrink: 0; }
 .crm-search input { border: none; outline: none; background: none; font-family: inherit; font-size: 13.5px; width: 160px; }
-.crm-filters { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
-.crm-filter-chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 99px; font-size: 12.5px; cursor: pointer; background: rgba(255, 255, 255, 0.6); color: var(--ink-60); border: none; transition: all 0.15s; white-space: nowrap; }
-.crm-filter-chip:hover { background: var(--white); box-shadow: var(--shadow-rest); }
-.crm-filter-chip.active { background: var(--ink); color: var(--white); box-shadow: 0 4px 12px rgba(18, 18, 16, 0.22); }
-.crm-filter-chip .dot { width: 6px; height: 6px; border-radius: 50%; }
 .crm-addcol-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 99px; font-size: 13px; color: var(--ink-40); background: none; border: none; cursor: pointer; transition: color 0.15s; white-space: nowrap; }
 .crm-addcol-btn:hover { color: var(--ink); }
 .crm-addcol-btn svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2.4; fill: none; }
@@ -176,6 +171,7 @@
 }
 .crm-col-vis-item:hover { background: #f6f6f2; }
 .crm-col-vis-item input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--green-deep); cursor: pointer; flex-shrink: 0; }
+.crm-col-vis-item .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .crm-col-vis-reset {
   margin-top: 6px;
   border-top: 1px solid var(--ink-divider);
@@ -193,6 +189,26 @@
   transition: color 0.12s;
 }
 .crm-col-vis-reset:hover { color: var(--ink); }
+
+/* ── dropdown de período (CRM) ── */
+.crm-period-dropdown { min-width: 220px; }
+.crm-period-option {
+  display: flex; align-items: center; width: 100%; padding: 8px 10px;
+  border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 13.5px;
+  text-align: left; color: var(--ink); background: none; border: none;
+  transition: background 0.12s;
+}
+.crm-period-option:hover { background: #f6f6f2; }
+.crm-period-option.selected { background: var(--gray-soft); font-weight: 500; }
+.crm-period-custom {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 8px 10px 2px; margin-top: 4px; border-top: 1px solid var(--ink-divider);
+}
+.crm-period-input {
+  padding: 8px 12px; border-radius: 8px; background: var(--cream);
+  font-size: 13px; color: var(--ink); width: 100%; box-sizing: border-box;
+}
+.crm-period-input:hover, .crm-period-input.dp-open { box-shadow: 0 0 0 1.5px var(--ink-divider); }
 
 @media (max-width: 860px) {
   .crm-new-btn { display: none; }
