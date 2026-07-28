@@ -93,9 +93,14 @@ export function AuthProvider({ children }) {
     return { error }
   }
 
+  // Simples e isolado de propósito: só cria a conta no Supabase Auth. Não faz
+  // nenhuma checagem de sessão nem toca em `empresas`/`usuarios` — isso é
+  // responsabilidade exclusiva de completeOnboarding, chamada depois que a
+  // sessão já está confirmada.
   async function signUp(email, password) {
     if (!supabaseReady) { setUser(DEMO_USER); return { error: null, session: true } }
     const { data, error } = await supabase.auth.signUp({ email, password })
+    if (error) console.error('[signUp] Erro ao criar conta:', error)
     return { error, user: data?.user, session: data?.session }
   }
 
