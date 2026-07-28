@@ -310,6 +310,8 @@ export default function CRM() {
   const [periodFilter, setPeriodFilter] = useState('3m')
   const [periodOpen, setPeriodOpen] = useState(false)
   const [customRange, setCustomRange] = useState({ start: '', end: '' })
+  const [showCustomPicker, setShowCustomPicker] = useState(false)
+  const [draftRange, setDraftRange] = useState({ start: '', end: '' })
   const [drawerRowId, setDrawerRowId] = useState(null)
   const [activeCell, setActiveCell] = useState(null) // { rowId, colId }
   const [colModal, setColModal] = useState(null)
@@ -580,6 +582,30 @@ export default function CRM() {
     })
   }
 
+  function togglePeriodDropdown() {
+    setPeriodOpen(v => {
+      const next = !v
+      if (next) {
+        // Reabre já mostrando o seletor de datas se o filtro ativo for personalizado.
+        setShowCustomPicker(periodFilter === 'custom')
+        setDraftRange(periodFilter === 'custom' ? customRange : { start: '', end: '' })
+      }
+      return next
+    })
+  }
+
+  function closePeriodDropdown() {
+    // Fecha sem aplicar — descarta datas em rascunho, mantém o filtro anterior.
+    setPeriodOpen(false)
+    setShowCustomPicker(false)
+  }
+
+  function applyCustomPeriod() {
+    setCustomRange(draftRange)
+    setPeriodFilter('custom')
+    closePeriodDropdown()
+  }
+
   const periodRange = useMemo(() => {
     if (periodFilter === '3m') return last3MonthsRange()
     if (periodFilter === 'custom') {
@@ -683,34 +709,37 @@ export default function CRM() {
             )}
           </div>
           <div className="crm-col-vis-wrap">
-            <button className={`crm-filter-btn${periodActive ? ' active' : ''}`} onClick={() => setPeriodOpen(v => !v)}>
+            <button className={`crm-filter-btn${periodActive ? ' active' : ''}`} onClick={togglePeriodDropdown}>
               <IconCalendar className="crm-filter-icon" />
               {periodLabel}
               <IconChevronDown className={`crm-filter-chevron${periodOpen ? ' open' : ''}`} />
             </button>
             {periodOpen && (
               <>
-                <div className="crm-col-vis-scrim" onClick={() => setPeriodOpen(false)} />
+                <div className="crm-col-vis-scrim" onClick={closePeriodDropdown} />
                 <div className="crm-col-vis-dropdown crm-period-dropdown">
-                  <button className={`crm-period-option${periodFilter === 'all' ? ' selected' : ''}`} onClick={() => { setPeriodFilter('all'); setPeriodOpen(false) }}>Todos</button>
-                  <button className={`crm-period-option${periodFilter === '3m' ? ' selected' : ''}`} onClick={() => { setPeriodFilter('3m'); setPeriodOpen(false) }}>Últimos 3 meses</button>
-                  <button className={`crm-period-option${periodFilter === 'custom' ? ' selected' : ''}`} onClick={() => setPeriodFilter('custom')}>Personalizado</button>
-                  {periodFilter === 'custom' && (
+                  <button className={`crm-period-option${periodFilter === 'all' && !showCustomPicker ? ' selected' : ''}`} onClick={() => { setPeriodFilter('all'); closePeriodDropdown() }}>Todos</button>
+                  <button className={`crm-period-option${periodFilter === '3m' && !showCustomPicker ? ' selected' : ''}`} onClick={() => { setPeriodFilter('3m'); closePeriodDropdown() }}>Últimos 3 meses</button>
+                  <button className={`crm-period-option${showCustomPicker ? ' selected' : ''}`} onClick={() => setShowCustomPicker(true)}>Personalizado</button>
+                  {showCustomPicker && (
                     <div className="crm-period-custom">
                       <DatePicker
-                        value={customRange.start}
-                        onChange={v => setCustomRange(p => ({ ...p, start: v }))}
+                        value={draftRange.start}
+                        onChange={v => setDraftRange(p => ({ ...p, start: v }))}
                         placeholder="Data inicial"
                         className="crm-period-input"
-                        max={customRange.end || undefined}
+                        max={draftRange.end || undefined}
                       />
                       <DatePicker
-                        value={customRange.end}
-                        onChange={v => setCustomRange(p => ({ ...p, end: v }))}
+                        value={draftRange.end}
+                        onChange={v => setDraftRange(p => ({ ...p, end: v }))}
                         placeholder="Data final"
                         className="crm-period-input"
-                        min={customRange.start || undefined}
+                        min={draftRange.start || undefined}
                       />
+                      {draftRange.start && draftRange.end && (
+                        <button className="btn-primary crm-period-apply" onClick={applyCustomPeriod}>Aplicar</button>
+                      )}
                     </div>
                   )}
                 </div>

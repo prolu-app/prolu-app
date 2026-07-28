@@ -226,6 +226,7 @@
   font-size: 13px; color: var(--ink); width: 100%; box-sizing: border-box;
 }
 .crm-period-input:hover, .crm-period-input.dp-open { box-shadow: 0 0 0 1.5px var(--ink-divider); }
+.crm-period-apply { width: 100%; justify-content: center; margin-top: 4px; padding: 10px 16px; }
 
 @media (max-width: 860px) {
   .crm-new-btn { display: none; }
