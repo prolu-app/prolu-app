@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext.jsx'
+import { PasswordField } from '../components/PasswordField.jsx'
 import './Login.css'
 
 export default function Login({ onCreateAccount }) {
@@ -43,9 +44,7 @@ export default function Login({ onCreateAccount }) {
         </div>
         <div className="login-field">
           <label className="modal-label">Senha</label>
-          <input
-            className="modal-input"
-            type="password"
+          <PasswordField
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}

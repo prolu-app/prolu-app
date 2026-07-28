@@ -1,11 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext.jsx'
+import { useToast } from '../contexts/ToastContext.jsx'
+import { PasswordField } from '../components/PasswordField.jsx'
 import './Login.css'
 
 const STEPS = { FORM: 'form', CHECK: 'check', PROFILE: 'profile' }
 
 export default function Onboarding({ initialUser }) {
-  const { signUp, findConvitePendente, completeOnboarding, signOut } = useAuth()
+  const { signUp, findConvitePendente, completeOnboarding, resendConfirmation, signOut } = useAuth()
+  const toast = useToast()
 
   // Se já existe uma sessão autenticada sem registro em `usuarios`
   // (needsOnboarding), pula direto para o passo de perfil.
@@ -17,7 +20,17 @@ export default function Onboarding({ initialUser }) {
   const [convite, setConvite] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [info, setInfo] = useState('')
+  const [resending, setResending] = useState(false)
+
+  // Se a tela retomou direto no passo de perfil (voltando do link de
+  // confirmação por e-mail), busca convite pendente pra saber se a pessoa
+  // deve entrar num escritório existente em vez de criar um novo.
+  useEffect(() => {
+    if (initialUser?.needsOnboarding && initialUser?.email) {
+      findConvitePendente(initialUser.email).then(c => setConvite(c || null))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleSignUp() {
     if (!email || !password) { setError('Preencha e-mail e senha.'); return }
@@ -25,21 +38,30 @@ export default function Onboarding({ initialUser }) {
     setBusy(true)
     setError('')
 
-    const { error } = await signUp(email, password)
+    const { error, session } = await signUp(email, password)
+    setBusy(false)
     if (error) {
-      setBusy(false)
       setError(error.message?.includes('already') ? 'Esse e-mail já tem conta. Tente entrar.' : 'Não foi possível criar a conta.')
       return
     }
 
-    // Checa se há convite pendente para esse e-mail.
+    if (!session) {
+      // Supabase exige confirmação por e-mail antes de liberar a sessão.
+      setStep(STEPS.CHECK)
+      return
+    }
+
+    // Sessão já ativa (confirmação por e-mail desligada no projeto) — segue direto pro perfil.
     const c = await findConvitePendente(email)
     setConvite(c || null)
-    setBusy(false)
-
-    // Se o Supabase exigir confirmação por e-mail, a sessão ainda não existe.
-    setInfo('Conta criada. Se pedirmos confirmação por e-mail, verifique sua caixa de entrada antes de continuar.')
     setStep(STEPS.PROFILE)
+  }
+
+  async function handleResend() {
+    setResending(true)
+    const { error } = await resendConfirmation(email)
+    setResending(false)
+    toast(error ? 'Não foi possível reenviar o e-mail.' : 'E-mail reenviado.')
   }
 
   async function handleProfile() {
@@ -79,7 +101,12 @@ export default function Onboarding({ initialUser }) {
             </div>
             <div className="login-field">
               <label className="modal-label">Senha</label>
-              <input className="modal-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSignUp() }} placeholder="Mínimo 6 caracteres" />
+              <PasswordField
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSignUp() }}
+                placeholder="Mínimo 6 caracteres"
+              />
             </div>
 
             {error && <div className="login-error">{error}</div>}
@@ -92,6 +119,24 @@ export default function Onboarding({ initialUser }) {
           </>
         )}
 
+        {step === STEPS.CHECK && (
+          <>
+            <h1 className="login-title">Quase lá.</h1>
+            <p className="login-sub">Enviamos um email para <strong>{email}</strong>.</p>
+
+            <div className="login-info">
+              Verifique sua caixa de entrada. O email vem de <strong>noreply@mail.app.supabase.io</strong> com o assunto <strong>Confirm your email address</strong>.
+              <br />Se não encontrar, verifique a pasta de spam.
+            </div>
+
+            <button className="btn-cancel login-btn" onClick={handleResend} disabled={resending}>
+              {resending ? 'Reenviando…' : 'Reenviar email'}
+            </button>
+
+            <p className="login-switch"><a href="/">Já confirmei → Entrar</a></p>
+          </>
+        )}
+
         {step === STEPS.PROFILE && (
           <>
             <h1 className="login-title">Só mais um passo.</h1>
@@ -100,8 +145,6 @@ export default function Onboarding({ initialUser }) {
                 ? `Você foi convidado para ${convite.empresas?.nome || 'um escritório'}. Confirme seu nome para entrar.`
                 : 'Conte um pouco sobre você e seu escritório.'}
             </p>
-
-            {info && <div className="login-info">{info}</div>}
 
             <div className="login-field">
               <label className="modal-label">Seu nome</label>

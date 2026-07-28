@@ -94,17 +94,31 @@ export function AuthProvider({ children }) {
   }
 
   async function signUp(email, password) {
-    if (!supabaseReady) { setUser(DEMO_USER); return { error: null } }
+    if (!supabaseReady) { setUser(DEMO_USER); return { error: null, session: true } }
     const { data, error } = await supabase.auth.signUp({ email, password })
-    return { error, user: data?.user }
+    return { error, user: data?.user, session: data?.session }
+  }
+
+  // Reenvia o e-mail de confirmação de cadastro (usuário pediu novo link).
+  async function resendConfirmation(email) {
+    if (!supabaseReady) return { error: null }
+    const { error } = await supabase.auth.resend({ type: 'signup', email })
+    return { error }
   }
 
   // Completa o cadastro depois do signUp: cria a empresa (se for a primeira
   // pessoa) ou vincula a um convite pendente, e cria o registro em `usuarios`.
   async function completeOnboarding({ nome, empresaNome, conviteId, empresaIdConvite, roleConvite }) {
-    const { data: authData } = await supabase.auth.getUser()
-    const authUser = authData?.user
-    if (!authUser) return { error: 'Sessão não encontrada.' }
+    let { data: authData } = await supabase.auth.getUser()
+    let authUser = authData?.user
+    if (!authUser) {
+      // A sessão pode ainda não estar totalmente propagada logo após a
+      // confirmação por e-mail — tenta renovar antes de desistir.
+      await supabase.auth.refreshSession()
+      ;({ data: authData } = await supabase.auth.getUser())
+      authUser = authData?.user
+    }
+    if (!authUser) return { error: 'Confirme seu e-mail antes de continuar. Verifique sua caixa de entrada e clique no link de confirmação.' }
 
     let empresaId = empresaIdConvite || null
     let role = roleConvite || 'master'
@@ -161,7 +175,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       user, loading, isMaster, isProluAdmin, isEmpresaMaster,
-      signIn, signUp, signOut, completeOnboarding, findConvitePendente,
+      signIn, signUp, signOut, completeOnboarding, findConvitePendente, resendConfirmation,
     }}>
       {children}
     </AuthContext.Provider>
