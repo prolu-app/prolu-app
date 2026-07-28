@@ -3,7 +3,7 @@ import { useToast } from '../contexts/ToastContext.jsx'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { CRM_COLUMNS, CRM_ROWS } from '../data/seed.js'
-import { IconPlus, IconSearch, IconEdit, IconClose } from '../components/Icons.jsx'
+import { IconPlus, IconSearch, IconEdit, IconClose, IconCalendar, IconChevronDown } from '../components/Icons.jsx'
 import { SelectDropdown } from '../components/SelectDropdown.jsx'
 import { DatePicker } from '../components/DatePicker.jsx'
 import CRMDrawer from './CRMDrawer.jsx'
@@ -71,8 +71,6 @@ function fmtDate(v) {
   return `${d}/${m}/${y.slice(2)}`
 }
 
-const MESES_ABBR = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-
 function parseDateStr(s) {
   if (!s) return null
   const d = new Date(s + 'T12:00:00')
@@ -90,12 +88,8 @@ function last3MonthsRange() {
   const end = new Date(y, m + 1, 0, 23, 59, 59, 999)
   return [start, end]
 }
-function monthRangeLabel(start, end) {
-  const s = MESES_ABBR[start.getMonth()]
-  const e = MESES_ABBR[end.getMonth()]
-  return start.getFullYear() === end.getFullYear()
-    ? `${s} – ${e} ${end.getFullYear()}`
-    : `${s} ${start.getFullYear()} – ${e} ${end.getFullYear()}`
+function fmtShortDate(d) {
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
 function parseCol(c) {
@@ -342,9 +336,6 @@ export default function CRM() {
     const key = `crm_hidden_cols_${user?.empresaId || 'demo'}`
     try { const s = localStorage.getItem(key); if (s) setHiddenCols(new Set(JSON.parse(s))) } catch {}
   }, [user?.empresaId])
-  useEffect(() => {
-    if (!loading) tableRef.current?.scrollTo({ top: tableRef.current.scrollHeight, behavior: 'instant' })
-  }, [loading])
 
   async function loadClientes() {
     const { data } = await supabase.from('clientes').select('id, nome').eq('empresa_id', user.empresaId).order('nome')
@@ -601,10 +592,22 @@ export default function CRM() {
   }, [periodFilter, customRange])
 
   const periodLabel = useMemo(() => {
-    if (periodFilter === 'custom') return 'Personalizado'
-    if (periodFilter === '3m') { const [s, e] = last3MonthsRange(); return monthRangeLabel(s, e) }
-    return 'Período'
-  }, [periodFilter])
+    if (periodFilter === 'all') return 'Todos os períodos'
+    if (periodFilter === '3m') return 'Últimos 3 meses'
+    if (periodRange) {
+      const [s, e] = periodRange
+      return `${fmtShortDate(s)} – ${fmtShortDate(e)}/${e.getFullYear()}`
+    }
+    return 'Personalizado'
+  }, [periodFilter, periodRange])
+
+  const statusLabel = statusFilter.size === 0
+    ? 'Todos os status'
+    : statusFilter.size === 1
+      ? `Status · ${[...statusFilter][0]}`
+      : `Status · ${statusFilter.size} selecionados`
+  const statusActive = statusFilter.size > 0
+  const periodActive = periodFilter !== '3m'
 
   const filtered = useMemo(() => sorted.filter(r => {
     if (search) {
@@ -615,6 +618,10 @@ export default function CRM() {
     if (periodRange && dataEntradaCol && !inPeriod(r[dataEntradaCol.id], periodRange)) return false
     return true
   }), [sorted, search, statusFilter, statusCol, periodRange, dataEntradaCol])
+
+  useEffect(() => {
+    tableRef.current?.scrollTo({ top: tableRef.current.scrollHeight, behavior: 'instant' })
+  }, [filtered])
 
   const visibleCols = useMemo(() => columns.filter(c => !hiddenCols.has(c.id)), [columns, hiddenCols])
 
@@ -646,93 +653,100 @@ export default function CRM() {
       </div>
 
       <div className="crm-toolbar">
-        <div className="crm-search">
-          <IconSearch />
-          <input placeholder="Buscar…" value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-        <div className="crm-col-vis-wrap">
-          <button className={`crm-addcol-btn crm-col-vis-btn${statusFilterOpen ? ' active' : ''}`} onClick={() => setStatusFilterOpen(v => !v)}>
-            Status{statusFilter.size > 0 ? ` · ${statusFilter.size}` : ''}
-          </button>
-          {statusFilterOpen && (
-            <>
-              <div className="crm-col-vis-scrim" onClick={() => setStatusFilterOpen(false)} />
-              <div className="crm-col-vis-dropdown">
-                <label className="crm-col-vis-item">
-                  <input type="checkbox" checked={statusFilter.size === 0} onChange={() => setStatusFilter(new Set())} />
-                  <span>Todos</span>
-                </label>
-                {statusCol?.options.map(o => (
-                  <label key={o.value} className="crm-col-vis-item">
-                    <input type="checkbox" checked={statusFilter.has(o.value)} onChange={() => toggleStatusOption(o.value)} />
-                    <span className="dot" style={{ background: COLOR_VARS[o.color] || COLOR_VARS.gray }} />
-                    <span>{o.value}</span>
+        <div className="crm-toolbar-left">
+          <div className="crm-search">
+            <IconSearch />
+            <input placeholder="Buscar…" value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          <div className="crm-col-vis-wrap">
+            <button className={`crm-filter-btn${statusActive ? ' active' : ''}`} onClick={() => setStatusFilterOpen(v => !v)}>
+              {statusLabel}
+              <IconChevronDown className={`crm-filter-chevron${statusFilterOpen ? ' open' : ''}`} />
+            </button>
+            {statusFilterOpen && (
+              <>
+                <div className="crm-col-vis-scrim" onClick={() => setStatusFilterOpen(false)} />
+                <div className="crm-col-vis-dropdown">
+                  <label className="crm-col-vis-item">
+                    <input type="checkbox" checked={statusFilter.size === 0} onChange={() => setStatusFilter(new Set())} />
+                    <span>Todos</span>
                   </label>
-                ))}
-              </div>
-            </>
-          )}
+                  {statusCol?.options.map(o => (
+                    <label key={o.value} className="crm-col-vis-item">
+                      <input type="checkbox" checked={statusFilter.has(o.value)} onChange={() => toggleStatusOption(o.value)} />
+                      <span className="dot" style={{ background: COLOR_VARS[o.color] || COLOR_VARS.gray }} />
+                      <span>{o.value}</span>
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          <div className="crm-col-vis-wrap">
+            <button className={`crm-filter-btn${periodActive ? ' active' : ''}`} onClick={() => setPeriodOpen(v => !v)}>
+              <IconCalendar className="crm-filter-icon" />
+              {periodLabel}
+              <IconChevronDown className={`crm-filter-chevron${periodOpen ? ' open' : ''}`} />
+            </button>
+            {periodOpen && (
+              <>
+                <div className="crm-col-vis-scrim" onClick={() => setPeriodOpen(false)} />
+                <div className="crm-col-vis-dropdown crm-period-dropdown">
+                  <button className={`crm-period-option${periodFilter === 'all' ? ' selected' : ''}`} onClick={() => { setPeriodFilter('all'); setPeriodOpen(false) }}>Todos</button>
+                  <button className={`crm-period-option${periodFilter === '3m' ? ' selected' : ''}`} onClick={() => { setPeriodFilter('3m'); setPeriodOpen(false) }}>Últimos 3 meses</button>
+                  <button className={`crm-period-option${periodFilter === 'custom' ? ' selected' : ''}`} onClick={() => setPeriodFilter('custom')}>Personalizado</button>
+                  {periodFilter === 'custom' && (
+                    <div className="crm-period-custom">
+                      <DatePicker
+                        value={customRange.start}
+                        onChange={v => setCustomRange(p => ({ ...p, start: v }))}
+                        placeholder="Data inicial"
+                        className="crm-period-input"
+                        max={customRange.end || undefined}
+                      />
+                      <DatePicker
+                        value={customRange.end}
+                        onChange={v => setCustomRange(p => ({ ...p, end: v }))}
+                        placeholder="Data final"
+                        className="crm-period-input"
+                        min={customRange.start || undefined}
+                      />
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
-        <div className="crm-col-vis-wrap">
-          <button className={`crm-addcol-btn crm-col-vis-btn${periodOpen ? ' active' : ''}`} onClick={() => setPeriodOpen(v => !v)}>
-            {periodLabel}
-          </button>
-          {periodOpen && (
-            <>
-              <div className="crm-col-vis-scrim" onClick={() => setPeriodOpen(false)} />
-              <div className="crm-col-vis-dropdown crm-period-dropdown">
-                <button className={`crm-period-option${periodFilter === 'all' ? ' selected' : ''}`} onClick={() => { setPeriodFilter('all'); setPeriodOpen(false) }}>Todos</button>
-                <button className={`crm-period-option${periodFilter === '3m' ? ' selected' : ''}`} onClick={() => { setPeriodFilter('3m'); setPeriodOpen(false) }}>Últimos 3 meses</button>
-                <button className={`crm-period-option${periodFilter === 'custom' ? ' selected' : ''}`} onClick={() => setPeriodFilter('custom')}>Personalizado</button>
-                {periodFilter === 'custom' && (
-                  <div className="crm-period-custom">
-                    <DatePicker
-                      value={customRange.start}
-                      onChange={v => setCustomRange(p => ({ ...p, start: v }))}
-                      placeholder="Data inicial"
-                      className="crm-period-input"
-                      max={customRange.end || undefined}
-                    />
-                    <DatePicker
-                      value={customRange.end}
-                      onChange={v => setCustomRange(p => ({ ...p, end: v }))}
-                      placeholder="Data final"
-                      className="crm-period-input"
-                      min={customRange.start || undefined}
-                    />
-                  </div>
-                )}
-              </div>
-            </>
-          )}
+        <div className="crm-toolbar-right">
+          <div className="crm-col-vis-wrap">
+            <button className={`crm-addcol-btn crm-col-vis-btn${colVisOpen ? ' active' : ''}`} onClick={() => setColVisOpen(v => !v)}>
+              <svg viewBox="0 0 24 24"><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
+              Colunas{hiddenCols.size > 0 ? ` (${columns.length - hiddenCols.size}/${columns.length})` : ''}
+            </button>
+            {colVisOpen && (
+              <>
+                <div className="crm-col-vis-scrim" onClick={() => setColVisOpen(false)} />
+                <div className="crm-col-vis-dropdown">
+                  <div className="crm-col-vis-title">Colunas visíveis</div>
+                  {columns.map(c => (
+                    <label key={c.id} className="crm-col-vis-item">
+                      <input type="checkbox" checked={!hiddenCols.has(c.id)} onChange={() => toggleColVis(c.id)} />
+                      <span>{c.name}</span>
+                    </label>
+                  ))}
+                  {hiddenCols.size > 0 && (
+                    <button className="crm-col-vis-reset" onClick={() => {
+                      setHiddenCols(new Set())
+                      localStorage.removeItem(`crm_hidden_cols_${user?.empresaId || 'demo'}`)
+                    }}>Mostrar todas</button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+          <button className="crm-addcol-btn" onClick={openNewColumn}><IconPlus /> Nova coluna</button>
         </div>
-        <div className="crm-col-vis-wrap">
-          <button className={`crm-addcol-btn crm-col-vis-btn${colVisOpen ? ' active' : ''}`} onClick={() => setColVisOpen(v => !v)}>
-            <svg viewBox="0 0 24 24"><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
-            Colunas{hiddenCols.size > 0 ? ` (${columns.length - hiddenCols.size}/${columns.length})` : ''}
-          </button>
-          {colVisOpen && (
-            <>
-              <div className="crm-col-vis-scrim" onClick={() => setColVisOpen(false)} />
-              <div className="crm-col-vis-dropdown">
-                <div className="crm-col-vis-title">Colunas visíveis</div>
-                {columns.map(c => (
-                  <label key={c.id} className="crm-col-vis-item">
-                    <input type="checkbox" checked={!hiddenCols.has(c.id)} onChange={() => toggleColVis(c.id)} />
-                    <span>{c.name}</span>
-                  </label>
-                ))}
-                {hiddenCols.size > 0 && (
-                  <button className="crm-col-vis-reset" onClick={() => {
-                    setHiddenCols(new Set())
-                    localStorage.removeItem(`crm_hidden_cols_${user?.empresaId || 'demo'}`)
-                  }}>Mostrar todas</button>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-        <button className="crm-addcol-btn" onClick={openNewColumn}><IconPlus /> Nova coluna</button>
       </div>
 
       {/* DESKTOP: tabela */}
