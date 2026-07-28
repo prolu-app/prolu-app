@@ -10,6 +10,7 @@ import './Indicadores.css'
 
 const YEAR_MIN = 2020
 const CURRENT_YEAR = new Date().getFullYear()
+const YEAR_MAX = CURRENT_YEAR + 10
 const Q_LABELS = ['Q1', 'Q2', 'Q3', 'Q4']
 const Q_RANGES = ['Jan – Mar', 'Abr – Jun', 'Jul – Set', 'Out – Dez']
 
@@ -354,7 +355,7 @@ export default function Indicadores() {
           <div className="year-pill">
             <button className="year-btn" onClick={() => setYear((y) => Math.max(YEAR_MIN, y - 1))} disabled={year <= YEAR_MIN}>‹</button>
             <span className="year-val">{year}</span>
-            <button className="year-btn" onClick={() => setYear((y) => Math.min(CURRENT_YEAR, y + 1))} disabled={year >= CURRENT_YEAR}>›</button>
+            <button className="year-btn" onClick={() => setYear((y) => Math.min(YEAR_MAX, y + 1))} disabled={year >= YEAR_MAX}>›</button>
           </div>
           <button className="btn-primary ind-new-btn" onClick={() => setModalOpen(true)}>
             <IconPlus /> Novo indicador
