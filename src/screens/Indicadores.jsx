@@ -8,7 +8,8 @@ import {
 } from '../components/Icons.jsx'
 import './Indicadores.css'
 
-const YEAR_START = 2026
+const YEAR_MIN = 2020
+const CURRENT_YEAR = new Date().getFullYear()
 const Q_LABELS = ['Q1', 'Q2', 'Q3', 'Q4']
 const Q_RANGES = ['Jan – Mar', 'Abr – Jun', 'Jul – Set', 'Out – Dez']
 
@@ -69,14 +70,21 @@ function quarterRange(year, q) {
   const startMonth = q * 3
   return [new Date(year, startMonth, 1), eod(year, startMonth + 3, 0)]
 }
-function cumulativeRange(year, uptoQ) {
-  const eod = (y, m, d) => new Date(y, m, d, 23, 59, 59, 999)
-  return [new Date(year, 0, 1), eod(year, uptoQ * 3 + 3, 0)]
-}
 function currentQuarterFor(year) {
   const now = new Date()
   if (year !== now.getFullYear()) return 0
   return Math.floor(now.getMonth() / 3)
+}
+// Acumulado do ano inteiro até hoje: para o ano corrente, vai até a data de hoje;
+// para anos anteriores (já encerrados), o ano inteiro conta como "até hoje".
+function ytdRange(year) {
+  const eod = (y, m, d) => new Date(y, m, d, 23, 59, 59, 999)
+  const now = new Date()
+  if (year === CURRENT_YEAR) return [new Date(year, 0, 1), eod(year, now.getMonth(), now.getDate())]
+  return [new Date(year, 0, 1), eod(year, 11, 31)]
+}
+function ytdQuarterCount(year) {
+  return year === CURRENT_YEAR ? currentQuarterFor(year) + 1 : 4
 }
 
 /* ── mapeamento de colunas do CRM (igual ao Dashboard) ── */
@@ -124,15 +132,15 @@ function localSeedState() {
   const indicadoresLocal = INDICADORES_PADRAO.map((d, i) => ({
     id: 'auto-' + i, nome: d.nome, unidade: d.unidade, grupo: d.grupo, tipo: d.tipo, fonte_coluna: d.fonte_coluna,
   }))
-  const metasLocal = indicadoresLocal.map((ind, i) => ({ indicador_id: ind.id, ano: YEAR_START, meta: INDICADORES_PADRAO[i].meta }))
+  const metasLocal = indicadoresLocal.map((ind, i) => ({ indicador_id: ind.id, ano: CURRENT_YEAR, meta: INDICADORES_PADRAO[i].meta }))
   return { indicadoresLocal, metasLocal, resultadosLocal: [] }
 }
 
 export default function Indicadores() {
   const toast = useToast()
   const { user } = useAuth()
-  const [year, setYear] = useState(YEAR_START)
-  const [currentQ, setCurrentQ] = useState(currentQuarterFor(YEAR_START))
+  const [year, setYear] = useState(CURRENT_YEAR)
+  const [currentQ, setCurrentQ] = useState(currentQuarterFor(CURRENT_YEAR))
   const [cols, setCols] = useState([])
   const [allRows, setAllRows] = useState([])
   const [indicadores, setIndicadores] = useState([])
@@ -229,7 +237,7 @@ export default function Indicadores() {
 
       if (ind.tipo === 'automatico') {
         const quarters = [0, 1, 2, 3].map(q => computeAutoValue(ind.fonte_coluna, filterRowsByRange(allRows, deId, quarterRange(year, q)), colMap))
-        const acumulado = computeAutoValue(ind.fonte_coluna, filterRowsByRange(allRows, deId, cumulativeRange(year, currentQ)), colMap)
+        const acumulado = computeAutoValue(ind.fonte_coluna, filterRowsByRange(allRows, deId, ytdRange(year)), colMap)
         return { id: ind.id, name: ind.nome, unit: ind.unidade, group: ind.grupo || 'Geral', tipo: 'automatico', fonteColuna: ind.fonte_coluna, meta, quarters, acumulado }
       }
 
@@ -237,14 +245,14 @@ export default function Indicadores() {
         const r = resultados.find(res => res.indicador_id === ind.id && res.trimestre === t)
         return r && r.valor !== null && r.valor !== undefined ? Number(r.valor) : null
       })
-      const filled = quarters.slice(0, currentQ + 1).filter(v => v !== null)
+      const filled = quarters.slice(0, ytdQuarterCount(year)).filter(v => v !== null)
       const acumulado = filled.length ? filled.reduce((s, v) => s + v, 0) : null
       return { id: ind.id, name: ind.nome, unit: ind.unidade, group: ind.grupo || 'Geral', tipo: 'manual', meta, quarters, acumulado }
     })
-  }, [indicadores, metas, resultados, allRows, colMap, year, currentQ])
+  }, [indicadores, metas, resultados, allRows, colMap, year])
 
   const fatKpi = kpis.find((k) => k.tipo === 'automatico' && k.fonteColuna === 'faturamento')
-  const proj = fatKpi && fatKpi.acumulado !== null ? Math.round((fatKpi.acumulado / (currentQ + 1)) * 4) : null
+  const proj = fatKpi && fatKpi.acumulado !== null ? Math.round((fatKpi.acumulado / ytdQuarterCount(year)) * 4) : null
 
   const groups = kpis.reduce((acc, k) => {
     if (!acc[k.group]) acc[k.group] = []
@@ -273,6 +281,29 @@ export default function Indicadores() {
     const { error } = await supabase.from('indicador_resultados')
       .upsert({ indicador_id: indicadorId, ano: year, trimestre, valor: valorFinal }, { onConflict: 'indicador_id,ano,trimestre' })
     if (error) toast('Não foi possível salvar o resultado')
+  }
+
+  async function updateMeta(indicadorId, raw) {
+    const clean = String(raw).replace(/[^0-9,.-]/g, '').replace(',', '.')
+    if (clean === '') return
+    const val = parseFloat(clean)
+    if (isNaN(val)) { toast('Informe um valor de meta válido'); return }
+    const entry = { indicador_id: indicadorId, ano: year, meta: val }
+    setMetas((prev) => {
+      const others = prev.filter((m) => !(m.indicador_id === indicadorId && m.ano === year))
+      return [...others, entry]
+    })
+    toast('Meta salva')
+    if (!supabaseReady || !user?.empresaId) {
+      localMetasRef.current = [
+        ...localMetasRef.current.filter((m) => !(m.indicador_id === indicadorId && m.ano === year)),
+        entry,
+      ]
+      return
+    }
+    const { error } = await supabase.from('indicador_metas')
+      .upsert(entry, { onConflict: 'indicador_id,ano' })
+    if (error) toast('Não foi possível salvar a meta')
   }
 
   async function criar() {
@@ -321,9 +352,9 @@ export default function Indicadores() {
         </div>
         <div className="ind-header-right">
           <div className="year-pill">
-            <button className="year-btn" onClick={() => setYear((y) => Math.max(YEAR_START, y - 1))} disabled={year <= YEAR_START}>‹</button>
+            <button className="year-btn" onClick={() => setYear((y) => Math.max(YEAR_MIN, y - 1))} disabled={year <= YEAR_MIN}>‹</button>
             <span className="year-val">{year}</span>
-            <button className="year-btn" onClick={() => setYear((y) => y + 1)}>›</button>
+            <button className="year-btn" onClick={() => setYear((y) => Math.min(CURRENT_YEAR, y + 1))} disabled={year >= CURRENT_YEAR}>›</button>
           </div>
           <button className="btn-primary ind-new-btn" onClick={() => setModalOpen(true)}>
             <IconPlus /> Novo indicador
@@ -377,11 +408,23 @@ export default function Indicadores() {
                       {k.name}
                       {k.tipo === 'automatico' && <span className="kpi-tipo-badge">Automático</span>}
                     </div>
-                    <div className="kpi-meta-line">Meta anual: {k.meta !== null ? fmtFull(k.meta, k.unit) : '—'}</div>
+                    <div className="kpi-meta-line">
+                      Meta anual: {k.unit === 'R$' && 'R$ '}
+                      <span
+                        className="kpi-meta-val"
+                        contentEditable
+                        suppressContentEditableWarning
+                        onBlur={(e) => updateMeta(k.id, e.currentTarget.textContent)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
+                      >
+                        {k.meta !== null ? (k.unit === 'R$' ? Math.round(k.meta).toLocaleString('pt-BR') : k.meta) : ''}
+                      </span>
+                      {k.unit === '%' && '%'}
+                    </div>
                   </div>
                   <div className="kpi-right">
                     <div className="kpi-block">
-                      <div className="kpi-block-label">Acumulado até {Q_LABELS[currentQ]}</div>
+                      <div className="kpi-block-label">Acumulado YTD</div>
                       <div className="kpi-block-val">{k.acumulado !== null ? fmtFull(k.acumulado, k.unit) : '—'}</div>
                       {st ? (
                         <div className="kpi-status" style={{ color: st.color }}>{pct}% da meta · {st.text}</div>
