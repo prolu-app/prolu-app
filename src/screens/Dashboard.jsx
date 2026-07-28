@@ -362,7 +362,7 @@ export default function Dashboard() {
         <div className="funnel-footer">
           <p className="funnel-insight">
             {taxaConversao !== null
-              ? <>Taxa de conversão geral: <strong>{taxaConversao}%</strong> dos pedidos viram projeto fechado.</>
+              ? <>Taxa de conversão geral: <strong>{taxaConversao}%</strong> das propostas viram projeto fechado.</>
               : <span className="funnel-muted">Aguardando dados suficientes para calcular a taxa de conversão.</span>
             }
           </p>
