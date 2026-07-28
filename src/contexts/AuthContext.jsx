@@ -109,16 +109,28 @@ export function AuthProvider({ children }) {
   // Completa o cadastro depois do signUp: cria a empresa (se for a primeira
   // pessoa) ou vincula a um convite pendente, e cria o registro em `usuarios`.
   async function completeOnboarding({ nome, empresaNome, conviteId, empresaIdConvite, roleConvite }) {
-    let { data: authData } = await supabase.auth.getUser()
-    let authUser = authData?.user
-    if (!authUser) {
-      // A sessão pode ainda não estar totalmente propagada logo após a
-      // confirmação por e-mail — tenta renovar antes de desistir.
-      await supabase.auth.refreshSession()
-      ;({ data: authData } = await supabase.auth.getUser())
-      authUser = authData?.user
+    // O insert em `empresas` exige RLS com auth.uid() não nulo, ou seja, o
+    // cliente supabase-js precisa ter uma sessão ativa (JWT anexado
+    // automaticamente no header Authorization de toda requisição PostgREST).
+    // getSession() garante que lemos o estado atual do cliente antes de
+    // tentar o insert, em vez de confiar em estado do React que pode estar
+    // um passo atrás da propagação da sessão.
+    let { data: sessionData } = await supabase.auth.getSession()
+    let session = sessionData?.session
+
+    if (!session) {
+      // Pode acontecer logo após a confirmação por e-mail, se o token ainda
+      // não tiver sido totalmente propagado/persistido no cliente.
+      const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession()
+      if (refreshErr) console.error('[completeOnboarding] refreshSession falhou:', refreshErr)
+      session = refreshed?.session
     }
-    if (!authUser) return { error: 'Confirme seu e-mail antes de continuar. Verifique sua caixa de entrada e clique no link de confirmação.' }
+
+    if (!session?.user) {
+      return { error: 'Confirme seu e-mail antes de continuar. Verifique sua caixa de entrada e clique no link de confirmação.' }
+    }
+
+    const authUser = session.user
 
     let empresaId = empresaIdConvite || null
     let role = roleConvite || 'master'
@@ -129,7 +141,10 @@ export function AuthProvider({ children }) {
         .insert({ nome: empresaNome })
         .select('id')
         .single()
-      if (empErr) return { error: empErr.message }
+      if (empErr) {
+        console.error('[completeOnboarding] Erro ao criar empresa:', empErr)
+        return { error: empErr.message }
+      }
       empresaId = empresa.id
       role = 'master' // quem cria a empresa é o master dela
     }
@@ -141,7 +156,10 @@ export function AuthProvider({ children }) {
       email: authUser.email,
       role,
     })
-    if (userErr) return { error: userErr.message }
+    if (userErr) {
+      console.error('[completeOnboarding] Erro ao criar usuario:', userErr)
+      return { error: userErr.message }
+    }
 
     if (conviteId) {
       await supabase.from('convites').update({ status: 'aceito' }).eq('id', conviteId)
