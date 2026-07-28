@@ -115,25 +115,30 @@ export function AuthProvider({ children }) {
   // pessoa) ou vincula a um convite pendente, e cria o registro em `usuarios`.
   async function completeOnboarding({ nome, empresaNome, conviteId, empresaIdConvite, roleConvite }) {
     // O insert em `empresas` exige RLS com auth.uid() não nulo, ou seja, o
-    // cliente supabase-js precisa ter uma sessão ativa (JWT anexado
-    // automaticamente no header Authorization de toda requisição PostgREST).
-    // getSession() garante que lemos o estado atual do cliente antes de
-    // tentar o insert, em vez de confiar em estado do React que pode estar
-    // um passo atrás da propagação da sessão.
-    let { data: sessionData } = await supabase.auth.getSession()
-    let session = sessionData?.session
+    // cliente supabase-js precisa ter uma sessão ativa com o JWT do usuário
+    // anexado ao header Authorization de toda requisição PostgREST.
+    // getSession() só lê o estado local do cliente — isso não garante que o
+    // header das próximas requisições já foi resincronizado com a sessão
+    // mais recente, especialmente logo após o redirect de confirmação de
+    // e-mail. refreshSession() faz uma chamada real que força essa
+    // resincronização antes de tentarmos o insert, então chamamos ela
+    // sempre (não só como fallback quando não há sessão nenhuma).
+    let { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession()
+    if (refreshErr) console.error('[completeOnboarding] refreshSession retornou erro:', refreshErr)
+    let session = refreshed?.session
 
     if (!session) {
-      // Pode acontecer logo após a confirmação por e-mail, se o token ainda
-      // não tiver sido totalmente propagado/persistido no cliente.
-      const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession()
-      if (refreshErr) console.error('[completeOnboarding] refreshSession falhou:', refreshErr)
-      session = refreshed?.session
+      // refreshSession pode falhar mesmo com sessão válida em alguns casos —
+      // tenta ler o estado atual antes de desistir.
+      const { data: sessionData } = await supabase.auth.getSession()
+      session = sessionData?.session
     }
 
     if (!session?.user) {
       return { error: 'Confirme seu e-mail antes de continuar. Verifique sua caixa de entrada e clique no link de confirmação.' }
     }
+
+    console.log('[completeOnboarding] sessão ok, user id:', session.user.id, '| access_token presente:', !!session.access_token)
 
     const authUser = session.user
 
