@@ -15,11 +15,11 @@ const Q_LABELS = ['Q1', 'Q2', 'Q3', 'Q4']
 const Q_RANGES = ['Jan – Mar', 'Abr – Jun', 'Jul – Set', 'Out – Dez']
 
 const INDICADORES_PADRAO = [
-  { nome: 'Faturamento', unidade: 'R$', grupo: 'Financeiro', tipo: 'automatico', fonte_coluna: 'faturamento', meta: 130000 },
-  { nome: 'Ticket médio', unidade: 'R$', grupo: 'Financeiro', tipo: 'automatico', fonte_coluna: 'ticket_medio', meta: 20000 },
-  { nome: 'Projetos fechados', unidade: '#', grupo: 'Comercial', tipo: 'automatico', fonte_coluna: 'projetos_fechados', meta: 8 },
-  { nome: 'Pedidos de orçamento', unidade: '#', grupo: 'Comercial', tipo: 'automatico', fonte_coluna: 'pedidos_orcamento', meta: 25 },
-  { nome: 'Taxa de conversão', unidade: '%', grupo: 'Comercial', tipo: 'automatico', fonte_coluna: 'taxa_conversao', meta: 30 },
+  { nome: 'Faturamento', unidade: 'R$', grupo: 'Financeiro', tipo: 'automatico', fonte_coluna: 'faturamento', meta: 0 },
+  { nome: 'Ticket médio', unidade: 'R$', grupo: 'Financeiro', tipo: 'automatico', fonte_coluna: 'ticket_medio', meta: 0 },
+  { nome: 'Projetos fechados', unidade: '#', grupo: 'Comercial', tipo: 'automatico', fonte_coluna: 'projetos_fechados', meta: 0 },
+  { nome: 'Pedidos de orçamento', unidade: '#', grupo: 'Comercial', tipo: 'automatico', fonte_coluna: 'pedidos_orcamento', meta: 0 },
+  { nome: 'Taxa de conversão', unidade: '%', grupo: 'Comercial', tipo: 'automatico', fonte_coluna: 'taxa_conversao', meta: 0 },
 ]
 
 /* ── formatação ── */
