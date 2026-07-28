@@ -146,16 +146,20 @@ export function AuthProvider({ children }) {
     let role = roleConvite || 'master'
 
     if (!empresaId) {
-      const { data: empresa, error: empErr } = await supabase
+      // Gera o id no cliente e evita `.select()` no insert: a policy de
+      // SELECT de `empresas` depende de já existir um registro em
+      // `usuarios` (auth_empresa_id()), que só é criado no passo seguinte.
+      // Pedir a linha de volta (RETURNING) nesse momento esbarra nessa
+      // policy de leitura e falha com o mesmo erro de RLS do insert.
+      const novoEmpresaId = crypto.randomUUID()
+      const { error: empErr } = await supabase
         .from('empresas')
-        .insert({ nome: empresaNome })
-        .select('id')
-        .single()
+        .insert({ id: novoEmpresaId, nome: empresaNome })
       if (empErr) {
         console.error('[completeOnboarding] Erro ao criar empresa:', empErr)
         return { error: empErr.message }
       }
-      empresaId = empresa.id
+      empresaId = novoEmpresaId
       role = 'master' // quem cria a empresa é o master dela
     }
 
