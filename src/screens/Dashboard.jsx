@@ -68,20 +68,16 @@ function groupByField(rows, fieldId, statusId, valorId, propostaId) {
   const map = {}
   rows.forEach(r => {
     const key = r[fieldId] || '(não informado)'
-    if (!map[key]) map[key] = { name: key, total: 0, comProposta: 0, fechados: 0, perdidosComProposta: 0, somaFechado: 0 }
+    if (!map[key]) map[key] = { name: key, total: 0, comProposta: 0, fechados: 0, somaFechado: 0 }
     map[key].total++
     if (r[propostaId] === 'Sim') map[key].comProposta++
     if (r[statusId] === 'Fechado') { map[key].fechados++; map[key].somaFechado += Number(r[valorId]) || 0 }
-    if (r[statusId] === 'Perdido' && r[propostaId] === 'Sim') map[key].perdidosComProposta++
   })
-  return Object.values(map).map(g => {
-    const denom = g.fechados + g.perdidosComProposta
-    return {
-      ...g,
-      taxa: denom > 0 ? Math.round((g.fechados / denom) * 100) : null,
-      ticketMedio: g.fechados > 0 ? Math.round(g.somaFechado / g.fechados) : null,
-    }
-  }).sort((a, b) => b.total - a.total)
+  return Object.values(map).map(g => ({
+    ...g,
+    taxa: g.comProposta > 0 ? Math.round((g.fechados / g.comProposta) * 100) : null,
+    ticketMedio: g.fechados > 0 ? Math.round(g.somaFechado / g.fechados) : null,
+  })).sort((a, b) => b.total - a.total)
 }
 
 function GroupSimple({ groups }) {
@@ -189,8 +185,7 @@ export default function Dashboard() {
     const somaValor = arr => arr.reduce((s, r) => s + (Number(r[vid]) || 0), 0)
     const mediaValor = arr => arr.length ? somaValor(arr) / arr.length : 0
 
-    const denominatorConv = fechados.length + perdidosComProposta.length
-    const taxaConversao = denominatorConv > 0 ? Math.round((fechados.length / denominatorConv) * 100) : null
+    const taxaConversao = comProposta.length > 0 ? Math.round((fechados.length / comProposta.length) * 100) : null
 
     let tempoMedio = null
     if (fechados.length > 0 && dfid && deid) {
@@ -362,7 +357,7 @@ export default function Dashboard() {
         <div className="funnel-footer">
           <p className="funnel-insight">
             {taxaConversao !== null
-              ? <>Taxa de conversão geral: <strong>{taxaConversao}%</strong> das propostas viram projeto fechado.</>
+              ? <>Taxa de conversão: <strong>{taxaConversao}%</strong> das propostas enviadas viraram projeto fechado</>
               : <span className="funnel-muted">Aguardando dados suficientes para calcular a taxa de conversão.</span>
             }
           </p>
