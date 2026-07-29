@@ -20,6 +20,7 @@ const INDICADORES_PADRAO = [
   { nome: 'Projetos fechados', unidade: '#', grupo: 'Comercial', tipo: 'automatico', fonte_coluna: 'projetos_fechados', meta: 0 },
   { nome: 'Pedidos de orçamento', unidade: '#', grupo: 'Comercial', tipo: 'automatico', fonte_coluna: 'pedidos_orcamento', meta: 0 },
   { nome: 'Taxa de conversão', unidade: '%', grupo: 'Comercial', tipo: 'automatico', fonte_coluna: 'taxa_conversao', meta: 0 },
+  { nome: 'Propostas enviadas', unidade: '#', grupo: 'Comercial', tipo: 'automatico', fonte_coluna: 'propostas_enviadas', meta: 0 },
 ]
 
 /* ── formatação ── */
@@ -125,6 +126,7 @@ function computeAutoValue(key, rows, colMap) {
     const comProposta = rows.filter(r => r[pid] === 'Sim')
     return comProposta.length > 0 ? Math.round((fechados.length / comProposta.length) * 100) : null
   }
+  if (key === 'propostas_enviadas') return rows.length ? rows.filter(r => r[pid] === 'Sim').length : null
   return null
 }
 
@@ -175,6 +177,17 @@ export default function Indicadores() {
     return indRows
   }
 
+  async function ensurePropostasEnviadas(empresaId, indRows) {
+    if (indRows.some(r => r.nome === 'Propostas enviadas')) return indRows
+    const def = INDICADORES_PADRAO.find(d => d.nome === 'Propostas enviadas')
+    const { data: indRow, error: indErr } = await supabase.from('indicadores').insert({
+      empresa_id: empresaId, nome: def.nome, unidade: def.unidade, grupo: def.grupo, tipo: def.tipo, fonte_coluna: def.fonte_coluna,
+    }).select('*').single()
+    if (indErr || !indRow) return indRows
+    await supabase.from('indicador_metas').insert({ indicador_id: indRow.id, ano: CURRENT_YEAR, meta: def.meta ?? 0 })
+    return [...indRows, indRow]
+  }
+
   async function loadAno(y, ids) {
     if (!supabaseReady || !user?.empresaId) {
       setMetas(localMetasRef.current.filter((m) => m.ano === y))
@@ -221,6 +234,7 @@ export default function Indicadores() {
       if (!seeded) { toast('Não foi possível preparar os indicadores'); setLoading(false); return }
       indRows = seeded
     }
+    indRows = await ensurePropostasEnviadas(user.empresaId, indRows)
     indIdsRef.current = indRows.map(r => r.id)
     setIndicadores(indRows)
     await loadAno(year, indIdsRef.current)
