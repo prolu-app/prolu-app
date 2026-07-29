@@ -122,9 +122,8 @@ function computeAutoValue(key, rows, colMap) {
   if (key === 'projetos_fechados') return rows.length ? fechados.length : null
   if (key === 'pedidos_orcamento') return rows.length ? rows.length : null
   if (key === 'taxa_conversao') {
-    const perdidosComProposta = rows.filter(r => r[sid] === 'Perdido' && r[pid] === 'Sim')
-    const denom = fechados.length + perdidosComProposta.length
-    return denom > 0 ? Math.round((fechados.length / denom) * 100) : null
+    const comProposta = rows.filter(r => r[pid] === 'Sim')
+    return comProposta.length > 0 ? Math.round((fechados.length / comProposta.length) * 100) : null
   }
   return null
 }
