@@ -445,6 +445,7 @@ export default function CRM() {
   const clienteCol     = useMemo(() => columns.find(c => c.slug === 'cliente'), [columns])
   const dataEntradaCol = useMemo(() => columns.find(c => c.slug === 'data_entrada'), [columns])
   const dataFechCol    = useMemo(() => columns.find(c => c.slug === 'data_fechamento'), [columns])
+  const valorCol       = useMemo(() => columns.find(c => c.slug === 'valor'), [columns])
   const drawerRow      = useMemo(() => rows.find(r => r.id === drawerRowId) || null, [rows, drawerRowId])
 
   useEffect(() => { carregar() }, [user?.empresaId])
@@ -820,6 +821,25 @@ export default function CRM() {
     return true
   }), [sorted, search, statusFilter, statusCol, periodRange, dataEntradaCol, colSelectFilters, colDateFilters])
 
+  const summary = useMemo(() => {
+    const count = filtered.length
+    let total = 0
+    let filledCount = 0
+    if (valorCol) {
+      filtered.forEach(r => {
+        const raw = r[valorCol.id]
+        if (raw === null || raw === undefined || raw === '') return
+        const n = Number(raw)
+        if (!isNaN(n)) { total += n; filledCount++ }
+      })
+    }
+    return {
+      count,
+      total: count > 0 ? total : null,
+      avg: filledCount > 0 ? total / filledCount : null,
+    }
+  }, [filtered, valorCol])
+
   useEffect(() => {
     if (!shouldScrollRef.current) return
     tableRef.current?.scrollTo({ top: tableRef.current.scrollHeight, behavior: 'instant' })
@@ -1159,6 +1179,25 @@ export default function CRM() {
           </tbody>
         </table>
         {filtered.length === 0 && <div className="crm-empty">Nenhum registro encontrado.</div>}
+      </div>
+
+      {/* Resumo dos registros visíveis */}
+      <div className="crm-summary-card">
+        <div className="crm-summary-item">
+          <span className="crm-summary-label">Pedidos</span>
+          <span className="crm-summary-dot">·</span>
+          <span className="crm-summary-value">{summary.count}</span>
+        </div>
+        <div className="crm-summary-item">
+          <span className="crm-summary-label">Valor total</span>
+          <span className="crm-summary-dot">·</span>
+          <span className="crm-summary-value">{summary.total !== null ? fmtMoney(summary.total) : '—'}</span>
+        </div>
+        <div className="crm-summary-item">
+          <span className="crm-summary-label">Ticket médio</span>
+          <span className="crm-summary-dot">·</span>
+          <span className="crm-summary-value">{summary.avg !== null ? fmtMoney(summary.avg) : '—'}</span>
+        </div>
       </div>
 
       {/* MOBILE: cards */}

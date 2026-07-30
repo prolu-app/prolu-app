@@ -121,6 +121,31 @@
 .row-del-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.8; fill: none; }
 .crm-empty { padding: 40px; text-align: center; color: var(--ink-40); font-size: 14px; }
 
+/* ── linha de resumo abaixo da tabela ── */
+.crm-summary-card {
+  margin-top: 12px;
+  background: var(--white);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-rest);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.crm-summary-item {
+  display: flex; align-items: baseline; gap: 6px;
+  padding: 0 20px;
+  border-right: 1px solid var(--ink-divider);
+}
+.crm-summary-item:first-child { padding-left: 0; }
+.crm-summary-item:last-child { border-right: none; padding-right: 0; }
+.crm-summary-label {
+  font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600;
+  letter-spacing: 0.6px; text-transform: uppercase; color: var(--ink-40);
+}
+.crm-summary-dot { color: var(--ink-40); font-size: 11px; }
+.crm-summary-value { font-size: 14px; color: var(--ink); font-weight: 500; }
+
 /* ── linha fantasma ── */
 .crm-phantom-row td { border-bottom: none; cursor: pointer; }
 .crm-phantom-row:hover td { background: #f6f6f2; }
