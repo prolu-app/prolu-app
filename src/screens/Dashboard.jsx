@@ -68,15 +68,17 @@ function groupByField(rows, fieldId, statusId, valorId, propostaId) {
   const map = {}
   rows.forEach(r => {
     const key = r[fieldId] || '(não informado)'
-    if (!map[key]) map[key] = { name: key, total: 0, comProposta: 0, fechados: 0, somaFechado: 0 }
+    if (!map[key]) map[key] = { name: key, total: 0, comProposta: 0, fechados: 0, somaFechado: 0, perdidosComProposta: 0, somaPerdido: 0 }
     map[key].total++
     if (r[propostaId] === 'Sim') map[key].comProposta++
     if (r[statusId] === 'Fechado') { map[key].fechados++; map[key].somaFechado += Number(r[valorId]) || 0 }
+    if (r[statusId] === 'Perdido' && r[propostaId] === 'Sim') { map[key].perdidosComProposta++; map[key].somaPerdido += Number(r[valorId]) || 0 }
   })
   return Object.values(map).map(g => ({
     ...g,
     taxa: g.comProposta > 0 ? Math.round((g.fechados / g.comProposta) * 100) : null,
     ticketMedio: g.fechados > 0 ? Math.round(g.somaFechado / g.fechados) : null,
+    ticketMedioPerdidos: g.perdidosComProposta > 0 ? Math.round(g.somaPerdido / g.perdidosComProposta) : null,
   })).sort((a, b) => b.total - a.total)
 }
 
@@ -88,6 +90,7 @@ function GroupSimple({ groups }) {
         <span className="grupo-col-num">Conversão</span>
         <span className="grupo-col-num">Total fechado</span>
         <span className="grupo-col-num">Ticket médio</span>
+        <span className="grupo-col-num">Ticket perdidos</span>
       </div>
       {groups.map(g => (
         <div className="grupo-row" key={g.name}>
@@ -97,6 +100,7 @@ function GroupSimple({ groups }) {
           </span>
           <span className="grupo-col-num">{g.fechados > 0 ? fmtMoney(g.somaFechado) : '—'}</span>
           <span className="grupo-col-num">{g.ticketMedio !== null ? fmtMoney(g.ticketMedio) : '—'}</span>
+          <span className="grupo-col-num">{g.ticketMedioPerdidos !== null ? fmtMoney(g.ticketMedioPerdidos) : '—'}</span>
         </div>
       ))}
     </>
@@ -412,6 +416,7 @@ export default function Dashboard() {
                 <span className="grupo-col-num">Conversão</span>
                 <span className="grupo-col-num">Total fechado</span>
                 <span className="grupo-col-num">Ticket médio</span>
+                <span className="grupo-col-num">Ticket perdidos</span>
               </div>
               {porOrigem.map(g => {
                 const opt = origemOptions.find(o => o.value === g.name)
@@ -431,6 +436,7 @@ export default function Dashboard() {
                     </span>
                     <span className="grupo-col-num">{g.fechados > 0 ? fmtMoney(g.somaFechado) : '—'}</span>
                     <span className="grupo-col-num">{g.ticketMedio !== null ? fmtMoney(g.ticketMedio) : '—'}</span>
+                    <span className="grupo-col-num">{g.ticketMedioPerdidos !== null ? fmtMoney(g.ticketMedioPerdidos) : '—'}</span>
                   </div>
                 )
               })}

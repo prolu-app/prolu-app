@@ -151,9 +151,9 @@
 
 .grupo-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 
-/* Wide: para Por origem (7 colunas) */
+/* Wide: para Por origem (8 colunas) */
 .grupo-header-wide,
-.grupo-row-wide { min-width: 680px; }
+.grupo-row-wide { min-width: 764px; }
 .grupo-header-wide .grupo-col-num,
 .grupo-row-wide .grupo-col-num { width: 84px; }
 
