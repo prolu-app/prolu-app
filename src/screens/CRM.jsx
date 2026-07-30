@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
@@ -298,6 +299,104 @@ function InlineCell({ row, col, isEditing, onActivate, onCommit, onSaveImmediate
       onBlur={e => commit(e.target.value)}
       onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
     />
+  )
+}
+
+// Dropdown de filtro de coluna renderizado via portal em document.body, para nunca
+// ser cortado pelo overflow:auto de .crm-table-wrap. Posição recalculada a partir do
+// botão âncora e mantida em sincronia em scroll (inclusive da própria tabela) e resize.
+function ColFilterPortal({ anchorRef, onClose, children }) {
+  const [pos, setPos] = useState(null)
+
+  useLayoutEffect(() => {
+    function updatePos() {
+      const btn = anchorRef.current
+      if (!btn) return
+      const r = btn.getBoundingClientRect()
+      setPos({ top: r.bottom + 6, right: window.innerWidth - r.right })
+    }
+    updatePos()
+    window.addEventListener('scroll', updatePos, true)
+    window.addEventListener('resize', updatePos)
+    return () => {
+      window.removeEventListener('scroll', updatePos, true)
+      window.removeEventListener('resize', updatePos)
+    }
+  }, [anchorRef])
+
+  if (!pos) return null
+
+  return createPortal(
+    <>
+      <div className="crm-col-vis-scrim" onClick={onClose} />
+      <div className="crm-col-vis-dropdown crm-colfilter-portal" style={{ top: pos.top, right: pos.right }}>
+        {children}
+      </div>
+    </>,
+    document.body
+  )
+}
+
+// Célula de filtro de coluna: precisa do próprio ref de botão (âncora do portal),
+// por isso vive em componente separado em vez de dentro do .map() do CRM.
+function ColFilterCell({
+  col, isSelectFilter, isDateFilter, active, isOpen, options, selectedSet, draft,
+  onToggleOpen, onClose, onClearSelect, onToggleValue, onDraftChange, onApplyDate,
+}) {
+  const btnRef = useRef(null)
+
+  return (
+    <td style={{ minWidth: col.width }} className="filter-cell">
+      <button
+        ref={btnRef}
+        type="button"
+        className={`col-filter-btn${active ? ' active' : ''}`}
+        onClick={onToggleOpen}
+        aria-label={`Filtrar ${col.name}`}
+        aria-pressed={active}
+      >
+        <IconFilter />
+      </button>
+      {isOpen && (
+        <ColFilterPortal anchorRef={btnRef} onClose={onClose}>
+          {isSelectFilter ? (
+            <>
+              <label className="crm-col-vis-item">
+                <input type="checkbox" checked={!(selectedSet?.size > 0)} onChange={onClearSelect} />
+                <span>Todos</span>
+              </label>
+              {options.map(o => (
+                <label key={o.value} className="crm-col-vis-item">
+                  <input type="checkbox" checked={!!selectedSet?.has(o.value)} onChange={() => onToggleValue(o.value)} />
+                  <span className="dot" style={{ background: COLOR_VARS[o.color] || COLOR_VARS.gray }} />
+                  <span>{o.value}</span>
+                </label>
+              ))}
+            </>
+          ) : (
+            <div className="crm-period-custom">
+              <DatePicker
+                value={draft.start}
+                onChange={v => onDraftChange({ ...draft, start: v })}
+                placeholder="Data inicial"
+                className="crm-period-input"
+                max={draft.end || undefined}
+              />
+              <DatePicker
+                value={draft.end}
+                onChange={v => onDraftChange({ ...draft, end: v })}
+                placeholder="Data final"
+                className="crm-period-input"
+                min={draft.start || undefined}
+              />
+              {draft.start && draft.end && (
+                <button className="btn-primary crm-period-apply" onClick={onApplyDate}>Aplicar</button>
+              )}
+            </div>
+          )}
+        </ColFilterPortal>
+      )}
+    </td>
   )
 }
 
@@ -977,71 +1076,24 @@ export default function CRM() {
                 const active = isSelectFilter
                   ? (colSelectFilters[c.id]?.size > 0)
                   : !!(colDateFilters[c.id]?.start && colDateFilters[c.id]?.end)
-                const draft = colDateDraft[c.id] || { start: '', end: '' }
                 return (
-                  <td key={c.id} style={{ minWidth: c.width }} className="filter-cell">
-                    <div className="crm-col-vis-wrap">
-                      <button
-                        type="button"
-                        className={`col-filter-btn${active ? ' active' : ''}`}
-                        onClick={() => toggleColFilterOpen(c.id, isDateFilter)}
-                        aria-label={`Filtrar ${c.name}`}
-                        aria-pressed={active}
-                      >
-                        <IconFilter />
-                      </button>
-                      {openColFilter === c.id && (
-                        <>
-                          <div className="crm-col-vis-scrim" onClick={() => setOpenColFilter(null)} />
-                          <div className="crm-col-vis-dropdown">
-                            {isSelectFilter ? (
-                              <>
-                                <label className="crm-col-vis-item">
-                                  <input
-                                    type="checkbox"
-                                    checked={!(colSelectFilters[c.id]?.size > 0)}
-                                    onChange={() => clearColSelectFilter(c.id)}
-                                  />
-                                  <span>Todos</span>
-                                </label>
-                                {(colFilterOptions[c.id] || []).map(o => (
-                                  <label key={o.value} className="crm-col-vis-item">
-                                    <input
-                                      type="checkbox"
-                                      checked={!!colSelectFilters[c.id]?.has(o.value)}
-                                      onChange={() => toggleColSelectValue(c.id, o.value)}
-                                    />
-                                    <span className="dot" style={{ background: COLOR_VARS[o.color] || COLOR_VARS.gray }} />
-                                    <span>{o.value}</span>
-                                  </label>
-                                ))}
-                              </>
-                            ) : (
-                              <div className="crm-period-custom">
-                                <DatePicker
-                                  value={draft.start}
-                                  onChange={v => setColDateDraft(d => ({ ...d, [c.id]: { ...draft, start: v } }))}
-                                  placeholder="Data inicial"
-                                  className="crm-period-input"
-                                  max={draft.end || undefined}
-                                />
-                                <DatePicker
-                                  value={draft.end}
-                                  onChange={v => setColDateDraft(d => ({ ...d, [c.id]: { ...draft, end: v } }))}
-                                  placeholder="Data final"
-                                  className="crm-period-input"
-                                  min={draft.start || undefined}
-                                />
-                                {draft.start && draft.end && (
-                                  <button className="btn-primary crm-period-apply" onClick={() => applyColDateFilter(c.id)}>Aplicar</button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </td>
+                  <ColFilterCell
+                    key={c.id}
+                    col={c}
+                    isSelectFilter={isSelectFilter}
+                    isDateFilter={isDateFilter}
+                    active={active}
+                    isOpen={openColFilter === c.id}
+                    options={colFilterOptions[c.id] || []}
+                    selectedSet={colSelectFilters[c.id]}
+                    draft={colDateDraft[c.id] || { start: '', end: '' }}
+                    onToggleOpen={() => toggleColFilterOpen(c.id, isDateFilter)}
+                    onClose={() => setOpenColFilter(null)}
+                    onClearSelect={() => clearColSelectFilter(c.id)}
+                    onToggleValue={value => toggleColSelectValue(c.id, value)}
+                    onDraftChange={next => setColDateDraft(d => ({ ...d, [c.id]: next }))}
+                    onApplyDate={() => applyColDateFilter(c.id)}
+                  />
                 )
               })}
               <td className="th-actions" />

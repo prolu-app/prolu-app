@@ -59,7 +59,6 @@
 
 /* ── filtros por coluna (segunda linha do thead) ── */
 .crm-table tr.filter-row td { padding: 6px 10px; border-bottom: 1px solid var(--ink-divider); background: var(--white); vertical-align: middle; }
-.filter-cell { position: relative; }
 .col-filter-btn {
   width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
   border: none; border-radius: 6px; background: var(--gray-soft); color: var(--ink-40);
@@ -226,6 +225,8 @@
   max-height: 360px;
   overflow-y: auto;
 }
+/* Filtros de coluna: portal em document.body, posição vem de top/right inline (JS) */
+.crm-col-vis-dropdown.crm-colfilter-portal { position: fixed; }
 .crm-col-vis-title {
   font-family: 'Montserrat', sans-serif;
   font-size: 10px;
