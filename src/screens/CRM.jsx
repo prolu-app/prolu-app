@@ -325,6 +325,7 @@ export default function CRM() {
   const [addOptInput, setAddOptInput] = useState('')
   const [addOptColor, setAddOptColor] = useState(COLOR_OPTS[0])
   const tableRef = useRef(null)
+  const shouldScrollRef = useRef(true)
 
   const statusCol      = useMemo(() => columns.find(c => c.slug === 'status'), [columns])
   const clienteCol     = useMemo(() => columns.find(c => c.slug === 'cliente'), [columns])
@@ -345,6 +346,7 @@ export default function CRM() {
   }
 
   async function carregar() {
+    shouldScrollRef.current = true
     if (!supabaseReady || !user?.empresaId) {
       setColumns(CRM_COLUMNS)
       setRows(CRM_ROWS)
@@ -574,6 +576,7 @@ export default function CRM() {
   }, [rows, dataEntradaCol])
 
   function toggleStatusOption(value) {
+    shouldScrollRef.current = true
     setStatusFilter(prev => {
       const next = new Set(prev)
       if (next.has(value)) next.delete(value)
@@ -601,6 +604,7 @@ export default function CRM() {
   }
 
   function applyCustomPeriod() {
+    shouldScrollRef.current = true
     setCustomRange(draftRange)
     setPeriodFilter('custom')
     closePeriodDropdown()
@@ -646,7 +650,9 @@ export default function CRM() {
   }), [sorted, search, statusFilter, statusCol, periodRange, dataEntradaCol])
 
   useEffect(() => {
+    if (!shouldScrollRef.current) return
     tableRef.current?.scrollTo({ top: tableRef.current.scrollHeight, behavior: 'instant' })
+    shouldScrollRef.current = false
   }, [filtered])
 
   const visibleCols = useMemo(() => columns.filter(c => !hiddenCols.has(c.id)), [columns, hiddenCols])
@@ -694,7 +700,7 @@ export default function CRM() {
                 <div className="crm-col-vis-scrim" onClick={() => setStatusFilterOpen(false)} />
                 <div className="crm-col-vis-dropdown">
                   <label className="crm-col-vis-item">
-                    <input type="checkbox" checked={statusFilter.size === 0} onChange={() => setStatusFilter(new Set())} />
+                    <input type="checkbox" checked={statusFilter.size === 0} onChange={() => { shouldScrollRef.current = true; setStatusFilter(new Set()) }} />
                     <span>Todos</span>
                   </label>
                   {statusCol?.options.map(o => (
@@ -718,8 +724,8 @@ export default function CRM() {
               <>
                 <div className="crm-col-vis-scrim" onClick={closePeriodDropdown} />
                 <div className="crm-col-vis-dropdown crm-period-dropdown">
-                  <button className={`crm-period-option${periodFilter === 'all' && !showCustomPicker ? ' selected' : ''}`} onClick={() => { setPeriodFilter('all'); closePeriodDropdown() }}>Todos</button>
-                  <button className={`crm-period-option${periodFilter === '3m' && !showCustomPicker ? ' selected' : ''}`} onClick={() => { setPeriodFilter('3m'); closePeriodDropdown() }}>Últimos 3 meses</button>
+                  <button className={`crm-period-option${periodFilter === 'all' && !showCustomPicker ? ' selected' : ''}`} onClick={() => { shouldScrollRef.current = true; setPeriodFilter('all'); closePeriodDropdown() }}>Todos</button>
+                  <button className={`crm-period-option${periodFilter === '3m' && !showCustomPicker ? ' selected' : ''}`} onClick={() => { shouldScrollRef.current = true; setPeriodFilter('3m'); closePeriodDropdown() }}>Últimos 3 meses</button>
                   <button className={`crm-period-option${showCustomPicker ? ' selected' : ''}`} onClick={() => setShowCustomPicker(true)}>Personalizado</button>
                   {showCustomPicker && (
                     <div className="crm-period-custom">
