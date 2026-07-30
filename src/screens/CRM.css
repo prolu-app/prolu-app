@@ -57,14 +57,14 @@
 .th-edit-icon { width: 10px; height: 10px; stroke: currentColor; stroke-width: 2.2; fill: none; opacity: 0; transition: opacity 0.15s; }
 .th-label:not(.th-fixed):hover .th-edit-icon { opacity: 0.6; }
 
-/* ── filtros por coluna (segunda linha do thead) ── */
-.crm-table tr.filter-row td { padding: 6px 10px; border-bottom: 1px solid var(--ink-divider); background: var(--white); vertical-align: middle; }
+/* ── filtro por coluna, inline no cabeçalho ── */
+.th-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .col-filter-btn {
-  width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
   border: none; border-radius: 6px; background: var(--gray-soft); color: var(--ink-40);
-  cursor: pointer; padding: 0; transition: background 0.15s, color 0.15s;
+  cursor: pointer; padding: 0; flex-shrink: 0; transition: background 0.15s, color 0.15s;
 }
-.col-filter-btn svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 2; fill: none; }
+.col-filter-btn svg { width: 10px; height: 10px; stroke: currentColor; stroke-width: 2; fill: none; }
 .col-filter-btn:hover { color: var(--ink); }
 .col-filter-btn.active { background: var(--ink); color: var(--white); }
 

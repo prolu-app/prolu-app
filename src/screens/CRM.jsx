@@ -337,21 +337,22 @@ function ColFilterPortal({ anchorRef, onClose, children }) {
   )
 }
 
-// Célula de filtro de coluna: precisa do próprio ref de botão (âncora do portal),
+// Botão de filtro de coluna: precisa do próprio ref (âncora do portal),
 // por isso vive em componente separado em vez de dentro do .map() do CRM.
-function ColFilterCell({
+// Renderizado inline no th, ao lado do nome da coluna.
+function ColFilterButton({
   col, isSelectFilter, isDateFilter, active, isOpen, options, selectedSet, draft,
   onToggleOpen, onClose, onClearSelect, onToggleValue, onDraftChange, onApplyDate,
 }) {
   const btnRef = useRef(null)
 
   return (
-    <td style={{ minWidth: col.width }} className="filter-cell">
+    <>
       <button
         ref={btnRef}
         type="button"
         className={`col-filter-btn${active ? ' active' : ''}`}
-        onClick={onToggleOpen}
+        onClick={e => { e.stopPropagation(); onToggleOpen() }}
         aria-label={`Filtrar ${col.name}`}
         aria-pressed={active}
       >
@@ -396,7 +397,7 @@ function ColFilterCell({
           )}
         </ColFilterPortal>
       )}
-    </td>
+    </>
   )
 }
 
@@ -1054,49 +1055,47 @@ export default function CRM() {
         <table className="crm-table">
           <thead>
             <tr>
-              {visibleCols.map(c => (
-                <th key={c.id} style={{ minWidth: c.width }}>
-                  {c.fixed ? (
-                    <span className="th-label th-fixed">{c.name}</span>
-                  ) : (
-                    <span className="th-label" onClick={e => { e.stopPropagation(); openEditColumn(c) }}>
-                      {c.name}
-                      <IconEdit className="th-edit-icon" />
-                    </span>
-                  )}
-                </th>
-              ))}
-              <th className="th-actions" />
-            </tr>
-            <tr className="filter-row">
               {visibleCols.map(c => {
                 const isSelectFilter = SELECT_FILTER_SLUGS.includes(c.slug)
                 const isDateFilter = DATE_FILTER_SLUGS.includes(c.slug)
-                if (!isSelectFilter && !isDateFilter) return <td key={c.id} style={{ minWidth: c.width }} />
+                const hasFilter = isSelectFilter || isDateFilter
                 const active = isSelectFilter
                   ? (colSelectFilters[c.id]?.size > 0)
                   : !!(colDateFilters[c.id]?.start && colDateFilters[c.id]?.end)
                 return (
-                  <ColFilterCell
-                    key={c.id}
-                    col={c}
-                    isSelectFilter={isSelectFilter}
-                    isDateFilter={isDateFilter}
-                    active={active}
-                    isOpen={openColFilter === c.id}
-                    options={colFilterOptions[c.id] || []}
-                    selectedSet={colSelectFilters[c.id]}
-                    draft={colDateDraft[c.id] || { start: '', end: '' }}
-                    onToggleOpen={() => toggleColFilterOpen(c.id, isDateFilter)}
-                    onClose={() => setOpenColFilter(null)}
-                    onClearSelect={() => clearColSelectFilter(c.id)}
-                    onToggleValue={value => toggleColSelectValue(c.id, value)}
-                    onDraftChange={next => setColDateDraft(d => ({ ...d, [c.id]: next }))}
-                    onApplyDate={() => applyColDateFilter(c.id)}
-                  />
+                  <th key={c.id} style={{ minWidth: c.width }}>
+                    <div className="th-row">
+                      {c.fixed ? (
+                        <span className="th-label th-fixed">{c.name}</span>
+                      ) : (
+                        <span className="th-label" onClick={e => { e.stopPropagation(); openEditColumn(c) }}>
+                          {c.name}
+                          <IconEdit className="th-edit-icon" />
+                        </span>
+                      )}
+                      {hasFilter && (
+                        <ColFilterButton
+                          col={c}
+                          isSelectFilter={isSelectFilter}
+                          isDateFilter={isDateFilter}
+                          active={active}
+                          isOpen={openColFilter === c.id}
+                          options={colFilterOptions[c.id] || []}
+                          selectedSet={colSelectFilters[c.id]}
+                          draft={colDateDraft[c.id] || { start: '', end: '' }}
+                          onToggleOpen={() => toggleColFilterOpen(c.id, isDateFilter)}
+                          onClose={() => setOpenColFilter(null)}
+                          onClearSelect={() => clearColSelectFilter(c.id)}
+                          onToggleValue={value => toggleColSelectValue(c.id, value)}
+                          onDraftChange={next => setColDateDraft(d => ({ ...d, [c.id]: next }))}
+                          onApplyDate={() => applyColDateFilter(c.id)}
+                        />
+                      )}
+                    </div>
+                  </th>
                 )
               })}
-              <td className="th-actions" />
+              <th className="th-actions" />
             </tr>
           </thead>
           <tbody>
