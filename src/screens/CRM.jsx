@@ -327,6 +327,9 @@ export default function CRM() {
   const [deleteConfirm, setDeleteConfirm] = useState(null) // { type:'row'|'col', id, nome }
   const [addOptInput, setAddOptInput] = useState('')
   const [addOptColor, setAddOptColor] = useState(COLOR_OPTS[0])
+  const [density, setDensity] = useState(() => {
+    try { return localStorage.getItem('crm_density') || 'm' } catch { return 'm' }
+  })
   const tableRef = useRef(null)
   const shouldScrollRef = useRef(true)
 
@@ -654,6 +657,11 @@ export default function CRM() {
     })
   }
 
+  function changeDensity(d) {
+    setDensity(d)
+    try { localStorage.setItem('crm_density', d) } catch {}
+  }
+
   function reorderColumns(draggedId, targetId, position) {
     if (draggedId === targetId) return
     const fromIdx = columns.findIndex(c => c.id === draggedId)
@@ -839,11 +847,25 @@ export default function CRM() {
             )}
           </div>
           <button className="crm-addcol-btn" onClick={openNewColumn}><IconPlus /> Nova coluna</button>
+          <div className="crm-density-toggle" role="group" aria-label="Densidade da tabela">
+            {[['s', 'S'], ['m', 'M'], ['l', 'L']].map(([d, lbl]) => (
+              <button
+                key={d}
+                type="button"
+                className={`crm-density-btn${density === d ? ' active' : ''}`}
+                onClick={() => changeDensity(d)}
+                aria-pressed={density === d}
+                title={`Densidade ${lbl}`}
+              >
+                {lbl}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* DESKTOP: tabela */}
-      <div className="crm-table-wrap" ref={tableRef}>
+      <div className={`crm-table-wrap density-${density}`} ref={tableRef}>
         <table className="crm-table">
           <thead>
             <tr>

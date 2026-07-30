@@ -8,6 +8,17 @@
 .crm-addcol-btn:hover { color: var(--ink); }
 .crm-addcol-btn svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2.4; fill: none; }
 
+/* ── zoom de densidade da tabela ── */
+.crm-density-toggle { display: flex; align-items: center; gap: 2px; background: var(--gray-soft); border-radius: 99px; padding: 2px; flex-shrink: 0; }
+.crm-density-btn {
+  width: 26px; height: 24px; display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: 99px; background: none; color: var(--ink-60);
+  font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.crm-density-btn:hover { color: var(--ink); }
+.crm-density-btn.active { background: var(--ink); color: var(--white); }
+
 /* ── botões de filtro (Status, Período) ── */
 .crm-filter-btn {
   display: inline-flex; align-items: center; gap: 8px;
@@ -95,6 +106,35 @@
 .crm-phantom-row:hover td { background: #f6f6f2; }
 .cell-phantom { display: block; padding: 10px 16px; color: var(--ink-40); font-size: 13px; opacity: 0.5; }
 .crm-phantom-row:hover .cell-phantom { opacity: 1; }
+
+/* ── zoom de densidade da tabela ──
+   density-s ≈ 32px de linha · density-m (padrão) ≈ 44px · density-l ≈ 56px */
+.crm-table-wrap.density-s .crm-table th { padding: 8px 12px; }
+.crm-table-wrap.density-s .cell-display,
+.crm-table-wrap.density-s .cell-input,
+.crm-table-wrap.density-s .sd-cell .sd-trigger,
+.crm-table-wrap.density-s .cell-phantom { font-size: 12px; padding: 6px 12px; line-height: 1.25; min-height: 16px; }
+.crm-table-wrap.density-s .cell-tags-edit { padding: 6px 12px; min-height: 32px; }
+.crm-table-wrap.density-s .sd-cell .sd-trigger { min-height: 32px; }
+.crm-table-wrap.density-s .dp-cell { font-size: 12px; padding: 0 12px; min-height: 32px; }
+
+.crm-table-wrap.density-m .crm-table th { padding: 14px 16px; }
+.crm-table-wrap.density-m .cell-display,
+.crm-table-wrap.density-m .cell-input,
+.crm-table-wrap.density-m .sd-cell .sd-trigger,
+.crm-table-wrap.density-m .cell-phantom { font-size: 13.5px; padding: 10px 16px; line-height: 1.4; min-height: 20px; }
+.crm-table-wrap.density-m .cell-tags-edit { padding: 10px 16px; min-height: 44px; }
+.crm-table-wrap.density-m .sd-cell .sd-trigger { min-height: 44px; }
+.crm-table-wrap.density-m .dp-cell { font-size: 13.5px; padding: 0 16px; min-height: 44px; }
+
+.crm-table-wrap.density-l .crm-table th { padding: 18px 20px; }
+.crm-table-wrap.density-l .cell-display,
+.crm-table-wrap.density-l .cell-input,
+.crm-table-wrap.density-l .sd-cell .sd-trigger,
+.crm-table-wrap.density-l .cell-phantom { font-size: 15px; padding: 14px 20px; line-height: 1.5; min-height: 26px; }
+.crm-table-wrap.density-l .cell-tags-edit { padding: 14px 20px; min-height: 56px; }
+.crm-table-wrap.density-l .sd-cell .sd-trigger { min-height: 56px; }
+.crm-table-wrap.density-l .dp-cell { font-size: 15px; padding: 0 20px; min-height: 56px; }
 
 /* ── célula de tags ── */
 .td-tags { padding: 0; }
@@ -271,6 +311,7 @@
   .crm-new-btn { display: none; }
   .fab { display: flex; }
   .crm-table-wrap { display: none; }
+  .crm-density-toggle { display: none; }
   .crm-cards { display: flex; }
   .crm-search input { width: 120px; }
   .crm-toolbar-left { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
