@@ -3,7 +3,7 @@ import { useToast } from '../contexts/ToastContext.jsx'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { CRM_COLUMNS, CRM_ROWS } from '../data/seed.js'
-import { IconPlus, IconSearch, IconEdit, IconClose, IconCalendar, IconChevronDown, IconGrip } from '../components/Icons.jsx'
+import { IconPlus, IconSearch, IconEdit, IconClose, IconCalendar, IconChevronDown, IconGrip, IconEye, IconEyeOff } from '../components/Icons.jsx'
 import { SelectDropdown } from '../components/SelectDropdown.jsx'
 import { DatePicker } from '../components/DatePicker.jsx'
 import CRMDrawer from './CRMDrawer.jsx'
@@ -797,28 +797,37 @@ export default function CRM() {
                 <div className="crm-col-vis-scrim" onClick={() => setColVisOpen(false)} />
                 <div className="crm-col-vis-dropdown">
                   <div className="crm-col-vis-title">Colunas visíveis</div>
-                  {columns.map(c => (
-                    <div
-                      key={c.id}
-                      className={[
-                        'crm-col-vis-item',
-                        dragColId === c.id ? 'dragging' : '',
-                        dragOverColId === c.id && dragOverPos === 'before' ? 'drag-over-before' : '',
-                        dragOverColId === c.id && dragOverPos === 'after' ? 'drag-over-after' : '',
-                      ].filter(Boolean).join(' ')}
-                      draggable
-                      onDragStart={e => handleColDragStart(e, c.id)}
-                      onDragOver={e => handleColDragOver(e, c.id)}
-                      onDrop={e => handleColDrop(e, c.id)}
-                      onDragEnd={resetColDrag}
-                    >
-                      <span className="crm-col-vis-grip" aria-hidden="true"><IconGrip /></span>
-                      <label className="crm-col-vis-label">
-                        <input type="checkbox" checked={!hiddenCols.has(c.id)} onChange={() => toggleColVis(c.id)} />
-                        <span>{c.name}</span>
-                      </label>
-                    </div>
-                  ))}
+                  {columns.map(c => {
+                    const visible = !hiddenCols.has(c.id)
+                    return (
+                      <div
+                        key={c.id}
+                        className={[
+                          'crm-colpanel-row',
+                          visible ? '' : 'hidden-col',
+                          dragColId === c.id ? 'dragging' : '',
+                          dragOverColId === c.id && dragOverPos === 'before' ? 'drag-over-before' : '',
+                          dragOverColId === c.id && dragOverPos === 'after' ? 'drag-over-after' : '',
+                        ].filter(Boolean).join(' ')}
+                        draggable
+                        onDragStart={e => handleColDragStart(e, c.id)}
+                        onDragOver={e => handleColDragOver(e, c.id)}
+                        onDrop={e => handleColDrop(e, c.id)}
+                        onDragEnd={resetColDrag}
+                      >
+                        <span className="crm-col-vis-grip" aria-hidden="true"><IconGrip /></span>
+                        <span className="crm-col-vis-name">{c.name}</span>
+                        <button
+                          type="button"
+                          className="crm-col-vis-eye"
+                          onClick={() => toggleColVis(c.id)}
+                          aria-label={visible ? 'Ocultar coluna' : 'Mostrar coluna'}
+                        >
+                          {visible ? <IconEye /> : <IconEyeOff />}
+                        </button>
+                      </div>
+                    )
+                  })}
                   {hiddenCols.size > 0 && (
                     <button className="crm-col-vis-reset" onClick={() => {
                       setHiddenCols(new Set())
