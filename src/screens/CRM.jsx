@@ -3,7 +3,7 @@ import { useToast } from '../contexts/ToastContext.jsx'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { CRM_COLUMNS, CRM_ROWS } from '../data/seed.js'
-import { IconPlus, IconSearch, IconEdit, IconClose, IconCalendar, IconChevronDown } from '../components/Icons.jsx'
+import { IconPlus, IconSearch, IconEdit, IconClose, IconCalendar, IconChevronDown, IconGrip } from '../components/Icons.jsx'
 import { SelectDropdown } from '../components/SelectDropdown.jsx'
 import { DatePicker } from '../components/DatePicker.jsx'
 import CRMDrawer from './CRMDrawer.jsx'
@@ -321,6 +321,9 @@ export default function CRM() {
   const [newOptName, setNewOptName] = useState('')
   const [hiddenCols, setHiddenCols] = useState(new Set())
   const [colVisOpen, setColVisOpen] = useState(false)
+  const [dragColId, setDragColId] = useState(null)
+  const [dragOverColId, setDragOverColId] = useState(null)
+  const [dragOverPos, setDragOverPos] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(null) // { type:'row'|'col', id, nome }
   const [addOptInput, setAddOptInput] = useState('')
   const [addOptColor, setAddOptColor] = useState(COLOR_OPTS[0])
@@ -380,22 +383,6 @@ export default function CRM() {
       }))
       const { data: newCols } = await supabase.from('crm_colunas').insert(payload).select('*')
       if (newCols) parsedCols = [...parsedCols, ...newCols.map(parseCol)]
-    }
-
-    // Sincroniza ordem de colunas fixas cujo posicionamento mudou no FIXED_COLS_DEF
-    const toReorder = parsedCols.filter(c => {
-      const def = FIXED_COLS_DEF.find(d => d.slug === c.slug)
-      return def && def.ordem !== c.ordem
-    })
-    if (toReorder.length > 0) {
-      await Promise.all(toReorder.map(c => {
-        const def = FIXED_COLS_DEF.find(d => d.slug === c.slug)
-        return supabase.from('crm_colunas').update({ ordem: def.ordem }).eq('id', c.id)
-      }))
-      toReorder.forEach(c => {
-        const def = FIXED_COLS_DEF.find(d => d.slug === c.slug)
-        c.ordem = def.ordem
-      })
     }
 
     setColumns(parsedCols.sort((a, b) => a.ordem - b.ordem))
@@ -667,6 +654,52 @@ export default function CRM() {
     })
   }
 
+  function reorderColumns(draggedId, targetId, position) {
+    if (draggedId === targetId) return
+    const fromIdx = columns.findIndex(c => c.id === draggedId)
+    if (fromIdx === -1 || !columns.some(c => c.id === targetId)) return
+    const list = [...columns]
+    const [moved] = list.splice(fromIdx, 1)
+    let insertIdx = list.findIndex(c => c.id === targetId)
+    if (position === 'after') insertIdx += 1
+    list.splice(insertIdx, 0, moved)
+    const reordered = list.map((c, i) => ({ ...c, ordem: i }))
+    setColumns(reordered)
+    if (supabaseReady && user?.empresaId) {
+      reordered.forEach(c => {
+        supabase.from('crm_colunas').update({ ordem: c.ordem }).eq('id', c.id)
+      })
+    }
+  }
+
+  function resetColDrag() {
+    setDragColId(null)
+    setDragOverColId(null)
+    setDragOverPos(null)
+  }
+
+  function handleColDragStart(e, colId) {
+    setDragColId(colId)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', colId)
+  }
+
+  function handleColDragOver(e, colId) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (colId === dragColId) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const position = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
+    setDragOverColId(colId)
+    setDragOverPos(position)
+  }
+
+  function handleColDrop(e, colId) {
+    e.preventDefault()
+    if (dragColId && dragColId !== colId) reorderColumns(dragColId, colId, dragOverPos || 'before')
+    resetColDrag()
+  }
+
   if (loading) return (
     <div className="page-header">
       <div className="page-title">CRM</div>
@@ -765,10 +798,26 @@ export default function CRM() {
                 <div className="crm-col-vis-dropdown">
                   <div className="crm-col-vis-title">Colunas visíveis</div>
                   {columns.map(c => (
-                    <label key={c.id} className="crm-col-vis-item">
-                      <input type="checkbox" checked={!hiddenCols.has(c.id)} onChange={() => toggleColVis(c.id)} />
-                      <span>{c.name}</span>
-                    </label>
+                    <div
+                      key={c.id}
+                      className={[
+                        'crm-col-vis-item',
+                        dragColId === c.id ? 'dragging' : '',
+                        dragOverColId === c.id && dragOverPos === 'before' ? 'drag-over-before' : '',
+                        dragOverColId === c.id && dragOverPos === 'after' ? 'drag-over-after' : '',
+                      ].filter(Boolean).join(' ')}
+                      draggable
+                      onDragStart={e => handleColDragStart(e, c.id)}
+                      onDragOver={e => handleColDragOver(e, c.id)}
+                      onDrop={e => handleColDrop(e, c.id)}
+                      onDragEnd={resetColDrag}
+                    >
+                      <span className="crm-col-vis-grip" aria-hidden="true"><IconGrip /></span>
+                      <label className="crm-col-vis-label">
+                        <input type="checkbox" checked={!hiddenCols.has(c.id)} onChange={() => toggleColVis(c.id)} />
+                        <span>{c.name}</span>
+                      </label>
+                    </div>
                   ))}
                   {hiddenCols.size > 0 && (
                     <button className="crm-col-vis-reset" onClick={() => {
