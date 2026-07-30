@@ -3,7 +3,7 @@ import { useToast } from '../contexts/ToastContext.jsx'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { CRM_COLUMNS, CRM_ROWS } from '../data/seed.js'
-import { IconPlus, IconSearch, IconEdit, IconClose, IconCalendar, IconChevronDown, IconGrip, IconEye, IconEyeOff } from '../components/Icons.jsx'
+import { IconPlus, IconSearch, IconEdit, IconClose, IconCalendar, IconChevronDown, IconGrip, IconEye, IconEyeOff, IconFilter } from '../components/Icons.jsx'
 import { SelectDropdown } from '../components/SelectDropdown.jsx'
 import { DatePicker } from '../components/DatePicker.jsx'
 import CRMDrawer from './CRMDrawer.jsx'
@@ -15,6 +15,10 @@ const COLOR_VARS = {
   orange: 'var(--orange)', violet: 'var(--violet-ink)', red: 'var(--red)',
 }
 const TYPE_LABELS = { text: 'Texto', number: 'Número', money: 'Dinheiro (R$)', date: 'Data', select: 'Seleção' }
+
+// ── filtros por coluna ──
+const SELECT_FILTER_SLUGS = ['segmento', 'tipo_projeto', 'origem', 'icp', 'proposta', 'status']
+const DATE_FILTER_SLUGS = ['data_entrada', 'data_fechamento']
 
 const FIXED_COLS_DEF = [
   { nome: 'Data de entrada',   tipo: 'date',   slug: 'data_entrada',   ordem: 0 },
@@ -330,6 +334,10 @@ export default function CRM() {
   const [density, setDensity] = useState(() => {
     try { return localStorage.getItem('crm_density') || 'm' } catch { return 'm' }
   })
+  const [openColFilter, setOpenColFilter] = useState(null) // colId com dropdown de filtro aberto
+  const [colSelectFilters, setColSelectFilters] = useState({}) // { [colId]: Set<string> }
+  const [colDateFilters, setColDateFilters] = useState({}) // { [colId]: { start, end } } aplicado
+  const [colDateDraft, setColDateDraft] = useState({}) // { [colId]: { start, end } } rascunho
   const tableRef = useRef(null)
   const shouldScrollRef = useRef(true)
 
@@ -600,6 +608,48 @@ export default function CRM() {
     closePeriodDropdown()
   }
 
+  function toggleColFilterOpen(colId, isDate) {
+    setOpenColFilter(prev => {
+      const next = prev === colId ? null : colId
+      if (next && isDate) {
+        setColDateDraft(d => ({ ...d, [colId]: colDateFilters[colId] || { start: '', end: '' } }))
+      }
+      return next
+    })
+  }
+
+  function toggleColSelectValue(colId, value) {
+    shouldScrollRef.current = true
+    setColSelectFilters(prev => {
+      const set = new Set(prev[colId] || [])
+      if (set.has(value)) set.delete(value)
+      else set.add(value)
+      return { ...prev, [colId]: set }
+    })
+  }
+
+  function clearColSelectFilter(colId) {
+    shouldScrollRef.current = true
+    setColSelectFilters(prev => {
+      const next = { ...prev }
+      delete next[colId]
+      return next
+    })
+  }
+
+  function applyColDateFilter(colId) {
+    shouldScrollRef.current = true
+    setColDateFilters(prev => ({ ...prev, [colId]: colDateDraft[colId] }))
+    setOpenColFilter(null)
+  }
+
+  function clearColFilters() {
+    shouldScrollRef.current = true
+    setColSelectFilters({})
+    setColDateFilters({})
+    setColDateDraft({})
+  }
+
   const periodRange = useMemo(() => {
     if (periodFilter === '3m') return last3MonthsRange()
     if (periodFilter === 'custom') {
@@ -629,6 +679,24 @@ export default function CRM() {
   const statusActive = statusFilter.size > 0
   const periodActive = periodFilter !== '3m'
 
+  // Opções de filtro por coluna: só os valores que de fato aparecem nos dados, mantendo cor/ordem configuradas.
+  const colFilterOptions = useMemo(() => {
+    const map = {}
+    SELECT_FILTER_SLUGS.forEach(slug => {
+      const col = columns.find(c => c.slug === slug)
+      if (!col) return
+      const found = new Set()
+      rows.forEach(r => { const v = r[col.id]; if (v) found.add(v) })
+      const ordered = (col.options || []).filter(o => found.has(o.value))
+      const extra = [...found].filter(v => !ordered.some(o => o.value === v)).map(v => ({ value: v, color: 'gray' }))
+      map[col.id] = [...ordered, ...extra]
+    })
+    return map
+  }, [rows, columns])
+
+  const hasColFilters = Object.values(colSelectFilters).some(s => s && s.size > 0)
+    || Object.values(colDateFilters).some(r => r && r.start && r.end)
+
   const filtered = useMemo(() => sorted.filter(r => {
     if (search) {
       const hay = Object.values(r).map(v => Array.isArray(v) ? v.join(' ') : String(v ?? '')).join(' ').toLowerCase()
@@ -636,8 +704,21 @@ export default function CRM() {
     }
     if (statusFilter.size > 0 && statusCol && !statusFilter.has(r[statusCol.id])) return false
     if (periodRange && dataEntradaCol && !inPeriod(r[dataEntradaCol.id], periodRange)) return false
+    for (const colId in colSelectFilters) {
+      const set = colSelectFilters[colId]
+      if (set && set.size > 0 && !set.has(r[colId])) return false
+    }
+    for (const colId in colDateFilters) {
+      const range = colDateFilters[colId]
+      if (!range || !range.start || !range.end) continue
+      const s = parseDateStr(range.start)
+      const e = parseDateStr(range.end)
+      if (!s || !e) continue
+      const eod = new Date(e.getFullYear(), e.getMonth(), e.getDate(), 23, 59, 59, 999)
+      if (!inPeriod(r[colId], [s, eod])) return false
+    }
     return true
-  }), [sorted, search, statusFilter, statusCol, periodRange, dataEntradaCol])
+  }), [sorted, search, statusFilter, statusCol, periodRange, dataEntradaCol, colSelectFilters, colDateFilters])
 
   useEffect(() => {
     if (!shouldScrollRef.current) return
@@ -793,6 +874,11 @@ export default function CRM() {
               </>
             )}
           </div>
+          {hasColFilters && (
+            <button className="crm-clear-filters-btn" onClick={clearColFilters}>
+              <IconClose /> Limpar filtros
+            </button>
+          )}
         </div>
         <div className="crm-toolbar-right">
           <div className="crm-col-vis-wrap">
@@ -883,6 +969,83 @@ export default function CRM() {
               ))}
               <th className="th-actions" />
             </tr>
+            <tr className="filter-row">
+              {visibleCols.map(c => {
+                const isSelectFilter = SELECT_FILTER_SLUGS.includes(c.slug)
+                const isDateFilter = DATE_FILTER_SLUGS.includes(c.slug)
+                if (!isSelectFilter && !isDateFilter) return <td key={c.id} style={{ minWidth: c.width }} />
+                const active = isSelectFilter
+                  ? (colSelectFilters[c.id]?.size > 0)
+                  : !!(colDateFilters[c.id]?.start && colDateFilters[c.id]?.end)
+                const draft = colDateDraft[c.id] || { start: '', end: '' }
+                return (
+                  <td key={c.id} style={{ minWidth: c.width }} className="filter-cell">
+                    <div className="crm-col-vis-wrap">
+                      <button
+                        type="button"
+                        className={`col-filter-btn${active ? ' active' : ''}`}
+                        onClick={() => toggleColFilterOpen(c.id, isDateFilter)}
+                        aria-label={`Filtrar ${c.name}`}
+                        aria-pressed={active}
+                      >
+                        <IconFilter />
+                      </button>
+                      {openColFilter === c.id && (
+                        <>
+                          <div className="crm-col-vis-scrim" onClick={() => setOpenColFilter(null)} />
+                          <div className="crm-col-vis-dropdown">
+                            {isSelectFilter ? (
+                              <>
+                                <label className="crm-col-vis-item">
+                                  <input
+                                    type="checkbox"
+                                    checked={!(colSelectFilters[c.id]?.size > 0)}
+                                    onChange={() => clearColSelectFilter(c.id)}
+                                  />
+                                  <span>Todos</span>
+                                </label>
+                                {(colFilterOptions[c.id] || []).map(o => (
+                                  <label key={o.value} className="crm-col-vis-item">
+                                    <input
+                                      type="checkbox"
+                                      checked={!!colSelectFilters[c.id]?.has(o.value)}
+                                      onChange={() => toggleColSelectValue(c.id, o.value)}
+                                    />
+                                    <span className="dot" style={{ background: COLOR_VARS[o.color] || COLOR_VARS.gray }} />
+                                    <span>{o.value}</span>
+                                  </label>
+                                ))}
+                              </>
+                            ) : (
+                              <div className="crm-period-custom">
+                                <DatePicker
+                                  value={draft.start}
+                                  onChange={v => setColDateDraft(d => ({ ...d, [c.id]: { ...draft, start: v } }))}
+                                  placeholder="Data inicial"
+                                  className="crm-period-input"
+                                  max={draft.end || undefined}
+                                />
+                                <DatePicker
+                                  value={draft.end}
+                                  onChange={v => setColDateDraft(d => ({ ...d, [c.id]: { ...draft, end: v } }))}
+                                  placeholder="Data final"
+                                  className="crm-period-input"
+                                  min={draft.start || undefined}
+                                />
+                                {draft.start && draft.end && (
+                                  <button className="btn-primary crm-period-apply" onClick={() => applyColDateFilter(c.id)}>Aplicar</button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                )
+              })}
+              <td className="th-actions" />
+            </tr>
           </thead>
           <tbody>
             {filtered.map(row => (
@@ -930,7 +1093,7 @@ export default function CRM() {
             ))}
 
             {/* Linha fantasma */}
-            {statusFilter.size === 0 && periodFilter !== 'custom' && !search && (
+            {statusFilter.size === 0 && periodFilter !== 'custom' && !search && !hasColFilters && (
               <tr className="crm-phantom-row" onClick={addRow} title="Clique para adicionar registro">
                 {visibleCols.map(col => (
                   <td key={col.id}>
