@@ -108,6 +108,20 @@ export const IconGrip = (p) => (
 export const IconFilter = (p) => (
   <svg viewBox="0 0 24 24" {...p}><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" /></svg>
 )
+export const IconDensityCompact = (p) => (
+  <svg viewBox="0 0 24 24" {...p}>
+    <line x1="4" y1="9" x2="20" y2="9" strokeWidth="1" />
+    <line x1="4" y1="12" x2="20" y2="12" strokeWidth="1" />
+    <line x1="4" y1="15" x2="20" y2="15" strokeWidth="1" />
+  </svg>
+)
+export const IconDensityDefault = (p) => (
+  <svg viewBox="0 0 24 24" {...p}>
+    <line x1="4" y1="7" x2="20" y2="7" strokeWidth="2" />
+    <line x1="4" y1="12" x2="20" y2="12" strokeWidth="2" />
+    <line x1="4" y1="17" x2="20" y2="17" strokeWidth="2" />
+  </svg>
+)
 export const IconBell = (p) => (
   <svg viewBox="0 0 24 24" {...p}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" /></svg>
 )

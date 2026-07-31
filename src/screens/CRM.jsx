@@ -4,7 +4,7 @@ import { useToast } from '../contexts/ToastContext.jsx'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { CRM_COLUMNS, CRM_ROWS } from '../data/seed.js'
-import { IconPlus, IconSearch, IconEdit, IconClose, IconGrip, IconEye, IconEyeOff, IconFilter } from '../components/Icons.jsx'
+import { IconPlus, IconSearch, IconEdit, IconClose, IconGrip, IconEye, IconEyeOff, IconFilter, IconDensityCompact, IconDensityDefault } from '../components/Icons.jsx'
 import { SelectDropdown } from '../components/SelectDropdown.jsx'
 import { DatePicker } from '../components/DatePicker.jsx'
 import CRMDrawer from './CRMDrawer.jsx'
@@ -413,7 +413,7 @@ export default function CRM() {
   const [addOptInput, setAddOptInput] = useState('')
   const [addOptColor, setAddOptColor] = useState(COLOR_OPTS[0])
   const [density, setDensity] = useState(() => {
-    try { return localStorage.getItem('crm_density') || 'm' } catch { return 'm' }
+    try { return localStorage.getItem('crm_density') === 'compact' ? 'compact' : 'default' } catch { return 'default' }
   })
   const [openColFilter, setOpenColFilter] = useState(null) // colId com dropdown de filtro aberto
   const [colSelectFilters, setColSelectFilters] = useState({}) // { [colId]: Set<string> }
@@ -906,16 +906,16 @@ export default function CRM() {
           </div>
           <button className="crm-addcol-btn" onClick={openNewColumn}><IconPlus /> Nova coluna</button>
           <div className="crm-density-toggle" role="group" aria-label="Densidade da tabela">
-            {[['xs', 'XS'], ['s', 'S'], ['m', 'M'], ['l', 'L']].map(([d, lbl]) => (
+            {[['compact', 'Compacto', IconDensityCompact], ['default', 'Padrão', IconDensityDefault]].map(([d, lbl, Icon]) => (
               <button
                 key={d}
                 type="button"
                 className={`crm-density-btn${density === d ? ' active' : ''}`}
                 onClick={() => changeDensity(d)}
                 aria-pressed={density === d}
-                title={`Densidade ${lbl}`}
+                title={lbl}
               >
-                {lbl}
+                <Icon />
               </button>
             ))}
           </div>
@@ -935,7 +935,7 @@ export default function CRM() {
                   ? (colSelectFilters[c.id]?.size > 0)
                   : !!(colDateFilters[c.id]?.start && colDateFilters[c.id]?.end)
                 return (
-                  <th key={c.id} style={{ minWidth: c.width }}>
+                  <th key={c.id} style={density === 'compact' ? undefined : { minWidth: c.width }}>
                     <div className="th-row">
                       {c.fixed ? (
                         <span className="th-label th-fixed">{c.name}</span>
