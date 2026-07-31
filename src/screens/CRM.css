@@ -19,21 +19,6 @@
 .crm-density-btn:hover { color: var(--ink); }
 .crm-density-btn.active { background: var(--ink); color: var(--white); }
 
-/* ── botões de filtro (Status, Período) ── */
-.crm-filter-btn {
-  display: inline-flex; align-items: center; gap: 8px;
-  background: var(--white); border: none; border-radius: 99px;
-  padding: 8px 16px; box-shadow: var(--shadow-rest);
-  font-size: 13px; color: var(--ink-60); cursor: pointer; white-space: nowrap;
-  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
-}
-.crm-filter-btn:hover { box-shadow: var(--shadow-float); color: var(--ink); }
-.crm-filter-btn.active { background: var(--ink); color: var(--white); box-shadow: 0 4px 12px rgba(18, 18, 16, 0.22); }
-.crm-filter-btn.active:hover { color: var(--white); }
-.crm-filter-icon { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.8; fill: none; flex-shrink: 0; }
-.crm-filter-chevron { width: 12px; height: 12px; stroke: currentColor; stroke-width: 2.2; fill: none; flex-shrink: 0; transition: transform 0.15s; }
-.crm-filter-chevron.open { transform: rotate(180deg); }
-
 .crm-clear-filters-btn {
   display: inline-flex; align-items: center; gap: 6px;
   background: none; border: none; border-radius: 99px;
@@ -354,19 +339,10 @@
 }
 .crm-col-vis-reset:hover { color: var(--ink); }
 
-/* ── dropdown de período (CRM) ── */
-.crm-period-dropdown { min-width: 220px; }
-.crm-period-option {
-  display: flex; align-items: center; width: 100%; padding: 8px 10px;
-  border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 13.5px;
-  text-align: left; color: var(--ink); background: none; border: none;
-  transition: background 0.12s;
-}
-.crm-period-option:hover { background: #f6f6f2; }
-.crm-period-option.selected { background: var(--gray-soft); font-weight: 500; }
+/* ── período do filtro de coluna (Data de entrada / fechamento) ── */
 .crm-period-custom {
   display: flex; flex-direction: column; gap: 6px;
-  padding: 8px 10px 2px; margin-top: 4px; border-top: 1px solid var(--ink-divider);
+  padding: 2px;
 }
 .crm-period-input {
   padding: 8px 12px; border-radius: 8px; background: var(--cream);

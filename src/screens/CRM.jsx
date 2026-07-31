@@ -4,7 +4,7 @@ import { useToast } from '../contexts/ToastContext.jsx'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { CRM_COLUMNS, CRM_ROWS } from '../data/seed.js'
-import { IconPlus, IconSearch, IconEdit, IconClose, IconCalendar, IconChevronDown, IconGrip, IconEye, IconEyeOff, IconFilter } from '../components/Icons.jsx'
+import { IconPlus, IconSearch, IconEdit, IconClose, IconGrip, IconEye, IconEyeOff, IconFilter } from '../components/Icons.jsx'
 import { SelectDropdown } from '../components/SelectDropdown.jsx'
 import { DatePicker } from '../components/DatePicker.jsx'
 import CRMDrawer from './CRMDrawer.jsx'
@@ -85,18 +85,6 @@ function inPeriod(dateStr, [start, end]) {
   const d = parseDateStr(dateStr)
   return d ? d >= start && d <= end : false
 }
-// Mês atual completo + 2 meses anteriores completos.
-function last3MonthsRange() {
-  const now = new Date()
-  const y = now.getFullYear(), m = now.getMonth()
-  const start = new Date(y, m - 2, 1)
-  const end = new Date(y, m + 1, 0, 23, 59, 59, 999)
-  return [start, end]
-}
-function fmtShortDate(d) {
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
 function parseCol(c) {
   const isObj = c.opcoes != null && !Array.isArray(c.opcoes)
   const fixed = c.fixo === true || (isObj && c.opcoes.fixed === true)
@@ -409,13 +397,6 @@ export default function CRM() {
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState(new Set())
-  const [statusFilterOpen, setStatusFilterOpen] = useState(false)
-  const [periodFilter, setPeriodFilter] = useState('3m')
-  const [periodOpen, setPeriodOpen] = useState(false)
-  const [customRange, setCustomRange] = useState({ start: '', end: '' })
-  const [showCustomPicker, setShowCustomPicker] = useState(false)
-  const [draftRange, setDraftRange] = useState({ start: '', end: '' })
   const [drawerRowId, setDrawerRowId] = useState(null)
   const [activeCell, setActiveCell] = useState(null) // { rowId, colId }
   const [colModal, setColModal] = useState(null)
@@ -441,7 +422,6 @@ export default function CRM() {
   const tableRef = useRef(null)
   const shouldScrollRef = useRef(true)
 
-  const statusCol      = useMemo(() => columns.find(c => c.slug === 'status'), [columns])
   const clienteCol     = useMemo(() => columns.find(c => c.slug === 'cliente'), [columns])
   const dataEntradaCol = useMemo(() => columns.find(c => c.slug === 'data_entrada'), [columns])
   const dataFechCol    = useMemo(() => columns.find(c => c.slug === 'data_fechamento'), [columns])
@@ -674,41 +654,6 @@ export default function CRM() {
     })
   }, [rows, dataEntradaCol])
 
-  function toggleStatusOption(value) {
-    shouldScrollRef.current = true
-    setStatusFilter(prev => {
-      const next = new Set(prev)
-      if (next.has(value)) next.delete(value)
-      else next.add(value)
-      return next
-    })
-  }
-
-  function togglePeriodDropdown() {
-    setPeriodOpen(v => {
-      const next = !v
-      if (next) {
-        // Reabre já mostrando o seletor de datas se o filtro ativo for personalizado.
-        setShowCustomPicker(periodFilter === 'custom')
-        setDraftRange(periodFilter === 'custom' ? customRange : { start: '', end: '' })
-      }
-      return next
-    })
-  }
-
-  function closePeriodDropdown() {
-    // Fecha sem aplicar — descarta datas em rascunho, mantém o filtro anterior.
-    setPeriodOpen(false)
-    setShowCustomPicker(false)
-  }
-
-  function applyCustomPeriod() {
-    shouldScrollRef.current = true
-    setCustomRange(draftRange)
-    setPeriodFilter('custom')
-    closePeriodDropdown()
-  }
-
   function toggleColFilterOpen(colId, isDate) {
     setOpenColFilter(prev => {
       const next = prev === colId ? null : colId
@@ -751,35 +696,6 @@ export default function CRM() {
     setColDateDraft({})
   }
 
-  const periodRange = useMemo(() => {
-    if (periodFilter === '3m') return last3MonthsRange()
-    if (periodFilter === 'custom') {
-      const s = parseDateStr(customRange.start)
-      const e = parseDateStr(customRange.end)
-      if (!s || !e) return null
-      return [s, new Date(e.getFullYear(), e.getMonth(), e.getDate(), 23, 59, 59, 999)]
-    }
-    return null // 'all'
-  }, [periodFilter, customRange])
-
-  const periodLabel = useMemo(() => {
-    if (periodFilter === 'all') return 'Todos os períodos'
-    if (periodFilter === '3m') return 'Últimos 3 meses'
-    if (periodRange) {
-      const [s, e] = periodRange
-      return `${fmtShortDate(s)} – ${fmtShortDate(e)}/${e.getFullYear()}`
-    }
-    return 'Personalizado'
-  }, [periodFilter, periodRange])
-
-  const statusLabel = statusFilter.size === 0
-    ? 'Todos os status'
-    : statusFilter.size === 1
-      ? `Status · ${[...statusFilter][0]}`
-      : `Status · ${statusFilter.size} selecionados`
-  const statusActive = statusFilter.size > 0
-  const periodActive = periodFilter !== '3m'
-
   // Opções de filtro por coluna: só os valores que de fato aparecem nos dados, mantendo cor/ordem configuradas.
   const colFilterOptions = useMemo(() => {
     const map = {}
@@ -803,8 +719,6 @@ export default function CRM() {
       const hay = Object.values(r).map(v => Array.isArray(v) ? v.join(' ') : String(v ?? '')).join(' ').toLowerCase()
       if (!hay.includes(search.toLowerCase())) return false
     }
-    if (statusFilter.size > 0 && statusCol && !statusFilter.has(r[statusCol.id])) return false
-    if (periodRange && dataEntradaCol && !inPeriod(r[dataEntradaCol.id], periodRange)) return false
     for (const colId in colSelectFilters) {
       const set = colSelectFilters[colId]
       if (set && set.size > 0 && !set.has(r[colId])) return false
@@ -819,7 +733,7 @@ export default function CRM() {
       if (!inPeriod(r[colId], [s, eod])) return false
     }
     return true
-  }), [sorted, search, statusFilter, statusCol, periodRange, dataEntradaCol, colSelectFilters, colDateFilters])
+  }), [sorted, search, colSelectFilters, colDateFilters])
 
   const summary = useMemo(() => {
     const count = filtered.length
@@ -931,68 +845,6 @@ export default function CRM() {
           <div className="crm-search">
             <IconSearch />
             <input placeholder="Buscar…" value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
-          <div className="crm-col-vis-wrap">
-            <button className={`crm-filter-btn${statusActive ? ' active' : ''}`} onClick={() => setStatusFilterOpen(v => !v)}>
-              {statusLabel}
-              <IconChevronDown className={`crm-filter-chevron${statusFilterOpen ? ' open' : ''}`} />
-            </button>
-            {statusFilterOpen && (
-              <>
-                <div className="crm-col-vis-scrim" onClick={() => setStatusFilterOpen(false)} />
-                <div className="crm-col-vis-dropdown">
-                  <label className="crm-col-vis-item">
-                    <input type="checkbox" checked={statusFilter.size === 0} onChange={() => { shouldScrollRef.current = true; setStatusFilter(new Set()) }} />
-                    <span>Todos</span>
-                  </label>
-                  {statusCol?.options.map(o => (
-                    <label key={o.value} className="crm-col-vis-item">
-                      <input type="checkbox" checked={statusFilter.has(o.value)} onChange={() => toggleStatusOption(o.value)} />
-                      <span className="dot" style={{ background: COLOR_VARS[o.color] || COLOR_VARS.gray }} />
-                      <span>{o.value}</span>
-                    </label>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-          <div className="crm-col-vis-wrap">
-            <button className={`crm-filter-btn${periodActive ? ' active' : ''}`} onClick={togglePeriodDropdown}>
-              <IconCalendar className="crm-filter-icon" />
-              {periodLabel}
-              <IconChevronDown className={`crm-filter-chevron${periodOpen ? ' open' : ''}`} />
-            </button>
-            {periodOpen && (
-              <>
-                <div className="crm-col-vis-scrim" onClick={closePeriodDropdown} />
-                <div className="crm-col-vis-dropdown crm-period-dropdown">
-                  <button className={`crm-period-option${periodFilter === 'all' && !showCustomPicker ? ' selected' : ''}`} onClick={() => { shouldScrollRef.current = true; setPeriodFilter('all'); closePeriodDropdown() }}>Todos</button>
-                  <button className={`crm-period-option${periodFilter === '3m' && !showCustomPicker ? ' selected' : ''}`} onClick={() => { shouldScrollRef.current = true; setPeriodFilter('3m'); closePeriodDropdown() }}>Últimos 3 meses</button>
-                  <button className={`crm-period-option${showCustomPicker ? ' selected' : ''}`} onClick={() => setShowCustomPicker(true)}>Personalizado</button>
-                  {showCustomPicker && (
-                    <div className="crm-period-custom">
-                      <DatePicker
-                        value={draftRange.start}
-                        onChange={v => setDraftRange(p => ({ ...p, start: v }))}
-                        placeholder="Data inicial"
-                        className="crm-period-input"
-                        max={draftRange.end || undefined}
-                      />
-                      <DatePicker
-                        value={draftRange.end}
-                        onChange={v => setDraftRange(p => ({ ...p, end: v }))}
-                        placeholder="Data final"
-                        className="crm-period-input"
-                        min={draftRange.start || undefined}
-                      />
-                      {draftRange.start && draftRange.end && (
-                        <button className="btn-primary crm-period-apply" onClick={applyCustomPeriod}>Aplicar</button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
           </div>
           {hasColFilters && (
             <button className="crm-clear-filters-btn" onClick={clearColFilters}>
@@ -1164,7 +1016,7 @@ export default function CRM() {
             ))}
 
             {/* Linha fantasma */}
-            {statusFilter.size === 0 && periodFilter !== 'custom' && !search && !hasColFilters && (
+            {!search && !hasColFilters && (
               <tr className="crm-phantom-row" onClick={addRow} title="Clique para adicionar registro">
                 {visibleCols.map(col => (
                   <td key={col.id}>
