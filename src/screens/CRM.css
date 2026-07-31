@@ -163,6 +163,32 @@
 .crm-table-wrap.density-compact .crm-table th,
 .crm-table-wrap.density-compact .crm-table td { min-width: unset; white-space: nowrap; }
 
+/* Larguras fixas para colunas que sobram espaço no compacto.
+   data-col usa col.slug — "valor" e "proposta" são os slugs reais das colunas
+   "Valor da proposta" e "Recebeu proposta?" nesta base (não "valor_proposta"/"recebeu_proposta"). */
+.crm-table-wrap.density-compact th[data-col="data_entrada"],
+.crm-table-wrap.density-compact td[data-col="data_entrada"],
+.crm-table-wrap.density-compact th[data-col="data_fechamento"],
+.crm-table-wrap.density-compact td[data-col="data_fechamento"] {
+  width: 72px;
+  min-width: 72px;
+  max-width: 72px;
+}
+.crm-table-wrap.density-compact th[data-col="valor"],
+.crm-table-wrap.density-compact td[data-col="valor"] {
+  width: 80px;
+  min-width: 80px;
+  max-width: 80px;
+}
+.crm-table-wrap.density-compact th[data-col="proposta"],
+.crm-table-wrap.density-compact td[data-col="proposta"] {
+  width: 72px;
+  min-width: 72px;
+  max-width: 72px;
+  white-space: normal;
+  word-break: break-word;
+}
+
 .crm-table-wrap.density-default .crm-table th { font-size: 10.5px; padding: 12px 16px 10px 16px; }
 .crm-table-wrap.density-default .cell-display,
 .crm-table-wrap.density-default .cell-input,

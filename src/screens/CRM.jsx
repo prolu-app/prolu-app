@@ -935,7 +935,7 @@ export default function CRM() {
                   ? (colSelectFilters[c.id]?.size > 0)
                   : !!(colDateFilters[c.id]?.start && colDateFilters[c.id]?.end)
                 return (
-                  <th key={c.id} style={density === 'compact' ? undefined : { minWidth: c.width }}>
+                  <th key={c.id} data-col={c.slug || undefined} style={density === 'compact' ? undefined : { minWidth: c.width }}>
                     <div className="th-row">
                       {c.fixed ? (
                         <span className="th-label th-fixed">{c.name}</span>
@@ -974,7 +974,7 @@ export default function CRM() {
             {filtered.map(row => (
               <tr key={row.id}>
                 {visibleCols.map(col => (
-                  <td key={col.id}>
+                  <td key={col.id} data-col={col.slug || undefined}>
                     <InlineCell
                       row={row}
                       col={col}
@@ -1019,7 +1019,7 @@ export default function CRM() {
             {!search && !hasColFilters && (
               <tr className="crm-phantom-row" onClick={addRow} title="Clique para adicionar registro">
                 {visibleCols.map(col => (
-                  <td key={col.id}>
+                  <td key={col.id} data-col={col.slug || undefined}>
                     {col.slug === 'data_entrada' && (
                       <span className="cell-phantom">{fmtDate(todayISO())}</span>
                     )}
