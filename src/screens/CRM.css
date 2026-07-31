@@ -153,7 +153,7 @@
 /* th permite quebra de linha em vez de truncar — títulos longos (ex: "Recebeu
    proposta?") ganham uma segunda linha em vez de comer o botão de filtro ao lado. */
 .crm-table-wrap.density-compact .crm-table th {
-  font-size: 9px; letter-spacing: 0.6px; padding: 8px 6px 3px 6px; min-width: unset;
+  font-size: 9px; letter-spacing: 0.6px; padding: 10px 6px 3px 6px; min-width: unset;
   white-space: normal; word-break: break-word; overflow: visible; text-overflow: unset;
   vertical-align: top; line-height: 1.3; min-height: 40px;
 }
@@ -178,10 +178,21 @@
    de verdade — em auto, width/min-width são só sugestão e o navegador ainda expande a
    coluna pro conteúdo. */
 .crm-table-wrap.density-compact .crm-table { min-width: unset; table-layout: fixed; }
-/* td continua em uma linha só, truncando com reticências — só o th quebra linha. */
+/* td continua em uma linha só; vertical-align explícito pra alinhar pill/texto entre
+   colunas com min-heights diferentes (cell-display vs sd-trigger/dp-cell). */
 .crm-table-wrap.density-compact .crm-table td {
-  min-width: unset; white-space: nowrap;
+  min-width: unset; white-space: nowrap; vertical-align: middle;
   overflow: hidden; text-overflow: ellipsis; max-width: 140px;
+}
+/* Células de seleção (pill + chevron do SelectDropdown) não podem truncar com
+   ellipsis — cortaria o ícone de dropdown. Só texto simples (Cliente, Cidade,
+   datas, número/dinheiro, tags) trunca; ambas com a mesma especificidade da regra
+   geral de td acima, por isso vêm depois no arquivo pra vencer o empate. */
+.crm-table-wrap.density-compact td.cell-text {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.crm-table-wrap.density-compact td.cell-select {
+  overflow: visible; white-space: nowrap;
 }
 
 /* Larguras fixas para colunas que sobram ou faltam espaço no compacto.
@@ -193,19 +204,39 @@
 .crm-table-wrap.density-compact td[data-col="data_entrada"],
 .crm-table-wrap.density-compact th[data-col="data_fechamento"],
 .crm-table-wrap.density-compact td[data-col="data_fechamento"] {
-  width: 76px; min-width: 76px;
+  width: 72px; min-width: 72px;
 }
 .crm-table-wrap.density-compact th[data-col="valor"],
 .crm-table-wrap.density-compact td[data-col="valor"] {
-  width: 84px; min-width: 84px;
+  width: 88px; min-width: 88px;
 }
 .crm-table-wrap.density-compact th[data-col="proposta"],
 .crm-table-wrap.density-compact td[data-col="proposta"] {
-  width: 72px; min-width: 72px;
+  width: 68px; min-width: 68px;
 }
 .crm-table-wrap.density-compact th[data-col="icp"],
 .crm-table-wrap.density-compact td[data-col="icp"] {
-  width: 52px; min-width: 52px;
+  width: 72px; min-width: 72px;
+}
+.crm-table-wrap.density-compact th[data-col="cliente"],
+.crm-table-wrap.density-compact td[data-col="cliente"] {
+  width: 110px; min-width: 110px;
+}
+.crm-table-wrap.density-compact th[data-col="status"],
+.crm-table-wrap.density-compact td[data-col="status"] {
+  width: 90px; min-width: 90px;
+}
+.crm-table-wrap.density-compact th[data-col="segmento"],
+.crm-table-wrap.density-compact td[data-col="segmento"] {
+  width: 100px; min-width: 100px;
+}
+.crm-table-wrap.density-compact th[data-col="tipo_projeto"],
+.crm-table-wrap.density-compact td[data-col="tipo_projeto"] {
+  width: 110px; min-width: 110px;
+}
+.crm-table-wrap.density-compact th[data-col="origem"],
+.crm-table-wrap.density-compact td[data-col="origem"] {
+  width: 90px; min-width: 90px;
 }
 
 .crm-table-wrap.density-default .crm-table th { font-size: 10.5px; padding: 12px 16px 10px 16px; }
