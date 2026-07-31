@@ -157,9 +157,12 @@
   white-space: normal; word-break: break-word; overflow: visible; text-overflow: unset;
   vertical-align: top; line-height: 1.3; min-height: 40px;
 }
-/* título e botão de filtro empilhados (não lado a lado) no compacto, pra a quebra
-   de linha do título não invadir o botão. */
-.crm-table-wrap.density-compact th .th-content { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+/* título e botão de filtro lado a lado no compacto: o título ocupa o espaço
+   disponível e quebra linha livremente (flex:1 + min-width:0), o botão fica
+   sempre colado à direita no topo, sem descer junto com a quebra de linha. */
+.crm-table-wrap.density-compact th .th-content { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; width: 100%; }
+.crm-table-wrap.density-compact th .th-label { white-space: normal; word-break: break-word; line-height: 1.3; flex: 1; min-width: 0; }
+.crm-table-wrap.density-compact th .col-filter-btn { flex-shrink: 0; align-self: flex-start; margin-top: 1px; }
 .crm-table-wrap.density-compact .cell-display,
 .crm-table-wrap.density-compact .cell-input,
 .crm-table-wrap.density-compact .sd-cell .sd-trigger,
