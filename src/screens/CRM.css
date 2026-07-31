@@ -46,7 +46,7 @@
 .th-label:not(.th-fixed):hover .th-edit-icon { opacity: 0.6; }
 
 /* ── filtro por coluna, inline no cabeçalho ── */
-.th-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.th-content { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .col-filter-btn {
   width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
   border: none; border-radius: 6px; background: var(--gray-soft); color: var(--ink-40);
@@ -150,7 +150,16 @@
    dp-cell) é quem de fato controla a altura da linha — o <td> em si só tem um buffer de 2px.
    min-width/white-space no compacto deixam as colunas encolherem para o conteúdo; o inline
    style de minWidth no <th> é omitido em JS quando density === 'compact' para essa regra valer. */
-.crm-table-wrap.density-compact .crm-table th { font-size: 9px; letter-spacing: 0.6px; padding: 8px 6px 3px 6px; }
+/* th permite quebra de linha em vez de truncar — títulos longos (ex: "Recebeu
+   proposta?") ganham uma segunda linha em vez de comer o botão de filtro ao lado. */
+.crm-table-wrap.density-compact .crm-table th {
+  font-size: 9px; letter-spacing: 0.6px; padding: 8px 6px 3px 6px; min-width: unset;
+  white-space: normal; word-break: break-word; overflow: visible; text-overflow: unset;
+  vertical-align: top; line-height: 1.3; min-height: 40px;
+}
+/* título e botão de filtro empilhados (não lado a lado) no compacto, pra a quebra
+   de linha do título não invadir o botão. */
+.crm-table-wrap.density-compact th .th-content { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .crm-table-wrap.density-compact .cell-display,
 .crm-table-wrap.density-compact .cell-input,
 .crm-table-wrap.density-compact .sd-cell .sd-trigger,
@@ -162,44 +171,38 @@
 .crm-table-wrap.density-compact .sd-cell .sd-trigger { min-height: 22px; }
 .crm-table-wrap.density-compact .dp-cell { font-size: 11px; padding: 0 6px; min-height: 22px; }
 .crm-table-wrap.density-compact .pill { font-size: 9px; padding: 1px 5px; }
-/* table-layout: fixed (não "auto") é o que de fato faz os th[data-col] abaixo serem
-   respeitados — em auto, max-width é só uma sugestão e o navegador ainda expande a
-   coluna pro conteúdo, o que gerava o layout encavalado. */
+/* table-layout: fixed é o que faz as larguras do th[data-col] abaixo serem respeitadas
+   de verdade — em auto, width/min-width são só sugestão e o navegador ainda expande a
+   coluna pro conteúdo. */
 .crm-table-wrap.density-compact .crm-table { min-width: unset; table-layout: fixed; }
-.crm-table-wrap.density-compact .crm-table th,
+/* td continua em uma linha só, truncando com reticências — só o th quebra linha. */
 .crm-table-wrap.density-compact .crm-table td {
   min-width: unset; white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis; max-width: 150px;
+  overflow: hidden; text-overflow: ellipsis; max-width: 140px;
 }
 
 /* Larguras fixas para colunas que sobram ou faltam espaço no compacto.
-   Seletores com th[]/td[] (não só [data-col]) para empatar em especificidade com a
-   regra geral de max-width:150px acima e vencer por ordem — só [data-col] sozinho
-   (0 elementos) perde pra ".crm-table th"/"td" (1 elemento) no desempate. */
+   Seletores com th[]/td[] (não só [data-col]) para empatar em especificidade com as
+   regras gerais de th/td acima e vencer por ordem — só [data-col] sozinho tem menos
+   especificidade que ".crm-table th"/"td" (sem o tipo do elemento) e perderia. Sem
+   max-width: o th agora pode crescer se word-break precisar; quem trunca é o td. */
 .crm-table-wrap.density-compact th[data-col="data_entrada"],
 .crm-table-wrap.density-compact td[data-col="data_entrada"],
 .crm-table-wrap.density-compact th[data-col="data_fechamento"],
 .crm-table-wrap.density-compact td[data-col="data_fechamento"] {
-  width: 76px; min-width: 76px; max-width: 76px;
+  width: 76px; min-width: 76px;
 }
 .crm-table-wrap.density-compact th[data-col="valor"],
 .crm-table-wrap.density-compact td[data-col="valor"] {
-  width: 88px; min-width: 88px; max-width: 88px;
+  width: 84px; min-width: 84px;
 }
 .crm-table-wrap.density-compact th[data-col="proposta"],
 .crm-table-wrap.density-compact td[data-col="proposta"] {
-  width: 80px; min-width: 80px; max-width: 80px;
+  width: 72px; min-width: 72px;
 }
 .crm-table-wrap.density-compact th[data-col="icp"],
 .crm-table-wrap.density-compact td[data-col="icp"] {
-  width: 60px; min-width: 60px; max-width: 60px;
-}
-.crm-table-wrap.density-compact th[data-col="proposta"] {
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.crm-table-wrap.density-compact th[data-col="proposta"] .th-label {
-  display: block; flex: 1; min-width: 0;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  width: 52px; min-width: 52px;
 }
 
 .crm-table-wrap.density-default .crm-table th { font-size: 10.5px; padding: 12px 16px 10px 16px; }

@@ -936,7 +936,7 @@ export default function CRM() {
                   : !!(colDateFilters[c.id]?.start && colDateFilters[c.id]?.end)
                 return (
                   <th key={c.id} data-col={c.slug || undefined} style={density === 'compact' ? undefined : { minWidth: c.width }}>
-                    <div className="th-row">
+                    <div className="th-content">
                       {c.fixed ? (
                         <span className="th-label th-fixed">{c.name}</span>
                       ) : (
