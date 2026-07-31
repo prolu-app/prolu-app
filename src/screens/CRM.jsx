@@ -1054,7 +1054,7 @@ export default function CRM() {
           </div>
           <button className="crm-addcol-btn" onClick={openNewColumn}><IconPlus /> Nova coluna</button>
           <div className="crm-density-toggle" role="group" aria-label="Densidade da tabela">
-            {[['s', 'S'], ['m', 'M'], ['l', 'L']].map(([d, lbl]) => (
+            {[['xs', 'XS'], ['s', 'S'], ['m', 'M'], ['l', 'L']].map(([d, lbl]) => (
               <button
                 key={d}
                 type="button"
