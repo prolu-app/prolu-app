@@ -178,21 +178,13 @@
    de verdade — em auto, width/min-width são só sugestão e o navegador ainda expande a
    coluna pro conteúdo. */
 .crm-table-wrap.density-compact .crm-table { min-width: unset; table-layout: fixed; }
-/* td continua em uma linha só; vertical-align explícito pra alinhar pill/texto entre
-   colunas com min-heights diferentes (cell-display vs sd-trigger/dp-cell). */
+/* Toda célula fica em uma linha só, sem exceção por tipo de coluna — a tentativa
+   anterior de liberar overflow:visible só pra colunas de seleção quebrou o layout
+   (empilhava verticalmente). O chevron do SelectDropdown fica dentro do fluxo
+   normal da célula (sem position:absolute), então nowrap + ellipsis já é suficiente. */
 .crm-table-wrap.density-compact .crm-table td {
   min-width: unset; white-space: nowrap; vertical-align: middle;
-  overflow: hidden; text-overflow: ellipsis; max-width: 140px;
-}
-/* Células de seleção (pill + chevron do SelectDropdown) não podem truncar com
-   ellipsis — cortaria o ícone de dropdown. Só texto simples (Cliente, Cidade,
-   datas, número/dinheiro, tags) trunca; ambas com a mesma especificidade da regra
-   geral de td acima, por isso vêm depois no arquivo pra vencer o empate. */
-.crm-table-wrap.density-compact td.cell-text {
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.crm-table-wrap.density-compact td.cell-select {
-  overflow: visible; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-width: 160px;
 }
 
 /* Larguras fixas para colunas que sobram ou faltam espaço no compacto.

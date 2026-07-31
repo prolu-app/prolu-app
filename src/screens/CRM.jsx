@@ -107,12 +107,6 @@ function pillClass(col, value) {
   return `pill-${opt?.color || 'gray'}`
 }
 
-// No modo compacto, células de seleção (pill + chevron) não podem truncar com
-// ellipsis — cortaria o ícone. Só texto simples trunca.
-function cellTypeClass(col) {
-  return col.type === 'select' ? 'cell-select' : 'cell-text'
-}
-
 function renderCellValue(row, col) {
   const v = row[col.id]
   if (col.type === 'money') return v ? fmtMoney(v) : <span className="cell-empty">—</span>
@@ -980,7 +974,7 @@ export default function CRM() {
             {filtered.map(row => (
               <tr key={row.id}>
                 {visibleCols.map(col => (
-                  <td key={col.id} data-col={col.slug || undefined} className={cellTypeClass(col)}>
+                  <td key={col.id} data-col={col.slug || undefined}>
                     <InlineCell
                       row={row}
                       col={col}
@@ -1025,7 +1019,7 @@ export default function CRM() {
             {!search && !hasColFilters && (
               <tr className="crm-phantom-row" onClick={addRow} title="Clique para adicionar registro">
                 {visibleCols.map(col => (
-                  <td key={col.id} data-col={col.slug || undefined} className={cellTypeClass(col)}>
+                  <td key={col.id} data-col={col.slug || undefined}>
                     {col.slug === 'data_entrada' && (
                       <span className="cell-phantom">{fmtDate(todayISO())}</span>
                     )}
