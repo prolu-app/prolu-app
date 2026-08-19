@@ -1,6 +1,6 @@
 /* ───────── Shell do app: sidebar fixa + drawer mobile ───────── */
 
-.app { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+.app { display: flex; min-height: 100vh; position: relative; }
 
 /* Topbar (só mobile) */
 .topbar {
