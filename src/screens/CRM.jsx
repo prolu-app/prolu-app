@@ -421,12 +421,29 @@ export default function CRM() {
   const [colDateDraft, setColDateDraft] = useState({}) // { [colId]: { start, end } } rascunho
   const tableRef = useRef(null)
   const shouldScrollRef = useRef(true)
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 860)
+  const [draftValues, setDraftValues] = useState({})
+  const [mobileVisibleCount, setMobileVisibleCount] = useState(20)
+  const [loadingMoreMobile, setLoadingMoreMobile] = useState(false)
+  const loadMoreRef = useRef(null)
 
   const clienteCol     = useMemo(() => columns.find(c => c.slug === 'cliente'), [columns])
   const dataEntradaCol = useMemo(() => columns.find(c => c.slug === 'data_entrada'), [columns])
   const dataFechCol    = useMemo(() => columns.find(c => c.slug === 'data_fechamento'), [columns])
   const valorCol       = useMemo(() => columns.find(c => c.slug === 'valor'), [columns])
-  const drawerRow      = useMemo(() => rows.find(r => r.id === drawerRowId) || null, [rows, drawerRowId])
+  const statusCol      = useMemo(() => columns.find(c => c.slug === 'status'), [columns])
+  const origemCol      = useMemo(() => columns.find(c => c.slug === 'origem'), [columns])
+  const isDraft = drawerRowId === '__new__'
+  const drawerRow = useMemo(() => {
+    if (isDraft) return { id: '__new__', ...draftValues }
+    return rows.find(r => r.id === drawerRowId) || null
+  }, [rows, drawerRowId, isDraft, draftValues])
+
+  useEffect(() => {
+    function onResize() { setIsMobile(window.innerWidth <= 860) }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   useEffect(() => { carregar() }, [user?.empresaId])
   useEffect(() => { if (supabaseReady && user?.empresaId) loadClientes() }, [user?.empresaId])
@@ -546,6 +563,46 @@ export default function CRM() {
     toast('Linha criada')
   }
 
+  function openNewDraft() {
+    const empty = {}
+    columns.forEach(c => { empty[c.id] = c.type === 'tags' ? [] : null })
+    setDraftValues(empty)
+    setDrawerRowId('__new__')
+  }
+
+  function hasDraftData(values) {
+    return Object.values(values).some(v => Array.isArray(v) ? v.length > 0 : (v !== null && v !== undefined && v !== ''))
+  }
+
+  async function saveDraft() {
+    const novosValores = { ...draftValues }
+    if (!supabaseReady || !user?.empresaId) {
+      const id = 'r' + Date.now()
+      setRows(prev => [...prev, { id, ...novosValores }])
+      setDrawerRowId(null)
+      setDraftValues({})
+      return
+    }
+    const { data, error } = await supabase
+      .from('crm_linhas')
+      .insert({ empresa_id: user.empresaId, valores: novosValores, created_by: user.id })
+      .select('*').single()
+    if (error) { toast('Não foi possível criar a linha'); return }
+    setRows(prev => [...prev, flattenRow(data)])
+    toast('Linha criada')
+    setDrawerRowId(null)
+    setDraftValues({})
+  }
+
+  function closeDrawer() {
+    if (isDraft) {
+      if (hasDraftData(draftValues)) saveDraft()
+      else { setDrawerRowId(null); setDraftValues({}) }
+      return
+    }
+    setDrawerRowId(null)
+  }
+
   async function removeRow(id) {
     if (drawerRowId === id) setDrawerRowId(null)
     setRows(prev => prev.filter(r => r.id !== id))
@@ -647,12 +704,13 @@ export default function CRM() {
 
   const sorted = useMemo(() => {
     if (!dataEntradaCol) return rows
+    const dir = isMobile ? -1 : 1
     return [...rows].sort((a, b) => {
       const aD = a[dataEntradaCol.id] || ''
       const bD = b[dataEntradaCol.id] || ''
-      return aD < bD ? -1 : aD > bD ? 1 : 0
+      return aD < bD ? -dir : aD > bD ? dir : 0
     })
-  }, [rows, dataEntradaCol])
+  }, [rows, dataEntradaCol, isMobile])
 
   function toggleColFilterOpen(colId, isDate) {
     setOpenColFilter(prev => {
@@ -753,6 +811,29 @@ export default function CRM() {
       avg: filledCount > 0 ? total / filledCount : null,
     }
   }, [filtered, valorCol])
+
+  // Scroll infinito (mobile): janeia a lista já carregada em memória, sem nova consulta ao banco.
+  useEffect(() => { setMobileVisibleCount(20) }, [filtered])
+
+  const mobileRows = useMemo(() => filtered.slice(0, mobileVisibleCount), [filtered, mobileVisibleCount])
+  const hasMoreMobile = mobileVisibleCount < filtered.length
+
+  useEffect(() => {
+    if (!isMobile || !hasMoreMobile) return
+    const el = loadMoreRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) {
+        setLoadingMoreMobile(true)
+        setTimeout(() => {
+          setMobileVisibleCount(c => c + 20)
+          setLoadingMoreMobile(false)
+        }, 300)
+      }
+    }, { rootMargin: '200px' })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [isMobile, hasMoreMobile])
 
   useEffect(() => {
     if (!shouldScrollRef.current) return
@@ -1054,42 +1135,55 @@ export default function CRM() {
 
       {/* MOBILE: cards */}
       <div className="crm-cards">
-        {filtered.map(row => (
-          <div className="crm-card" key={row.id} onClick={() => setDrawerRowId(row.id)} style={{ cursor: 'pointer' }}>
-            <div className="crm-card-top">
-              <div className="crm-card-title">{(clienteCol ? row[clienteCol.id] : null) || 'Sem nome'}</div>
-              <button
-                className="row-del-btn"
-                onClick={e => { e.stopPropagation(); removeRow(row.id) }}
-                aria-label="Excluir"
-              >
-                <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
-              </button>
+        {(isMobile ? mobileRows : filtered).map(row => (
+          <div className="crm-card" key={row.id} onClick={() => setDrawerRowId(row.id)}>
+            <button
+              className="crm-card-del"
+              onClick={e => { e.stopPropagation(); removeRow(row.id) }}
+              aria-label="Excluir"
+            >
+              <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
+            </button>
+            <div className="crm-card-row1">
+              <span className="crm-card-name">{(clienteCol ? row[clienteCol.id] : null) || 'Sem nome'}</span>
+              {statusCol && renderCellValue(row, statusCol)}
             </div>
-            <div className="crm-card-fields">
-              {columns.filter(c => c.slug !== 'cliente').map(col => (
-                <div className="crm-card-field" key={col.id}>
-                  <span className="crm-card-label">{col.name}</span>
-                  <span>{renderCellValue(row, col)}</span>
-                </div>
-              ))}
+            <div className="crm-card-row2">
+              <span className="crm-card-date">{dataEntradaCol ? (fmtDate(row[dataEntradaCol.id]) || '—') : ''}</span>
+              <span className="crm-card-value">{valorCol ? (row[valorCol.id] ? fmtMoney(row[valorCol.id]) : '—') : ''}</span>
             </div>
+            {origemCol && (
+              <div className="crm-card-row3">{renderCellValue(row, origemCol)}</div>
+            )}
           </div>
         ))}
         {filtered.length === 0 && <div className="crm-empty">Nenhum registro encontrado.</div>}
+        {isMobile && hasMoreMobile && (
+          <div ref={loadMoreRef} className="crm-cards-sentinel">
+            {loadingMoreMobile && <span className="crm-cards-spinner" aria-label="Carregando mais" />}
+          </div>
+        )}
       </div>
 
-      <button className="fab" onClick={addRow} aria-label="Novo registro"><IconPlus /></button>
+      <button className="fab" onClick={() => { if (isMobile) openNewDraft(); else addRow() }} aria-label="Novo registro"><IconPlus /></button>
 
       {/* Drawer de detalhe */}
       {drawerRow && (
         <CRMDrawer
           row={drawerRow}
           columns={columns}
-          onClose={() => setDrawerRowId(null)}
-          onUpdateCell={(col, value) => updateCell(drawerRow.id, col, value)}
+          isNew={isDraft}
+          onClose={closeDrawer}
+          onSave={isDraft ? saveDraft : closeDrawer}
+          onUpdateCell={(col, value) => {
+            if (isDraft) setDraftValues(prev => ({ ...prev, [col.id]: value }))
+            else updateCell(drawerRow.id, col, value)
+          }}
           onAddOption={openOptionsModal}
-          onDelete={() => removeRow(drawerRow.id)}
+          onDelete={() => {
+            if (isDraft) { setDrawerRowId(null); setDraftValues({}) }
+            else removeRow(drawerRow.id)
+          }}
           clientes={clientes}
           user={user}
           onClientCreate={newClient => setClientes(prev => [...prev, newClient].sort((a, b) => a.nome.localeCompare(b.nome)))}

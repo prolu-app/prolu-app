@@ -12,13 +12,15 @@ function fmtDateTime(iso) {
   return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
-function ClientField({ col, value, onChange, clientes, user, onClientCreate }) {
+function ClientField({ col, value, onChange, clientes, user, onClientCreate, autoFocus }) {
   const [inputVal, setInputVal] = useState(value || '')
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const wrapRef = useRef(null)
+  const inputRef = useRef(null)
 
   useEffect(() => { setInputVal(value || '') }, [value])
+  useEffect(() => { if (autoFocus) inputRef.current?.focus() }, [autoFocus])
 
   const suggestions = useMemo(() => {
     const q = inputVal.trim().toLowerCase()
@@ -52,6 +54,7 @@ function ClientField({ col, value, onChange, clientes, user, onClientCreate }) {
       <div className="dr-client-wrap">
         <input
           className="dr-input"
+          ref={inputRef}
           value={inputVal}
           placeholder="Nome do cliente…"
           onChange={e => { setInputVal(e.target.value); setOpen(e.target.value.length > 0) }}
@@ -117,7 +120,7 @@ function TagsField({ col, value, onChange }) {
   )
 }
 
-function DrawerField({ col, value, onChange, onAddOption, clientes, user, onClientCreate }) {
+function DrawerField({ col, value, onChange, onAddOption, clientes, user, onClientCreate, autoFocus }) {
   const [localVal, setLocalVal] = useState(value ?? '')
   const inputRef = useRef(null)
 
@@ -163,7 +166,7 @@ function DrawerField({ col, value, onChange, onAddOption, clientes, user, onClie
 
   // ── client: delegado ao componente dedicado ──
   if (col.type === 'client') {
-    return <ClientField col={col} value={value} onChange={onChange} clientes={clientes} user={user} onClientCreate={onClientCreate} />
+    return <ClientField col={col} value={value} onChange={onChange} clientes={clientes} user={user} onClientCreate={onClientCreate} autoFocus={autoFocus} />
   }
 
   // ── tags: delegado ao componente separado ──
@@ -201,7 +204,7 @@ function DrawerField({ col, value, onChange, onAddOption, clientes, user, onClie
   )
 }
 
-export default function CRMDrawer({ row, columns, onClose, onUpdateCell, onAddOption, onDelete, clientes, user, onClientCreate }) {
+export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell, onAddOption, onDelete, clientes, user, onClientCreate, isNew }) {
   const [comments, setComments] = useState([])
   const [commentLoading, setCommentLoading] = useState(false)
   const [newComment, setNewComment] = useState('')
@@ -221,7 +224,7 @@ export default function CRMDrawer({ row, columns, onClose, onUpdateCell, onAddOp
 
   // Busca comentários
   useEffect(() => {
-    if (!supabaseReady || !row?.id || row.id.startsWith('r')) { setComments([]); return }
+    if (!supabaseReady || !row?.id || isNew || row.id.startsWith('r')) { setComments([]); return }
     setCommentLoading(true)
     supabase
       .from('oportunidade_comentarios')
@@ -305,43 +308,58 @@ export default function CRMDrawer({ row, columns, onClose, onUpdateCell, onAddOp
                 clientes={clientes}
                 user={user}
                 onClientCreate={onClientCreate}
+                autoFocus={isNew && col.slug === 'cliente'}
               />
             ))}
           </div>
 
-          {/* Histórico */}
-          <div className="dr-history-section">
-            <div className="dr-section-title">Histórico</div>
-            {commentLoading && <div className="dr-comment-empty">Carregando…</div>}
-            {!commentLoading && comments.length === 0 && (
-              <div className="dr-comment-empty">Nenhum comentário ainda.</div>
-            )}
-            {comments.map(c => (
-              <div className="dr-comment" key={c.id}>
-                <div className="dr-comment-meta">
-                  <span className="dr-comment-user">{c.usuario?.nome || 'Usuário'}</span>
-                  <span className="dr-comment-date">{fmtDateTime(c.created_at)}</span>
+          {/* Histórico — não faz sentido antes do registro existir no banco */}
+          {!isNew && (
+            <div className="dr-history-section">
+              <div className="dr-section-title">Histórico</div>
+              {commentLoading && <div className="dr-comment-empty">Carregando…</div>}
+              {!commentLoading && comments.length === 0 && (
+                <div className="dr-comment-empty">Nenhum comentário ainda.</div>
+              )}
+              {comments.map(c => (
+                <div className="dr-comment" key={c.id}>
+                  <div className="dr-comment-meta">
+                    <span className="dr-comment-user">{c.usuario?.nome || 'Usuário'}</span>
+                    <span className="dr-comment-date">{fmtDateTime(c.created_at)}</span>
+                  </div>
+                  <div className="dr-comment-text">{c.texto}</div>
                 </div>
-                <div className="dr-comment-text">{c.texto}</div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+
+          {/* Excluir — discreto, ao final do conteúdo rolável (mobile) */}
+          <button className="dr-delete-inline" onClick={handleDelete} type="button">
+            {isNew ? 'Descartar registro' : 'Excluir registro'}
+          </button>
 
         </div>
 
         {/* Footer fixo — adicionar comentário */}
-        <div className="dr-form-footer">
-          <textarea
-            className="dr-comment-input"
-            placeholder="Adicionar comentário…"
-            value={newComment}
-            onChange={e => setNewComment(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); addComment() } }}
-            rows={2}
-          />
-          <button className="dr-comment-btn" onClick={addComment} disabled={saving || !newComment.trim()}>
-            {saving ? 'Salvando…' : 'Adicionar'}
-          </button>
+        {!isNew && (
+          <div className="dr-form-footer">
+            <textarea
+              className="dr-comment-input"
+              placeholder="Adicionar comentário…"
+              value={newComment}
+              onChange={e => setNewComment(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); addComment() } }}
+              rows={2}
+            />
+            <button className="dr-comment-btn" onClick={addComment} disabled={saving || !newComment.trim()}>
+              {saving ? 'Salvando…' : 'Adicionar'}
+            </button>
+          </div>
+        )}
+
+        {/* Botão salvar — fixo no rodapé (mobile) */}
+        <div className="dr-save-footer">
+          <button className="btn-primary dr-save-btn" onClick={onSave} type="button">Salvar</button>
         </div>
       </div>
     </>,

@@ -231,6 +231,27 @@
 .dr-comment-date { font-size: 11.5px; color: var(--ink-40); }
 .dr-comment-text { font-size: 13.5px; color: var(--ink); line-height: 1.5; }
 
+/* ── excluir discreto (mobile) ── */
+.dr-delete-inline {
+  display: none;
+  align-self: flex-start;
+  border: none;
+  background: none;
+  color: var(--red, #d94f4f);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 2px;
+  opacity: 0.75;
+  transition: opacity 0.15s;
+}
+.dr-delete-inline:hover { opacity: 1; }
+
+/* ── salvar fixo (mobile) ── */
+.dr-save-footer { display: none; flex-shrink: 0; padding: 12px 16px; background: var(--white); border-top: 1px solid var(--ink-divider); }
+.dr-save-btn { width: 100%; justify-content: center; padding: 12px 16px; }
+
 /* ── footer ── */
 .dr-form-footer {
   flex-shrink: 0;
@@ -278,4 +299,6 @@
   .crm-drawer { width: 100%; }
   .dr-fields-grid { grid-template-columns: 1fr; }
   .dr-field-wide { grid-column: span 1; }
+  .dr-delete-inline { display: inline-flex; }
+  .dr-save-footer { display: flex; }
 }
