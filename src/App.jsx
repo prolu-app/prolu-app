@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext.jsx'
 import AppLayout from './components/AppLayout.jsx'
 import Login from './screens/Login.jsx'
@@ -16,9 +16,11 @@ import Indicadores from './screens/Indicadores.jsx'
 import AgentePrl from './screens/AgentePrl.jsx'
 import Equipe from './screens/Equipe.jsx'
 import Avisos from './screens/Avisos.jsx'
+import AdminInicio from './screens/admin/AdminInicio.jsx'
+import AdminEscritorios from './screens/admin/AdminEscritorios.jsx'
 
 export default function App() {
-  const { user, loading } = useAuth()
+  const { user, loading, isProluAdmin, impersonatedEmpresaId, viewAsUser } = useAuth()
   const [showOnboarding, setShowOnboarding] = useState(false)
 
   if (loading) {
@@ -41,10 +43,12 @@ export default function App() {
       : <Login onCreateAccount={() => setShowOnboarding(true)} />
   }
 
+  const isAdminMode = isProluAdmin && !impersonatedEmpresaId && !viewAsUser
+
   return (
     <Routes>
       <Route element={<AppLayout />}>
-        <Route index element={<Inicio />} />
+        <Route index element={isAdminMode ? <Navigate to="/admin" replace /> : <Inicio />} />
         <Route path="/base-conhecimento" element={<BaseConhecimento />} />
         <Route path="/crm" element={<CRM />} />
         <Route path="/clientes" element={<Clientes />} />
@@ -55,6 +59,8 @@ export default function App() {
         <Route path="/agente-prolu" element={<AgentePrl />} />
         <Route path="/equipe" element={<Equipe />} />
         <Route path="/avisos" element={<Avisos />} />
+        <Route path="/admin" element={<AdminInicio />} />
+        <Route path="/admin/escritorios" element={<AdminEscritorios />} />
       </Route>
     </Routes>
   )

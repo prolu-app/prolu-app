@@ -134,6 +134,9 @@ export const IconEye = (p) => (
 export const IconEyeOff = (p) => (
   <svg viewBox="0 0 24 24" {...p}><path d="M17.94 17.94A10.94 10.94 0 0112 19c-7 0-11-7-11-7a20.3 20.3 0 015.06-5.94M9.9 4.24A10.6 10.6 0 0112 4c7 0 11 7 11 7a20.3 20.3 0 01-2.16 3.19M14.12 14.12a3 3 0 11-4.24-4.24M1 1l22 22" /></svg>
 )
+export const IconBuilding = (p) => (
+  <svg viewBox="0 0 24 24" {...p}><path d="M4 22V4a1 1 0 011-1h10a1 1 0 011 1v18M16 10h4a1 1 0 011 1v11M8 7h1M8 11h1M8 15h1M12 7h1M12 11h1M12 15h1M19 14h1M19 18h1M4 22h17" /></svg>
+)
 export const IconCalendar = (p) => (
   <svg viewBox="0 0 24 24" {...p}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
 )

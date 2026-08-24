@@ -39,16 +39,16 @@ function toRow(p, empresaId) {
 
 export default function ClienteIdeal() {
   const toast = useToast()
-  const { user } = useAuth()
+  const { user, activeEmpresaId } = useAuth()
   const [profiles, setProfiles] = useState([])
   const [activeId, setActiveId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  useEffect(() => { carregar() }, [user?.empresaId]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { carregar() }, [activeEmpresaId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function carregar() {
-    if (!supabaseReady || !user?.empresaId) {
+    if (!supabaseReady || !activeEmpresaId) {
       const p = blankProfile()
       setProfiles([p])
       setActiveId(p.id)
@@ -59,7 +59,7 @@ export default function ClienteIdeal() {
     const { data, error } = await supabase
       .from('icp_perfis')
       .select('*')
-      .eq('empresa_id', user.empresaId)
+      .eq('empresa_id', activeEmpresaId)
       .order('created_at', { ascending: true })
     if (error) {
       toast('Não foi possível carregar o Cliente Ideal')
@@ -87,8 +87,8 @@ export default function ClienteIdeal() {
   const profile = profiles.find((p) => p.id === activeId)
 
   async function persist(updatedProfile) {
-    if (!supabaseReady || !user?.empresaId) return
-    const { error } = await supabase.from('icp_perfis').upsert(toRow(updatedProfile, user.empresaId))
+    if (!supabaseReady || !activeEmpresaId) return
+    const { error } = await supabase.from('icp_perfis').upsert(toRow(updatedProfile, activeEmpresaId))
     if (error) toast('Não foi possível salvar')
   }
 
@@ -133,13 +133,13 @@ export default function ClienteIdeal() {
 
   async function novoPerfil() {
     const novo = blankProfile('Novo perfil')
-    if (!supabaseReady || !user?.empresaId) {
+    if (!supabaseReady || !activeEmpresaId) {
       setProfiles((prev) => [...prev, novo])
       setActiveId(novo.id)
       toast('Novo perfil criado — preencha os campos')
       return
     }
-    const { data, error } = await supabase.from('icp_perfis').insert(toRow(novo, user.empresaId)).select('*').single()
+    const { data, error } = await supabase.from('icp_perfis').insert(toRow(novo, activeEmpresaId)).select('*').single()
     if (error) { toast('Não foi possível criar o perfil'); return }
     const parsed = parseProfile(data)
     setProfiles((prev) => [...prev, parsed])
@@ -149,13 +149,13 @@ export default function ClienteIdeal() {
 
   async function duplicarPerfil() {
     const copia = { ...profile, id: crypto.randomUUID(), name: profile.name ? `${profile.name} - cópia` : 'Cópia' }
-    if (!supabaseReady || !user?.empresaId) {
+    if (!supabaseReady || !activeEmpresaId) {
       setProfiles((prev) => [...prev, copia])
       setActiveId(copia.id)
       toast('Perfil duplicado')
       return
     }
-    const { data, error } = await supabase.from('icp_perfis').insert(toRow(copia, user.empresaId)).select('*').single()
+    const { data, error } = await supabase.from('icp_perfis').insert(toRow(copia, activeEmpresaId)).select('*').single()
     if (error) { toast('Não foi possível duplicar o perfil'); return }
     const parsed = parseProfile(data)
     setProfiles((prev) => [...prev, parsed])
@@ -175,7 +175,7 @@ export default function ClienteIdeal() {
       setProfiles([p])
       setActiveId(p.id)
     }
-    if (!supabaseReady || !user?.empresaId) { toast('Perfil apagado'); return }
+    if (!supabaseReady || !activeEmpresaId) { toast('Perfil apagado'); return }
     const { error } = await supabase.from('icp_perfis').delete().eq('id', id)
     if (error) { toast('Não foi possível apagar o perfil'); carregar(); return }
     toast('Perfil apagado')

@@ -12,7 +12,7 @@ function fmtDateTime(iso) {
   return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
-function ClientField({ col, value, onChange, clientes, user, onClientCreate, autoFocus }) {
+function ClientField({ col, value, onChange, clientes, activeEmpresaId, onClientCreate, autoFocus }) {
   const [inputVal, setInputVal] = useState(value || '')
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -37,11 +37,11 @@ function ClientField({ col, value, onChange, clientes, user, onClientCreate, aut
   async function createAndSelect() {
     const nome = inputVal.trim()
     if (!nome) return
-    if (!supabaseReady || !user?.empresaId) { selectClient(nome); return }
+    if (!supabaseReady || !activeEmpresaId) { selectClient(nome); return }
     setCreating(true)
     const { data, error } = await supabase
       .from('clientes')
-      .insert({ empresa_id: user.empresaId, nome })
+      .insert({ empresa_id: activeEmpresaId, nome })
       .select('id, nome')
       .single()
     setCreating(false)
@@ -120,7 +120,7 @@ function TagsField({ col, value, onChange }) {
   )
 }
 
-function DrawerField({ col, value, onChange, onAddOption, clientes, user, onClientCreate, autoFocus }) {
+function DrawerField({ col, value, onChange, onAddOption, clientes, activeEmpresaId, onClientCreate, autoFocus }) {
   const [localVal, setLocalVal] = useState(value ?? '')
   const inputRef = useRef(null)
 
@@ -166,7 +166,7 @@ function DrawerField({ col, value, onChange, onAddOption, clientes, user, onClie
 
   // ── client: delegado ao componente dedicado ──
   if (col.type === 'client') {
-    return <ClientField col={col} value={value} onChange={onChange} clientes={clientes} user={user} onClientCreate={onClientCreate} autoFocus={autoFocus} />
+    return <ClientField col={col} value={value} onChange={onChange} clientes={clientes} activeEmpresaId={activeEmpresaId} onClientCreate={onClientCreate} autoFocus={autoFocus} />
   }
 
   // ── tags: delegado ao componente separado ──
@@ -204,7 +204,7 @@ function DrawerField({ col, value, onChange, onAddOption, clientes, user, onClie
   )
 }
 
-export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell, onAddOption, onDelete, clientes, user, onClientCreate, isNew }) {
+export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell, onAddOption, onDelete, clientes, user, activeEmpresaId, onClientCreate, isNew }) {
   const [comments, setComments] = useState([])
   const [commentLoading, setCommentLoading] = useState(false)
   const [newComment, setNewComment] = useState('')
@@ -314,7 +314,7 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
                 onChange={onUpdateCell}
                 onAddOption={onAddOption}
                 clientes={clientes}
-                user={user}
+                activeEmpresaId={activeEmpresaId}
                 onClientCreate={onClientCreate}
                 autoFocus={isNew && col.slug === 'cliente'}
               />

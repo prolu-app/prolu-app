@@ -1,0 +1,64 @@
+/* ── seletor de período (mesmo padrão do AdminInicio) ── */
+.adm-period-pills { display: flex; gap: 8px; }
+.adm-period-pill {
+  padding: 10px 18px; border-radius: 99px; border: none;
+  font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
+  background: rgba(255, 255, 255, 0.7); color: var(--ink-60); box-shadow: var(--shadow-rest);
+  transition: all 0.15s;
+}
+.adm-period-pill:hover { color: var(--ink); }
+.adm-period-pill.active { background: var(--ink); color: var(--white); box-shadow: 0 6px 18px rgba(18, 18, 16, 0.22); }
+
+/* ── busca ── */
+.esc-search { position: relative; max-width: 360px; margin: 22px 0 20px; }
+.esc-search-icon {
+  position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+  width: 16px; height: 16px; stroke: var(--ink-40); stroke-width: 2; fill: none;
+  pointer-events: none;
+}
+.esc-search-input {
+  width: 100%; box-sizing: border-box; padding: 9px 14px 9px 38px;
+  border: 1.5px solid var(--ink-divider); border-radius: var(--r-md);
+  font-size: 14px; font-family: inherit; background: var(--white); color: var(--ink);
+  outline: none; transition: border-color 0.15s;
+}
+.esc-search-input:focus { border-color: var(--ink-40); }
+
+.esc-loading { color: var(--ink-40); font-size: 14px; margin-top: 24px; }
+
+/* ── grid de cards ── */
+.esc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+
+.esc-card {
+  background: var(--white); border-radius: var(--r-lg); padding: 20px;
+  box-shadow: var(--shadow-rest); transition: box-shadow 0.2s;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.esc-card:hover { box-shadow: var(--shadow-float); }
+
+.esc-card-header { display: flex; align-items: center; gap: 12px; }
+.esc-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--ink); color: var(--green); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px; flex-shrink: 0; }
+.esc-card-titles { min-width: 0; }
+.esc-name { font-size: 15px; font-weight: 700; }
+.esc-master { font-size: 12.5px; color: var(--ink-40); margin-top: 1px; }
+
+.esc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 8px; padding-top: 4px; border-top: 1px solid var(--ink-divider); }
+.esc-stat { display: flex; flex-direction: column; gap: 2px; }
+.esc-stat-label { font-size: 10.5px; color: var(--ink-40); }
+.esc-stat-val { font-size: 14px; font-weight: 600; }
+.esc-stat-date { font-weight: 500; font-size: 12.5px; color: var(--ink-60); }
+
+.esc-actions { display: flex; gap: 8px; margin-top: auto; }
+.esc-btn {
+  flex: 1; padding: 9px 0; border-radius: 99px; border: none;
+  font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  transition: all 0.15s;
+}
+.esc-btn-outline { background: var(--gray-soft); color: var(--ink); }
+.esc-btn-outline:hover { background: var(--ink-divider); }
+.esc-btn-primary { background: var(--ink); color: var(--white); }
+.esc-btn-primary:hover { box-shadow: 0 6px 18px rgba(18, 18, 16, 0.22); }
+
+@media (max-width: 860px) {
+  .esc-grid { grid-template-columns: 1fr; }
+}

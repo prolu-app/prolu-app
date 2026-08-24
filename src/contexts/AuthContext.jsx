@@ -18,6 +18,9 @@ const DEMO_USER = {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [impersonatedEmpresaId, setImpersonatedEmpresaId] = useState(null)
+  const [impersonatedEmpresaNome, setImpersonatedEmpresaNome] = useState(null)
+  const [viewAsUser, setViewAsUser] = useState(false)
 
   useEffect(() => {
     if (!supabaseReady) {
@@ -196,17 +199,45 @@ export function AuthProvider({ children }) {
   async function signOut() {
     if (supabaseReady) await supabase.auth.signOut()
     setUser(null)
+    setImpersonatedEmpresaId(null)
+    setImpersonatedEmpresaNome(null)
+    setViewAsUser(false)
   }
 
+  // isMaster/isProluAdmin sempre refletem o usuário real autenticado —
+  // nunca a empresa impersonada, para que permissões de prolu_admin não
+  // vazem para a visão de outra empresa.
   const isProluAdmin = user?.role === 'prolu_admin'
   const isEmpresaMaster = user?.role === 'prolu_admin' || user?.role === 'master'
   // Mantido por compatibilidade com telas que ainda checam isMaster para
   // ações de conteúdo Prolu (Base de Conhecimento). Aponta para prolu_admin.
   const isMaster = isProluAdmin
 
+  const activeEmpresaId = impersonatedEmpresaId != null ? impersonatedEmpresaId : (user?.empresaId ?? null)
+
+  function enterAsEmpresa(empresaId, empresaNome) {
+    setImpersonatedEmpresaId(empresaId)
+    setImpersonatedEmpresaNome(empresaNome)
+  }
+
+  function exitImpersonation() {
+    setImpersonatedEmpresaId(null)
+    setImpersonatedEmpresaNome(null)
+  }
+
+  function enterUserView() {
+    setViewAsUser(true)
+  }
+
+  function exitUserView() {
+    setViewAsUser(false)
+  }
+
   return (
     <AuthContext.Provider value={{
       user, loading, isMaster, isProluAdmin, isEmpresaMaster,
+      impersonatedEmpresaId, impersonatedEmpresaNome, viewAsUser, activeEmpresaId,
+      enterAsEmpresa, exitImpersonation, enterUserView, exitUserView,
       signIn, signUp, signOut, completeOnboarding, findConvitePendente, resendConfirmation,
     }}>
       {children}

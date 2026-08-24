@@ -56,7 +56,7 @@ function saudacao() {
 }
 
 export default function Inicio() {
-  const { user } = useAuth()
+  const { user, activeEmpresaId } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const [avisos, setAvisos] = useState([])
@@ -134,17 +134,17 @@ export default function Inicio() {
   const [crmStats, setCrmStats] = useState(null)
 
   useEffect(() => {
-    if (!supabaseReady || !user?.empresaId) return
+    if (!supabaseReady || !activeEmpresaId) return
     const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
     supabase
       .from('crm_linhas')
       .select('*', { count: 'exact', head: true })
-      .eq('empresa_id', user.empresaId)
+      .eq('empresa_id', activeEmpresaId)
       .gte('created_at', inicioMes)
       .then(({ count }) => {
         setCrmStats({ leads: count ?? 0 })
       })
-  }, [user?.empresaId])
+  }, [activeEmpresaId])
 
   const crmLabel = !crmStats
     ? null
@@ -172,13 +172,13 @@ export default function Inicio() {
   )
 
   useEffect(() => {
-    if (!supabaseReady || !user?.empresaId) return
+    if (!supabaseReady || !activeEmpresaId) return
     const anoAtual = new Date().getFullYear().toString()
     Promise.all([
-      supabase.from('crm_colunas').select('id, nome, tipo').eq('empresa_id', user.empresaId),
-      supabase.from('crm_linhas').select('valores').eq('empresa_id', user.empresaId),
-      supabase.from('plano_acoes').select('*', { count: 'exact', head: true }).eq('empresa_id', user.empresaId),
-      supabase.from('plano_acoes').select('*', { count: 'exact', head: true }).eq('empresa_id', user.empresaId).eq('status', 'done'),
+      supabase.from('crm_colunas').select('id, nome, tipo').eq('empresa_id', activeEmpresaId),
+      supabase.from('crm_linhas').select('valores').eq('empresa_id', activeEmpresaId),
+      supabase.from('plano_acoes').select('*', { count: 'exact', head: true }).eq('empresa_id', activeEmpresaId),
+      supabase.from('plano_acoes').select('*', { count: 'exact', head: true }).eq('empresa_id', activeEmpresaId).eq('status', 'done'),
     ]).then(([{ data: colunas }, { data: linhas }, { count: planoTotal }, { count: planoDone }]) => {
       const statusColId = colunas?.find((c) => c.nome === 'Status')?.id
       const valorColId = colunas?.find((c) => c.tipo === 'money')?.id
@@ -198,7 +198,7 @@ export default function Inicio() {
         fechado: l.valores?.[statusColId] === 'Fechado',
       }))))
     })
-  }, [user?.empresaId])
+  }, [activeEmpresaId])
 
   const quote = useMemo(() => QUOTES[Math.floor(Math.random() * QUOTES.length)], [])
   const primeiroNome = (user?.nome || 'André').split(' ')[0]

@@ -6,7 +6,7 @@ import { IconPlus, IconTrash } from '../components/Icons.jsx'
 import './Equipe.css'
 
 export default function Equipe() {
-  const { user, isEmpresaMaster } = useAuth()
+  const { user, isEmpresaMaster, activeEmpresaId } = useAuth()
   const toast = useToast()
   const [usuarios, setUsuarios] = useState([])
   const [convites, setConvites] = useState([])
@@ -17,11 +17,11 @@ export default function Equipe() {
   useEffect(() => { carregar() }, [])
 
   async function carregar() {
-    if (!supabaseReady || !user?.empresaId) { setLoading(false); return }
+    if (!supabaseReady || !activeEmpresaId) { setLoading(false); return }
     setLoading(true)
     const [{ data: us }, { data: cv }] = await Promise.all([
-      supabase.from('usuarios').select('id, nome, email, role').eq('empresa_id', user.empresaId),
-      supabase.from('convites').select('id, nome, email, role, status').eq('empresa_id', user.empresaId).eq('status', 'pendente'),
+      supabase.from('usuarios').select('id, nome, email, role').eq('empresa_id', activeEmpresaId),
+      supabase.from('convites').select('id, nome, email, role, status').eq('empresa_id', activeEmpresaId).eq('status', 'pendente'),
     ])
     setUsuarios(us || [])
     setConvites(cv || [])
@@ -31,7 +31,7 @@ export default function Equipe() {
   async function convidar() {
     if (!form.email.trim()) { toast('Informe o e-mail'); return }
     const { error } = await supabase.from('convites').insert({
-      empresa_id: user.empresaId,
+      empresa_id: activeEmpresaId,
       email: form.email.trim().toLowerCase(),
       nome: form.nome.trim() || null,
       role: form.role,

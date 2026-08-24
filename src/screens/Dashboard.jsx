@@ -116,7 +116,7 @@ const PERIOD_OPTS = [
 ]
 
 export default function Dashboard() {
-  const { user } = useAuth()
+  const { user, activeEmpresaId } = useAuth()
   const [period, setPeriod] = useState('30d')
   const [customRange, setCustomRange] = useState({ start: '', end: '' })
   const [icpFilter, setIcpFilter] = useState(false)
@@ -124,10 +124,10 @@ export default function Dashboard() {
   const [allRows, setAllRows] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { loadData() }, [user?.empresaId]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadData() }, [activeEmpresaId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadData() {
-    if (!supabaseReady || !user?.empresaId) {
+    if (!supabaseReady || !activeEmpresaId) {
       setCols(CRM_COLUMNS)
       setAllRows(CRM_ROWS)
       setLoading(false)
@@ -135,8 +135,8 @@ export default function Dashboard() {
     }
     setLoading(true)
     const [{ data: dbCols }, { data: linhas }] = await Promise.all([
-      supabase.from('crm_colunas').select('*').eq('empresa_id', user.empresaId).order('ordem'),
-      supabase.from('crm_linhas').select('id, valores').eq('empresa_id', user.empresaId),
+      supabase.from('crm_colunas').select('*').eq('empresa_id', activeEmpresaId).order('ordem'),
+      supabase.from('crm_linhas').select('id, valores').eq('empresa_id', activeEmpresaId),
     ])
     setCols((dbCols || []).map(parseColForDash))
     setAllRows((linhas || []).map(l => ({ id: l.id, ...l.valores })))

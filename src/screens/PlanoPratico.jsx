@@ -50,7 +50,7 @@ function fmtPrazo(iso) {
 
 export default function PlanoPratico() {
   const toast = useToast()
-  const { user } = useAuth()
+  const { user, activeEmpresaId } = useAuth()
   const [tags, setTags] = useState([])
   const [acoes, setAcoes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -62,10 +62,10 @@ export default function PlanoPratico() {
   const lastAddedRef = useRef(null)
   const initial = (user?.nome || 'A').charAt(0).toUpperCase()
 
-  useEffect(() => { carregar() }, [user?.empresaId]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { carregar() }, [activeEmpresaId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function carregar() {
-    if (!supabaseReady || !user?.empresaId) {
+    if (!supabaseReady || !activeEmpresaId) {
       setTags(PLANO_TAGS)
       setAcoes(PLANO_ACOES)
       setLoading(false)
@@ -73,8 +73,8 @@ export default function PlanoPratico() {
     }
     setLoading(true)
     const [{ data: tagsData, error: tagsErr }, { data: acoesData, error: acoesErr }] = await Promise.all([
-      supabase.from('plano_tags').select('*').eq('empresa_id', user.empresaId).order('created_at', { ascending: true }),
-      supabase.from('plano_acoes').select('*').eq('empresa_id', user.empresaId).order('ordem', { ascending: true }),
+      supabase.from('plano_tags').select('*').eq('empresa_id', activeEmpresaId).order('created_at', { ascending: true }),
+      supabase.from('plano_acoes').select('*').eq('empresa_id', activeEmpresaId).order('ordem', { ascending: true }),
     ])
     if (tagsErr || acoesErr) { toast('Não foi possível carregar o Plano Prático'); setLoading(false); return }
 
@@ -91,13 +91,13 @@ export default function PlanoPratico() {
   async function seedPadrao() {
     const { data: newTags, error: tagErr } = await supabase
       .from('plano_tags')
-      .insert(DEFAULT_TAGS.map((t) => ({ empresa_id: user.empresaId, nome: t.name, cor: t.color })))
+      .insert(DEFAULT_TAGS.map((t) => ({ empresa_id: activeEmpresaId, nome: t.name, cor: t.color })))
       .select('*')
     if (tagErr) { toast('Não foi possível preparar o Plano Prático'); setLoading(false); return }
 
     const tagIdByName = Object.fromEntries(newTags.map((t) => [t.nome, t.id]))
     const payload = DEFAULT_ACOES.map((a, i) => ({
-      empresa_id: user.empresaId,
+      empresa_id: activeEmpresaId,
       tag_id: tagIdByName[a.tag],
       texto: a.text,
       status: a.status,
@@ -127,7 +127,7 @@ export default function PlanoPratico() {
   }
 
   function persistAcao(id, changes) {
-    if (!supabaseReady || !user?.empresaId) return
+    if (!supabaseReady || !activeEmpresaId) return
     supabase.from('plano_acoes').update({ ...changes, updated_at: new Date().toISOString() }).eq('id', id)
       .then(({ error }) => { if (error) toast('Não foi possível salvar') })
   }
@@ -160,7 +160,7 @@ export default function PlanoPratico() {
 
   async function addAction() {
     const tagId = activeTag === 'all' ? tags[0]?.id : activeTag
-    if (!supabaseReady || !user?.empresaId) {
+    if (!supabaseReady || !activeEmpresaId) {
       const id = 'a' + Date.now()
       setAcoes((prev) => [...prev, { id, text: '', tag: tagId, status: 'pend', prazo: '' }])
       setActiveTag(tagId)
@@ -169,7 +169,7 @@ export default function PlanoPratico() {
       return
     }
     const { data, error } = await supabase.from('plano_acoes').insert({
-      empresa_id: user.empresaId, tag_id: tagId, texto: '', status: 'pend', ordem: acoes.length,
+      empresa_id: activeEmpresaId, tag_id: tagId, texto: '', status: 'pend', ordem: acoes.length,
     }).select('*').single()
     if (error) { toast('Não foi possível criar a ação'); return }
     setAcoes((prev) => [...prev, parseAcao(data)])
@@ -180,7 +180,7 @@ export default function PlanoPratico() {
 
   async function removeAction(id) {
     setAcoes((prev) => prev.filter((a) => a.id !== id))
-    if (!supabaseReady || !user?.empresaId) return
+    if (!supabaseReady || !activeEmpresaId) return
     const { error } = await supabase.from('plano_acoes').delete().eq('id', id)
     if (error) { toast('Não foi possível excluir'); carregar() }
     else toast('Ação excluída')
@@ -206,7 +206,7 @@ export default function PlanoPratico() {
   async function criarTag() {
     const nome = tagForm.name.trim()
     if (!nome) return
-    if (!supabaseReady || !user?.empresaId) {
+    if (!supabaseReady || !activeEmpresaId) {
       const id = 't' + Date.now()
       setTags((prev) => [...prev, { id, name: nome, color: tagForm.color }])
       setActiveTag(id)
@@ -216,7 +216,7 @@ export default function PlanoPratico() {
       return
     }
     const { data, error } = await supabase.from('plano_tags').insert({
-      empresa_id: user.empresaId, nome, cor: tagForm.color,
+      empresa_id: activeEmpresaId, nome, cor: tagForm.color,
     }).select('*').single()
     if (error) { toast('Não foi possível criar a tag'); return }
     setTags((prev) => [...prev, parseTag(data)])

@@ -140,7 +140,7 @@ function localSeedState() {
 
 export default function Indicadores() {
   const toast = useToast()
-  const { user } = useAuth()
+  const { user, activeEmpresaId } = useAuth()
   const [year, setYear] = useState(CURRENT_YEAR)
   const [currentQ, setCurrentQ] = useState(currentQuarterFor(CURRENT_YEAR))
   const [cols, setCols] = useState([])
@@ -156,7 +156,7 @@ export default function Indicadores() {
   const localMetasRef = useRef([])
   const localResultadosRef = useRef([])
 
-  useEffect(() => { init() }, [user?.empresaId]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { init() }, [activeEmpresaId]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (isFirstYear.current) { isFirstYear.current = false; return }
     setCurrentQ(currentQuarterFor(year))
@@ -189,7 +189,7 @@ export default function Indicadores() {
   }
 
   async function loadAno(y, ids) {
-    if (!supabaseReady || !user?.empresaId) {
+    if (!supabaseReady || !activeEmpresaId) {
       setMetas(localMetasRef.current.filter((m) => m.ano === y))
       setResultados(localResultadosRef.current.filter((r) => r.ano === y))
       return
@@ -206,7 +206,7 @@ export default function Indicadores() {
   }
 
   async function init() {
-    if (!supabaseReady || !user?.empresaId) {
+    if (!supabaseReady || !activeEmpresaId) {
       const { indicadoresLocal, metasLocal, resultadosLocal } = localSeedState()
       localMetasRef.current = metasLocal
       localResultadosRef.current = resultadosLocal
@@ -219,9 +219,9 @@ export default function Indicadores() {
     }
     setLoading(true)
     const [{ data: dbCols }, { data: linhas }, { data: indData, error: indErr }] = await Promise.all([
-      supabase.from('crm_colunas').select('*').eq('empresa_id', user.empresaId).order('ordem'),
-      supabase.from('crm_linhas').select('id, valores').eq('empresa_id', user.empresaId),
-      supabase.from('indicadores').select('*').eq('empresa_id', user.empresaId).order('created_at', { ascending: true }),
+      supabase.from('crm_colunas').select('*').eq('empresa_id', activeEmpresaId).order('ordem'),
+      supabase.from('crm_linhas').select('id, valores').eq('empresa_id', activeEmpresaId),
+      supabase.from('indicadores').select('*').eq('empresa_id', activeEmpresaId).order('created_at', { ascending: true }),
     ])
     setCols((dbCols || []).map(parseColForDash))
     setAllRows((linhas || []).map(l => ({ id: l.id, ...l.valores })))
@@ -230,11 +230,11 @@ export default function Indicadores() {
 
     let indRows = indData || []
     if (indRows.length === 0) {
-      const seeded = await seedIndicadoresPadrao(user.empresaId, year)
+      const seeded = await seedIndicadoresPadrao(activeEmpresaId, year)
       if (!seeded) { toast('Não foi possível preparar os indicadores'); setLoading(false); return }
       indRows = seeded
     }
-    indRows = await ensurePropostasEnviadas(user.empresaId, indRows)
+    indRows = await ensurePropostasEnviadas(activeEmpresaId, indRows)
     indIdsRef.current = indRows.map(r => r.id)
     setIndicadores(indRows)
     await loadAno(year, indIdsRef.current)
@@ -285,7 +285,7 @@ export default function Indicadores() {
       return [...others, entry]
     })
     toast('Resultado salvo')
-    if (!supabaseReady || !user?.empresaId) {
+    if (!supabaseReady || !activeEmpresaId) {
       localResultadosRef.current = [
         ...localResultadosRef.current.filter((r) => !(r.indicador_id === indicadorId && r.ano === year && r.trimestre === trimestre)),
         entry,
@@ -308,7 +308,7 @@ export default function Indicadores() {
       return [...others, entry]
     })
     toast('Meta salva')
-    if (!supabaseReady || !user?.empresaId) {
+    if (!supabaseReady || !activeEmpresaId) {
       localMetasRef.current = [
         ...localMetasRef.current.filter((m) => !(m.indicador_id === indicadorId && m.ano === year)),
         entry,
@@ -324,7 +324,7 @@ export default function Indicadores() {
     const meta = parseFloat(form.meta)
     if (!form.name.trim() || isNaN(meta)) { toast('Preencha nome e meta'); return }
     const nome = form.name.trim()
-    if (!supabaseReady || !user?.empresaId) {
+    if (!supabaseReady || !activeEmpresaId) {
       const id = 'i' + Date.now()
       const newMeta = { indicador_id: id, ano: year, meta }
       setIndicadores((prev) => [...prev, { id, nome, unidade: form.unit, grupo: 'Outros', tipo: form.tipo, fonte_coluna: null }])
@@ -336,7 +336,7 @@ export default function Indicadores() {
       return
     }
     const { data: indRow, error: indErr } = await supabase.from('indicadores').insert({
-      empresa_id: user.empresaId, nome, unidade: form.unit, grupo: 'Outros', tipo: form.tipo,
+      empresa_id: activeEmpresaId, nome, unidade: form.unit, grupo: 'Outros', tipo: form.tipo,
     }).select('*').single()
     if (indErr) { toast('Não foi possível criar o indicador'); return }
     const { data: metaRow } = await supabase.from('indicador_metas').insert({

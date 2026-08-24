@@ -8,7 +8,7 @@ import './Clientes.css'
 const FORM_VAZIO = { nome: '', telefone: '', email: '' }
 
 export default function Clientes() {
-  const { user } = useAuth()
+  const { user, activeEmpresaId } = useAuth()
   const toast = useToast()
 
   const [clientes, setClientes] = useState([])
@@ -21,19 +21,19 @@ export default function Clientes() {
 
   const nomeRef = useRef(null)
 
-  useEffect(() => { carregar() }, [user?.empresaId])
+  useEffect(() => { carregar() }, [activeEmpresaId])
 
   useEffect(() => {
     if (modal) setTimeout(() => nomeRef.current?.focus(), 60)
   }, [modal])
 
   async function carregar() {
-    if (!supabaseReady || !user?.empresaId) { setLoading(false); return }
+    if (!supabaseReady || !activeEmpresaId) { setLoading(false); return }
     setLoading(true)
     const { data, error } = await supabase
       .from('clientes')
       .select('id, nome, telefone, email, created_at')
-      .eq('empresa_id', user.empresaId)
+      .eq('empresa_id', activeEmpresaId)
       .order('nome')
     if (error) toast('Erro ao carregar clientes')
     setClientes(data || [])
@@ -58,7 +58,7 @@ export default function Clientes() {
 
     if (modal === 'novo') {
       const { error } = await supabase.from('clientes').insert({
-        empresa_id: user.empresaId,
+        empresa_id: activeEmpresaId,
         nome: form.nome.trim(),
         telefone: form.telefone.trim() || null,
         email: form.email.trim() || null,

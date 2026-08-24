@@ -148,6 +148,36 @@
 .signout-btn:hover { background: var(--gray-soft); color: var(--ink); }
 .signout-btn svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 2; fill: none; }
 
+/* Rodapé da sidebar de admin: info do usuário + divisória + "Ver como usuário" */
+.admin-sidebar-footer { flex-direction: column; align-items: stretch; gap: 0; padding: 8px; }
+.admin-sidebar-user { display: flex; align-items: center; gap: 10px; padding: 4px; }
+.view-as-user-btn {
+  margin-top: 10px; padding-top: 12px;
+  border: none; border-top: 1px solid var(--ink-divider); background: none;
+  font-family: inherit; font-size: 12.5px; font-weight: 500; color: var(--ink-60);
+  cursor: pointer; text-align: left; transition: color 0.15s;
+}
+.view-as-user-btn:hover { color: var(--ink); }
+
+/* Banners de contexto (impersonation / view-as-user) — topo das telas */
+.context-banner {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; padding: 10px 24px;
+  margin: -38px -44px 24px;
+  border-radius: 0 0 var(--r-md) var(--r-md);
+  font-size: 13.5px; font-weight: 500;
+}
+@media (max-width: 860px) {
+  .context-banner { margin: 0 -16px 20px; border-radius: 0; }
+}
+.context-banner button {
+  border: none; background: none; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  color: inherit; text-decoration: underline; text-underline-offset: 2px;
+}
+.banner-impersonate { background: var(--orange-soft); color: var(--orange-ink); }
+.banner-viewuser { background: var(--blue-soft); color: var(--blue-ink); }
+
 /* Link admin (Avisos) — discreto, abaixo do Agente Prolu */
 .admin-nav-item {
   display: flex; align-items: center; gap: 9px;

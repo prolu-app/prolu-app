@@ -124,7 +124,7 @@ function renderCellValue(row, col) {
   return v || <span className="cell-empty">—</span>
 }
 
-function InlineClientField({ value, col, onCommit, clientes, user, onClientCreate }) {
+function InlineClientField({ value, col, onCommit, clientes, activeEmpresaId, onClientCreate }) {
   const [inputVal, setInputVal] = useState(value || '')
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -146,11 +146,11 @@ function InlineClientField({ value, col, onCommit, clientes, user, onClientCreat
   async function createAndSelect() {
     const nome = inputVal.trim()
     if (!nome) return
-    if (!supabaseReady || !user?.empresaId) { selectClient(nome); return }
+    if (!supabaseReady || !activeEmpresaId) { selectClient(nome); return }
     setCreating(true)
     const { data, error } = await supabase
       .from('clientes')
-      .insert({ empresa_id: user.empresaId, nome })
+      .insert({ empresa_id: activeEmpresaId, nome })
       .select('id, nome')
       .single()
     setCreating(false)
@@ -191,7 +191,7 @@ function InlineClientField({ value, col, onCommit, clientes, user, onClientCreat
 }
 
 // ── Edição inline de célula ──
-function InlineCell({ row, col, isEditing, onActivate, onCommit, onSaveImmediate, clientes, user, onClientCreate, onEditOptions }) {
+function InlineCell({ row, col, isEditing, onActivate, onCommit, onSaveImmediate, clientes, activeEmpresaId, onClientCreate, onEditOptions }) {
   const [localVal, setLocalVal] = useState('')
 
   useEffect(() => {
@@ -239,7 +239,7 @@ function InlineCell({ row, col, isEditing, onActivate, onCommit, onSaveImmediate
   }
 
   if (col.type === 'client') {
-    return <InlineClientField value={row[col.id]} col={col} onCommit={onCommit} clientes={clientes} user={user} onClientCreate={onClientCreate} />
+    return <InlineClientField value={row[col.id]} col={col} onCommit={onCommit} clientes={clientes} activeEmpresaId={activeEmpresaId} onClientCreate={onClientCreate} />
   }
 
   if (col.type === 'tags') {
@@ -391,7 +391,7 @@ function ColFilterButton({
 
 export default function CRM() {
   const toast = useToast()
-  const { user } = useAuth()
+  const { user, activeEmpresaId } = useAuth()
   const [columns, setColumns] = useState([])
   const [rows, setRows] = useState([])
   const [clientes, setClientes] = useState([])
@@ -445,21 +445,21 @@ export default function CRM() {
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  useEffect(() => { carregar() }, [user?.empresaId])
-  useEffect(() => { if (supabaseReady && user?.empresaId) loadClientes() }, [user?.empresaId])
+  useEffect(() => { carregar() }, [activeEmpresaId])
+  useEffect(() => { if (supabaseReady && activeEmpresaId) loadClientes() }, [activeEmpresaId])
   useEffect(() => {
-    const key = `crm_hidden_cols_${user?.empresaId || 'demo'}`
+    const key = `crm_hidden_cols_${activeEmpresaId || 'demo'}`
     try { const s = localStorage.getItem(key); if (s) setHiddenCols(new Set(JSON.parse(s))) } catch {}
-  }, [user?.empresaId])
+  }, [activeEmpresaId])
 
   async function loadClientes() {
-    const { data } = await supabase.from('clientes').select('id, nome').eq('empresa_id', user.empresaId).order('nome')
+    const { data } = await supabase.from('clientes').select('id, nome').eq('empresa_id', activeEmpresaId).order('nome')
     setClientes(data || [])
   }
 
   async function carregar() {
     shouldScrollRef.current = true
-    if (!supabaseReady || !user?.empresaId) {
+    if (!supabaseReady || !activeEmpresaId) {
       setColumns(CRM_COLUMNS)
       setRows(CRM_ROWS)
       setLoading(false)
@@ -467,8 +467,8 @@ export default function CRM() {
     }
     setLoading(true)
     const [{ data: cols, error: colErr }, { data: lin, error: linErr }] = await Promise.all([
-      supabase.from('crm_colunas').select('*').eq('empresa_id', user.empresaId).order('ordem', { ascending: true }),
-      supabase.from('crm_linhas').select('*').eq('empresa_id', user.empresaId).order('created_at', { ascending: true }),
+      supabase.from('crm_colunas').select('*').eq('empresa_id', activeEmpresaId).order('ordem', { ascending: true }),
+      supabase.from('crm_linhas').select('*').eq('empresa_id', activeEmpresaId).order('created_at', { ascending: true }),
     ])
     if (colErr || linErr) { toast('Não foi possível carregar o CRM'); setLoading(false); return }
 
@@ -477,7 +477,7 @@ export default function CRM() {
     )
     if (!cols || cols.length === 0 || !hasFixed) {
       await seedColunasPadrao(cols || [])
-      const { data: lin2 } = await supabase.from('crm_linhas').select('*').eq('empresa_id', user.empresaId).order('created_at', { ascending: true })
+      const { data: lin2 } = await supabase.from('crm_linhas').select('*').eq('empresa_id', activeEmpresaId).order('created_at', { ascending: true })
       setRows((lin2 || []).map(flattenRow))
       return
     }
@@ -487,7 +487,7 @@ export default function CRM() {
     const missing = FIXED_COLS_DEF.filter(def => !parsedCols.some(c => c.slug === def.slug || c.name === def.nome))
     if (missing.length > 0) {
       const payload = missing.map(c => ({
-        empresa_id: user.empresaId, nome: c.nome, tipo: c.tipo, ordem: c.ordem, fixo: true,
+        empresa_id: activeEmpresaId, nome: c.nome, tipo: c.tipo, ordem: c.ordem, fixo: true,
         opcoes: { fixed: true, slug: c.slug, editableOptions: c.editableOptions !== false, items: c.items || [] },
       }))
       const { data: newCols } = await supabase.from('crm_colunas').insert(payload).select('*')
@@ -504,7 +504,7 @@ export default function CRM() {
       await supabase.from('crm_colunas').delete().in('id', existingCols.map(c => c.id))
     }
     const basePayload = FIXED_COLS_DEF.map(c => ({
-      empresa_id: user.empresaId, nome: c.nome, tipo: c.tipo, ordem: c.ordem,
+      empresa_id: activeEmpresaId, nome: c.nome, tipo: c.tipo, ordem: c.ordem,
       opcoes: { fixed: true, slug: c.slug, editableOptions: c.editableOptions !== false, items: c.items || [] },
     }))
     let { data: created, error } = await supabase
@@ -529,7 +529,7 @@ export default function CRM() {
       if (row && !row[dataFechCol.id]) extra[dataFechCol.id] = todayISO()
     }
     setRows(prev => prev.map(r => r.id === rowId ? { ...r, [col.id]: value, ...extra } : r))
-    if (!supabaseReady || !user?.empresaId) return
+    if (!supabaseReady || !activeEmpresaId) return
     const row = rows.find(r => r.id === rowId)
     const novosValores = { ...row, [col.id]: value, ...extra }
     delete novosValores.id
@@ -549,14 +549,14 @@ export default function CRM() {
       else if (c.type === 'money' || c.type === 'number') novosValores[c.id] = null
       else novosValores[c.id] = ''
     })
-    if (!supabaseReady || !user?.empresaId) {
+    if (!supabaseReady || !activeEmpresaId) {
       const id = 'r' + Date.now()
       setRows(prev => [...prev, { id, ...novosValores }])
       return
     }
     const { data, error } = await supabase
       .from('crm_linhas')
-      .insert({ empresa_id: user.empresaId, valores: novosValores, created_by: user.id })
+      .insert({ empresa_id: activeEmpresaId, valores: novosValores, created_by: user.id })
       .select('*').single()
     if (error) { toast('Não foi possível criar a linha'); return }
     setRows(prev => [...prev, flattenRow(data)])
@@ -576,7 +576,7 @@ export default function CRM() {
 
   async function saveDraft() {
     const novosValores = { ...draftValues }
-    if (!supabaseReady || !user?.empresaId) {
+    if (!supabaseReady || !activeEmpresaId) {
       const id = 'r' + Date.now()
       setRows(prev => [...prev, { id, ...novosValores }])
       setDrawerRowId(null)
@@ -585,7 +585,7 @@ export default function CRM() {
     }
     const { data, error } = await supabase
       .from('crm_linhas')
-      .insert({ empresa_id: user.empresaId, valores: novosValores, created_by: user.id })
+      .insert({ empresa_id: activeEmpresaId, valores: novosValores, created_by: user.id })
       .select('*').single()
     if (error) { toast('Não foi possível criar a linha'); return }
     setRows(prev => [...prev, flattenRow(data)])
@@ -606,7 +606,7 @@ export default function CRM() {
   async function removeRow(id) {
     if (drawerRowId === id) setDrawerRowId(null)
     setRows(prev => prev.filter(r => r.id !== id))
-    if (!supabaseReady || !user?.empresaId) return
+    if (!supabaseReady || !activeEmpresaId) return
     const { error } = await supabase.from('crm_linhas').delete().eq('id', id)
     if (error) { toast('Não foi possível remover'); carregar() }
     else toast('Linha removida')
@@ -631,7 +631,7 @@ export default function CRM() {
     setColumns(prev => prev.map(c => c.id !== col.id ? c : { ...c, options: newOptions }))
     setOptionsModal(null)
     setNewOptName('')
-    if (!supabaseReady || !user?.empresaId) return
+    if (!supabaseReady || !activeEmpresaId) return
     const opcoes = col.fixed
       ? { fixed: true, slug: col.slug, editableOptions: true, items: newOptions }
       : newOptions
@@ -647,13 +647,13 @@ export default function CRM() {
     const opcoes = colForm.type === 'select'
       ? (colForm.options.length ? colForm.options : [{ value: 'Nova opção', color: 'gray' }])
       : []
-    if (!supabaseReady || !user?.empresaId) {
+    if (!supabaseReady || !activeEmpresaId) {
       const id = 'c_' + Date.now()
       setColumns(prev => [...prev, { id, name: colForm.name.trim(), type: colForm.type, width: 150, fixed: false, slug: null, editableOptions: true, options: opcoes, ordem: prev.length }])
       setColModal(null); return
     }
     const { data, error } = await supabase.from('crm_colunas').insert({
-      empresa_id: user.empresaId, nome: colForm.name.trim(), tipo: colForm.type, ordem: columns.length, opcoes,
+      empresa_id: activeEmpresaId, nome: colForm.name.trim(), tipo: colForm.type, ordem: columns.length, opcoes,
     }).select('*').single()
     if (error) { toast('Não foi possível criar a coluna'); return }
     setColumns(prev => [...prev, { id: data.id, name: data.nome, type: data.tipo, width: 150, fixed: false, slug: null, editableOptions: true, options: Array.isArray(data.opcoes) ? data.opcoes : [], ordem: data.ordem }])
@@ -673,7 +673,7 @@ export default function CRM() {
     const opcoes = colForm.type === 'select' ? colForm.options : []
     setColumns(prev => prev.map(c => c.id === colId ? { ...c, name: colForm.name.trim(), type: colForm.type, options: opcoes } : c))
     setColModal(null)
-    if (!supabaseReady || !user?.empresaId) return
+    if (!supabaseReady || !activeEmpresaId) return
     const { error } = await supabase.from('crm_colunas').update({ nome: colForm.name.trim(), tipo: colForm.type, opcoes }).eq('id', colId)
     if (error) toast('Não foi possível salvar a coluna')
     else toast('Coluna atualizada')
@@ -684,7 +684,7 @@ export default function CRM() {
     if (col?.fixed) return
     setColumns(prev => prev.filter(c => c.id !== colId))
     setColModal(null)
-    if (!supabaseReady || !user?.empresaId) return
+    if (!supabaseReady || !activeEmpresaId) return
     await supabase.from('crm_colunas').delete().eq('id', colId)
     toast('Coluna excluída')
   }
@@ -848,7 +848,7 @@ export default function CRM() {
       const next = new Set(prev)
       if (next.has(colId)) next.delete(colId)
       else next.add(colId)
-      localStorage.setItem(`crm_hidden_cols_${user?.empresaId || 'demo'}`, JSON.stringify([...next]))
+      localStorage.setItem(`crm_hidden_cols_${activeEmpresaId || 'demo'}`, JSON.stringify([...next]))
       return next
     })
   }
@@ -869,7 +869,7 @@ export default function CRM() {
     list.splice(insertIdx, 0, moved)
     const reordered = list.map((c, i) => ({ ...c, ordem: i }))
     setColumns(reordered)
-    if (supabaseReady && user?.empresaId) {
+    if (supabaseReady && activeEmpresaId) {
       reordered.forEach(c => {
         supabase.from('crm_colunas').update({ ordem: c.ordem }).eq('id', c.id)
       })
@@ -979,7 +979,7 @@ export default function CRM() {
                   {hiddenCols.size > 0 && (
                     <button className="crm-col-vis-reset" onClick={() => {
                       setHiddenCols(new Set())
-                      localStorage.removeItem(`crm_hidden_cols_${user?.empresaId || 'demo'}`)
+                      localStorage.removeItem(`crm_hidden_cols_${activeEmpresaId || 'demo'}`)
                     }}>Mostrar todas</button>
                   )}
                 </div>
@@ -1065,7 +1065,7 @@ export default function CRM() {
                       onCommit={v => { updateCell(row.id, col, v); setActiveCell(null) }}
                       onSaveImmediate={v => updateCell(row.id, col, v)}
                       clientes={clientes}
-                      user={user}
+                      activeEmpresaId={activeEmpresaId}
                       onClientCreate={newClient => setClientes(prev => [...prev, newClient].sort((a, b) => a.nome.localeCompare(b.nome)))}
                       onEditOptions={col => { setActiveCell(null); openOptionsModal(col) }}
                     />
@@ -1188,6 +1188,7 @@ export default function CRM() {
           }}
           clientes={clientes}
           user={user}
+          activeEmpresaId={activeEmpresaId}
           onClientCreate={newClient => setClientes(prev => [...prev, newClient].sort((a, b) => a.nome.localeCompare(b.nome)))}
         />
       )}
