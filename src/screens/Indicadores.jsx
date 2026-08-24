@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { CRM_COLUMNS, CRM_ROWS } from '../data/seed.js'
 import {
-  IconPlus, IconMoney, IconCRM, IconPercent,
+  IconPlus, IconMoney, IconCRM, IconPercent, IconEdit,
 } from '../components/Icons.jsx'
 import './Indicadores.css'
 
@@ -151,6 +151,8 @@ export default function Indicadores() {
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState({ name: '', meta: '', unit: 'R$', tipo: 'manual' })
+  const [editingMetaId, setEditingMetaId] = useState(null)
+  const [metaDraft, setMetaDraft] = useState('')
   const indIdsRef = useRef([])
   const isFirstYear = useRef(true)
   const localMetasRef = useRef([])
@@ -320,6 +322,20 @@ export default function Indicadores() {
     if (error) toast('Não foi possível salvar a meta')
   }
 
+  function abrirEdicaoMeta(k) {
+    setMetaDraft(k.meta !== null && k.meta !== undefined ? String(Math.round(k.meta)) : '')
+    setEditingMetaId(k.id)
+  }
+
+  function salvarEdicaoMeta(indicadorId) {
+    updateMeta(indicadorId, metaDraft)
+    setEditingMetaId(null)
+  }
+
+  function cancelarEdicaoMeta() {
+    setEditingMetaId(null)
+  }
+
   async function criar() {
     const meta = parseFloat(form.meta)
     if (!form.name.trim() || isNaN(meta)) { toast('Preencha nome e meta'); return }
@@ -422,19 +438,26 @@ export default function Indicadores() {
                       {k.name}
                       {k.tipo === 'automatico' && <span className="kpi-tipo-badge">Automático</span>}
                     </div>
-                    <div className="kpi-meta-line">
-                      Meta anual: {k.unit === 'R$' && 'R$ '}
-                      <span
-                        className="kpi-meta-val"
-                        contentEditable
-                        suppressContentEditableWarning
-                        onBlur={(e) => updateMeta(k.id, e.currentTarget.textContent)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
-                      >
-                        {k.meta !== null ? (k.unit === 'R$' ? Math.round(k.meta).toLocaleString('pt-BR') : k.meta) : ''}
+                    {editingMetaId === k.id ? (
+                      <input
+                        className="kpi-meta-input"
+                        type="text"
+                        inputMode="decimal"
+                        autoFocus
+                        value={metaDraft}
+                        onChange={(e) => setMetaDraft(e.target.value)}
+                        onBlur={() => salvarEdicaoMeta(k.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') { e.preventDefault(); salvarEdicaoMeta(k.id) }
+                          else if (e.key === 'Escape') { e.preventDefault(); cancelarEdicaoMeta() }
+                        }}
+                      />
+                    ) : (
+                      <span className="kpi-meta-line" onClick={() => abrirEdicaoMeta(k)}>
+                        Meta anual: {fmtFull(k.meta, k.unit)}
+                        <IconEdit className="meta-edit-icon" />
                       </span>
-                      {k.unit === '%' && '%'}
-                    </div>
+                    )}
                   </div>
                   <div className="kpi-right">
                     <div className="kpi-block">
