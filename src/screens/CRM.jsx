@@ -420,7 +420,6 @@ export default function CRM() {
   const [colDateFilters, setColDateFilters] = useState({}) // { [colId]: { start, end } } aplicado
   const [colDateDraft, setColDateDraft] = useState({}) // { [colId]: { start, end } } rascunho
   const tableRef = useRef(null)
-  const shouldScrollRef = useRef(true)
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 860)
   const [draftValues, setDraftValues] = useState({})
   const [mobileVisibleCount, setMobileVisibleCount] = useState(20)
@@ -458,7 +457,6 @@ export default function CRM() {
   }
 
   async function carregar() {
-    shouldScrollRef.current = true
     if (!supabaseReady || !activeEmpresaId) {
       setColumns(CRM_COLUMNS)
       setRows(CRM_ROWS)
@@ -723,7 +721,6 @@ export default function CRM() {
   }
 
   function toggleColSelectValue(colId, value) {
-    shouldScrollRef.current = true
     setColSelectFilters(prev => {
       const set = new Set(prev[colId] || [])
       if (set.has(value)) set.delete(value)
@@ -733,7 +730,6 @@ export default function CRM() {
   }
 
   function clearColSelectFilter(colId) {
-    shouldScrollRef.current = true
     setColSelectFilters(prev => {
       const next = { ...prev }
       delete next[colId]
@@ -742,13 +738,11 @@ export default function CRM() {
   }
 
   function applyColDateFilter(colId) {
-    shouldScrollRef.current = true
     setColDateFilters(prev => ({ ...prev, [colId]: colDateDraft[colId] }))
     setOpenColFilter(null)
   }
 
   function clearColFilters() {
-    shouldScrollRef.current = true
     setColSelectFilters({})
     setColDateFilters({})
     setColDateDraft({})
@@ -835,11 +829,19 @@ export default function CRM() {
     return () => obs.disconnect()
   }, [isMobile, hasMoreMobile])
 
+  // Ao terminar de carregar os dados, rola a tabela para o registro mais recente (fim da lista).
   useEffect(() => {
-    if (!shouldScrollRef.current) return
-    tableRef.current?.scrollTo({ top: tableRef.current.scrollHeight, behavior: 'instant' })
-    shouldScrollRef.current = false
-  }, [filtered])
+    if (!loading && rows.length > 0 && tableRef.current) {
+      tableRef.current.scrollTop = tableRef.current.scrollHeight
+    }
+  }, [loading])
+
+  // Ao mudar qualquer filtro de coluna, rola de volta para o fim da lista filtrada.
+  useEffect(() => {
+    if (tableRef.current) {
+      tableRef.current.scrollTop = tableRef.current.scrollHeight
+    }
+  }, [colSelectFilters, colDateFilters])
 
   const visibleCols = useMemo(() => columns.filter(c => !hiddenCols.has(c.id)), [columns, hiddenCols])
 
