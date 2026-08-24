@@ -234,10 +234,16 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
       .then(({ data }) => { setComments(data || []); setCommentLoading(false) })
   }, [row?.id])
 
-  // Scroll ao fundo quando comentários carregam
+  // Drawer abre sempre com o scroll no topo (não no fim, por causa dos comentários)
   useEffect(() => {
-    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
-  }, [comments.length])
+    if (listRef.current) listRef.current.scrollTop = 0
+  }, [row?.id])
+
+  function scrollCommentsToBottom() {
+    requestAnimationFrame(() => {
+      if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
+    })
+  }
 
   async function addComment() {
     const texto = newComment.trim()
@@ -245,6 +251,7 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
     if (!supabaseReady || !user?.id) {
       setComments(prev => [...prev, { id: Date.now(), texto, created_at: new Date().toISOString(), usuario: { nome: user?.nome || 'Você' } }])
       setNewComment('')
+      scrollCommentsToBottom()
       return
     }
     setSaving(true)
@@ -257,6 +264,7 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
     if (!error && data) {
       setComments(prev => [...prev, data])
       setNewComment('')
+      scrollCommentsToBottom()
     }
   }
 

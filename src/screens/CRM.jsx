@@ -913,6 +913,7 @@ export default function CRM() {
 
   return (
     <>
+      <div className="crm-header-fixed">
       <div className="page-header between">
         <div>
           <div className="page-title">CRM</div>
@@ -1131,6 +1132,7 @@ export default function CRM() {
           <span className="crm-summary-dot">·</span>
           <span className="crm-summary-value">{summary.avg !== null ? fmtMoney(summary.avg) : '—'}</span>
         </div>
+      </div>
       </div>
 
       {/* MOBILE: cards */}
