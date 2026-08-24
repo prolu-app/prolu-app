@@ -77,10 +77,20 @@ export default function AdminInicio() {
     }
 
     setLoading(true)
+
+    // A empresa "casa" do prolu_admin nunca deve aparecer nas métricas admin.
+    const proluEmpresaId = user?.empresaId || null
+    let empresasQuery = supabase.from('empresas').select('id, nome').order('nome')
+    let colunasQuery = supabase.from('crm_colunas').select('id, empresa_id, opcoes')
+    let linhasQuery = supabase.from('crm_linhas').select('id, empresa_id, valores')
+    if (proluEmpresaId) {
+      empresasQuery = empresasQuery.neq('id', proluEmpresaId)
+      colunasQuery = colunasQuery.neq('empresa_id', proluEmpresaId)
+      linhasQuery = linhasQuery.neq('empresa_id', proluEmpresaId)
+    }
+
     const [{ data: emp }, { data: cols }, { data: linhas }] = await Promise.all([
-      supabase.from('empresas').select('id, nome').order('nome'),
-      supabase.from('crm_colunas').select('id, empresa_id, opcoes'),
-      supabase.from('crm_linhas').select('id, empresa_id, valores'),
+      empresasQuery, colunasQuery, linhasQuery,
     ])
 
     const colsByEmpresa = {}

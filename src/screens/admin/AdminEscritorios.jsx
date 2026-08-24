@@ -55,7 +55,7 @@ function buildColMap(cols) {
 }
 
 export default function AdminEscritorios() {
-  const { isProluAdmin, enterAsEmpresa } = useAuth()
+  const { user, isProluAdmin, enterAsEmpresa } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const [period, setPeriod] = useState('ano')
@@ -68,11 +68,22 @@ export default function AdminEscritorios() {
   async function carregar() {
     if (!supabaseReady) { setLoading(false); return }
     setLoading(true)
+
+    // A empresa "casa" do prolu_admin nunca deve aparecer nas métricas admin.
+    const proluEmpresaId = user?.empresaId || null
+    let empresasQuery = supabase.from('empresas').select('id, nome').order('nome')
+    let usuariosQuery = supabase.from('usuarios').select('id, nome, email, role, empresa_id')
+    let colunasQuery = supabase.from('crm_colunas').select('id, empresa_id, opcoes')
+    let linhasQuery = supabase.from('crm_linhas').select('id, empresa_id, valores, created_at')
+    if (proluEmpresaId) {
+      empresasQuery = empresasQuery.neq('id', proluEmpresaId)
+      usuariosQuery = usuariosQuery.neq('empresa_id', proluEmpresaId)
+      colunasQuery = colunasQuery.neq('empresa_id', proluEmpresaId)
+      linhasQuery = linhasQuery.neq('empresa_id', proluEmpresaId)
+    }
+
     const [{ data: emp, error: empErr }, { data: usu }, { data: cols }, { data: linhas }] = await Promise.all([
-      supabase.from('empresas').select('id, nome').order('nome'),
-      supabase.from('usuarios').select('id, nome, email, role, empresa_id'),
-      supabase.from('crm_colunas').select('id, empresa_id, opcoes'),
-      supabase.from('crm_linhas').select('id, empresa_id, valores, created_at'),
+      empresasQuery, usuariosQuery, colunasQuery, linhasQuery,
     ])
     if (empErr) { toast('Erro ao carregar escritórios'); setLoading(false); return }
 
@@ -138,12 +149,7 @@ export default function AdminEscritorios() {
     return [...lista].sort((a, b) => b.valorFechamentos - a.valorFechamentos)
   }, [escritorios, busca])
 
-  function abrirDashboard(e) {
-    enterAsEmpresa(e.id, e.nome)
-    navigate('/dashboard')
-  }
-
-  function entrarComo(e) {
+  function abrirEmpresa(e) {
     enterAsEmpresa(e.id, e.nome)
     navigate('/')
   }
@@ -189,7 +195,14 @@ export default function AdminEscritorios() {
       ) : (
         <div className="esc-grid">
           {filtrados.map(e => (
-            <div className="esc-card" key={e.id}>
+            <div
+              className="esc-card"
+              key={e.id}
+              onClick={() => abrirEmpresa(e)}
+              onKeyDown={ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); abrirEmpresa(e) } }}
+              role="button"
+              tabIndex={0}
+            >
               <div className="esc-card-header">
                 <div className="esc-avatar">{(e.nome || '?').charAt(0).toUpperCase()}</div>
                 <div className="esc-card-titles">
@@ -225,9 +238,8 @@ export default function AdminEscritorios() {
                 </div>
               </div>
 
-              <div className="esc-actions">
-                <button className="esc-btn esc-btn-outline" onClick={() => abrirDashboard(e)}>Dashboard</button>
-                <button className="esc-btn esc-btn-primary" onClick={() => entrarComo(e)}>Entrar como</button>
+              <div className="esc-open-row">
+                <span className="esc-open-link">Abrir →</span>
               </div>
             </div>
           ))}

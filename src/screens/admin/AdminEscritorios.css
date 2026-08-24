@@ -33,8 +33,10 @@
   background: var(--white); border-radius: var(--r-lg); padding: 20px;
   box-shadow: var(--shadow-rest); transition: box-shadow 0.2s;
   display: flex; flex-direction: column; gap: 16px;
+  cursor: pointer;
 }
 .esc-card:hover { box-shadow: var(--shadow-float); }
+.esc-card:hover .esc-open-link { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
 
 .esc-card-header { display: flex; align-items: center; gap: 12px; }
 .esc-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--ink); color: var(--green); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px; flex-shrink: 0; }
@@ -48,16 +50,8 @@
 .esc-stat-val { font-size: 14px; font-weight: 600; }
 .esc-stat-date { font-weight: 500; font-size: 12.5px; color: var(--ink-60); }
 
-.esc-actions { display: flex; gap: 8px; margin-top: auto; }
-.esc-btn {
-  flex: 1; padding: 9px 0; border-radius: 99px; border: none;
-  font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
-  transition: all 0.15s;
-}
-.esc-btn-outline { background: var(--gray-soft); color: var(--ink); }
-.esc-btn-outline:hover { background: var(--ink-divider); }
-.esc-btn-primary { background: var(--ink); color: var(--white); }
-.esc-btn-primary:hover { box-shadow: 0 6px 18px rgba(18, 18, 16, 0.22); }
+.esc-open-row { display: flex; justify-content: flex-end; margin-top: auto; }
+.esc-open-link { font-size: 13px; color: var(--ink-60); transition: color 0.15s; }
 
 @media (max-width: 860px) {
   .esc-grid { grid-template-columns: 1fr; }
