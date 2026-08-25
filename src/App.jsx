@@ -15,6 +15,7 @@ import ClienteIdeal from './screens/ClienteIdeal.jsx'
 import Indicadores from './screens/Indicadores.jsx'
 import AgentePrl from './screens/AgentePrl.jsx'
 import Equipe from './screens/Equipe.jsx'
+import Configuracoes from './screens/Configuracoes.jsx'
 import Avisos from './screens/Avisos.jsx'
 import AdminInicio from './screens/admin/AdminInicio.jsx'
 import AdminEscritorios from './screens/admin/AdminEscritorios.jsx'
@@ -58,6 +59,7 @@ export default function App() {
         <Route path="/indicadores" element={<Indicadores />} />
         <Route path="/agente-prolu" element={<AgentePrl />} />
         <Route path="/equipe" element={<Equipe />} />
+        <Route path="/configuracoes" element={<Configuracoes />} />
         <Route path="/avisos" element={<Avisos />} />
         <Route path="/admin" element={<AdminInicio />} />
         <Route path="/admin/escritorios" element={<AdminEscritorios />} />

@@ -186,6 +186,15 @@ export function AuthProvider({ children }) {
     return { error: null }
   }
 
+  // Recarrega os dados do perfil (tabela usuarios/empresas) sobre a sessão
+  // atual — usado depois de editar nome/empresa em Configurações, para que
+  // o resto do app (ex: rodapé da sidebar) reflita a mudança na hora.
+  async function refreshUser() {
+    if (!supabaseReady) return
+    const { data } = await supabase.auth.getSession()
+    if (data?.session?.user) await hydrateUser(data.session.user)
+  }
+
   async function findConvitePendente(email) {
     const { data } = await supabase
       .from('convites')
@@ -238,7 +247,7 @@ export function AuthProvider({ children }) {
       user, loading, isMaster, isProluAdmin, isEmpresaMaster,
       impersonatedEmpresaId, impersonatedEmpresaNome, viewAsUser, activeEmpresaId,
       enterAsEmpresa, exitImpersonation, enterUserView, exitUserView,
-      signIn, signUp, signOut, completeOnboarding, findConvitePendente, resendConfirmation,
+      signIn, signUp, signOut, completeOnboarding, findConvitePendente, resendConfirmation, refreshUser,
     }}>
       {children}
     </AuthContext.Provider>
