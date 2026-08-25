@@ -63,16 +63,25 @@ function buildColMap(cols) {
   return map
 }
 
-function groupByField(rows, fieldId, statusId, valorId, propostaId) {
+function groupByField(registros, fechamentos, fieldId, statusId, valorId, propostaId) {
   if (!fieldId || !statusId) return []
   const map = {}
-  rows.forEach(r => {
-    const key = r[fieldId] || '(não informado)'
+  const ensure = key => {
     if (!map[key]) map[key] = { name: key, total: 0, comProposta: 0, fechados: 0, somaFechado: 0, perdidosComProposta: 0, somaPerdido: 0 }
-    map[key].total++
-    if (r[propostaId] === 'Sim') map[key].comProposta++
-    if (r[statusId] === 'Fechado') { map[key].fechados++; map[key].somaFechado += Number(r[valorId]) || 0 }
-    if (r[statusId] === 'Perdido' && r[propostaId] === 'Sim') { map[key].perdidosComProposta++; map[key].somaPerdido += Number(r[valorId]) || 0 }
+    return map[key]
+  }
+  registros.forEach(r => {
+    const key = r[fieldId] || '(não informado)'
+    const g = ensure(key)
+    g.total++
+    if (r[propostaId] === 'Sim') g.comProposta++
+    if (r[statusId] === 'Perdido' && r[propostaId] === 'Sim') { g.perdidosComProposta++; g.somaPerdido += Number(r[valorId]) || 0 }
+  })
+  fechamentos.forEach(r => {
+    const key = r[fieldId] || '(não informado)'
+    const g = ensure(key)
+    g.fechados++
+    g.somaFechado += Number(r[valorId]) || 0
   })
   return Object.values(map).map(g => ({
     ...g,
@@ -161,6 +170,7 @@ export default function Dashboard() {
     return getPeriodRange(period)
   }, [period, customRange])
 
+  // registros_periodo: usado para pedidos, propostas enviadas e perdidos (filtro por data_entrada)
   const rows = useMemo(() => {
     const deId = colMap['data_entrada']
     const icpId = colMap['icp']
@@ -173,22 +183,39 @@ export default function Dashboard() {
     })
   }, [allRows, colMap, range, icpFilter])
 
-  const m = useMemo(() => {
+  // fechamentos_periodo: usado para fechamentos, valor fechado e ticket médio (filtro por data_fechamento)
+  const fechamentosPeriodo = useMemo(() => {
+    const dfId = colMap['data_fechamento']
     const sid = colMap['status']
+    const icpId = colMap['icp']
+    if (!dfId || !sid) return []
+    if (!range) return []
+    return allRows.filter(r => {
+      if (r[sid] !== 'Fechado') return false
+      if (!inPeriod(r[dfId], range)) return false
+      if (icpFilter && r[icpId] !== 'Sim') return false
+      return true
+    })
+  }, [allRows, colMap, range, icpFilter])
+
+  const m = useMemo(() => {
     const vid = colMap['valor']
     const pid = colMap['proposta']
+    const sid = colMap['status']
     const dfid = colMap['data_fechamento']
     const deid = colMap['data_entrada']
 
     const total = rows.length
     const comProposta = rows.filter(r => r[pid] === 'Sim')
-    const fechados = rows.filter(r => r[sid] === 'Fechado')
     const perdidos = rows.filter(r => r[sid] === 'Perdido')
     const perdidosComProposta = perdidos.filter(r => r[pid] === 'Sim')
+
+    const fechados = fechamentosPeriodo
 
     const somaValor = arr => arr.reduce((s, r) => s + (Number(r[vid]) || 0), 0)
     const mediaValor = arr => arr.length ? somaValor(arr) / arr.length : 0
 
+    // conversão: fechados no período (data_fechamento) ÷ propostas enviadas no período (data_entrada)
     const taxaConversao = comProposta.length > 0 ? Math.round((fechados.length / comProposta.length) * 100) : null
 
     let tempoMedio = null
@@ -215,19 +242,19 @@ export default function Dashboard() {
       taxaConversao,
       tempoMedio,
     }
-  }, [rows, colMap])
+  }, [rows, fechamentosPeriodo, colMap])
 
   const porOrigem = useMemo(
-    () => groupByField(rows, colMap['origem'], colMap['status'], colMap['valor'], colMap['proposta']),
-    [rows, colMap],
+    () => groupByField(rows, fechamentosPeriodo, colMap['origem'], colMap['status'], colMap['valor'], colMap['proposta']),
+    [rows, fechamentosPeriodo, colMap],
   )
   const porSegmento = useMemo(
-    () => groupByField(rows, colMap['segmento'], colMap['status'], colMap['valor'], colMap['proposta']),
-    [rows, colMap],
+    () => groupByField(rows, fechamentosPeriodo, colMap['segmento'], colMap['status'], colMap['valor'], colMap['proposta']),
+    [rows, fechamentosPeriodo, colMap],
   )
   const porTipo = useMemo(
-    () => groupByField(rows, colMap['tipo_projeto'], colMap['status'], colMap['valor'], colMap['proposta']),
-    [rows, colMap],
+    () => groupByField(rows, fechamentosPeriodo, colMap['tipo_projeto'], colMap['status'], colMap['valor'], colMap['proposta']),
+    [rows, fechamentosPeriodo, colMap],
   )
 
   if (loading) return (

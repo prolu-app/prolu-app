@@ -110,23 +110,29 @@ function filterRowsByRange(rows, deId, range) {
   if (!deId) return []
   return rows.filter(r => inRange(r[deId], range))
 }
+function filterFechamentosByRange(rows, sid, dfId, range) {
+  if (!sid || !dfId) return []
+  return rows.filter(r => r[sid] === 'Fechado' && inRange(r[dfId], range))
+}
 
-/* ── cálculo dos indicadores automáticos, derivados do CRM ── */
-function computeAutoValue(key, rows, colMap) {
+/* ── cálculo dos indicadores automáticos, derivados do CRM ──
+   registros: linhas do período filtradas por data_entrada (pedidos, propostas, taxa de conversão)
+   fechamentos: linhas com status "Fechado" filtradas por data_fechamento (faturamento, projetos fechados) */
+function computeAutoValue(key, registros, fechamentos, colMap) {
   const sid = colMap['status']
   const vid = colMap['valor']
   const pid = colMap['proposta']
   if (!sid) return null
-  const fechados = rows.filter(r => r[sid] === 'Fechado')
-  if (key === 'faturamento') return rows.length ? fechados.reduce((s, r) => s + (Number(r[vid]) || 0), 0) : null
-  if (key === 'ticket_medio') return fechados.length ? Math.round(fechados.reduce((s, r) => s + (Number(r[vid]) || 0), 0) / fechados.length) : null
-  if (key === 'projetos_fechados') return rows.length ? fechados.length : null
-  if (key === 'pedidos_orcamento') return rows.length ? rows.length : null
+  const fechadosPorEntrada = registros.filter(r => r[sid] === 'Fechado')
+  if (key === 'faturamento') return registros.length ? fechamentos.reduce((s, r) => s + (Number(r[vid]) || 0), 0) : null
+  if (key === 'ticket_medio') return fechadosPorEntrada.length ? Math.round(fechadosPorEntrada.reduce((s, r) => s + (Number(r[vid]) || 0), 0) / fechadosPorEntrada.length) : null
+  if (key === 'projetos_fechados') return registros.length ? fechamentos.length : null
+  if (key === 'pedidos_orcamento') return registros.length ? registros.length : null
   if (key === 'taxa_conversao') {
-    const comProposta = rows.filter(r => r[pid] === 'Sim')
-    return comProposta.length > 0 ? Math.round((fechados.length / comProposta.length) * 100) : null
+    const comProposta = registros.filter(r => r[pid] === 'Sim')
+    return comProposta.length > 0 ? Math.round((fechadosPorEntrada.length / comProposta.length) * 100) : null
   }
-  if (key === 'propostas_enviadas') return rows.length ? rows.filter(r => r[pid] === 'Sim').length : null
+  if (key === 'propostas_enviadas') return registros.length ? registros.filter(r => r[pid] === 'Sim').length : null
   return null
 }
 
@@ -247,13 +253,29 @@ export default function Indicadores() {
 
   const kpis = useMemo(() => {
     const deId = colMap['data_entrada']
+    const dfId = colMap['data_fechamento']
+    const sid = colMap['status']
     return indicadores.map(ind => {
       const metaRow = metas.find(m => m.indicador_id === ind.id)
       const meta = metaRow ? Number(metaRow.meta) : null
 
       if (ind.tipo === 'automatico') {
-        const quarters = [0, 1, 2, 3].map(q => computeAutoValue(ind.fonte_coluna, filterRowsByRange(allRows, deId, quarterRange(year, q)), colMap))
-        const acumulado = computeAutoValue(ind.fonte_coluna, filterRowsByRange(allRows, deId, ytdRange(year)), colMap)
+        const quarters = [0, 1, 2, 3].map(q => {
+          const qRange = quarterRange(year, q)
+          return computeAutoValue(
+            ind.fonte_coluna,
+            filterRowsByRange(allRows, deId, qRange),
+            filterFechamentosByRange(allRows, sid, dfId, qRange),
+            colMap,
+          )
+        })
+        const ytdR = ytdRange(year)
+        const acumulado = computeAutoValue(
+          ind.fonte_coluna,
+          filterRowsByRange(allRows, deId, ytdR),
+          filterFechamentosByRange(allRows, sid, dfId, ytdR),
+          colMap,
+        )
         return { id: ind.id, name: ind.nome, unit: ind.unidade, group: ind.grupo || 'Geral', tipo: 'automatico', fonteColuna: ind.fonte_coluna, meta, quarters, acumulado }
       }
 

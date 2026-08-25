@@ -432,6 +432,7 @@ export default function CRM() {
   const valorCol       = useMemo(() => columns.find(c => c.slug === 'valor'), [columns])
   const statusCol      = useMemo(() => columns.find(c => c.slug === 'status'), [columns])
   const origemCol      = useMemo(() => columns.find(c => c.slug === 'origem'), [columns])
+  const propostaCol    = useMemo(() => columns.find(c => c.slug === 'proposta'), [columns])
   const isDraft = drawerRowId === '__new__'
   const drawerRow = useMemo(() => {
     if (isDraft) return { id: '__new__', ...draftValues }
@@ -787,24 +788,40 @@ export default function CRM() {
     return true
   }), [sorted, search, colSelectFilters, colDateFilters])
 
-  const summary = useMemo(() => {
-    const count = filtered.length
-    let total = 0
-    let filledCount = 0
-    if (valorCol) {
-      filtered.forEach(r => {
-        const raw = r[valorCol.id]
-        if (raw === null || raw === undefined || raw === '') return
-        const n = Number(raw)
-        if (!isNaN(n)) { total += n; filledCount++ }
+  // Resumo YTD: sempre todos os registros da empresa no ano atual, ignora filtros da tabela.
+  // `rows` já contém o dataset completo da empresa (carregado sem filtro de data), então não é
+  // preciso uma segunda consulta ao Supabase — basta filtrar em memória pelo ano de data_entrada.
+  const currentYear = new Date().getFullYear()
+  const ytdSummary = useMemo(() => {
+    if (!dataEntradaCol) return { count: 0, total: null, avg: null }
+    const yearPrefix = String(currentYear)
+    const ytdRows = rows.filter(r => typeof r[dataEntradaCol.id] === 'string' && r[dataEntradaCol.id].startsWith(yearPrefix))
+    const count = ytdRows.length
+
+    let total = null
+    if (valorCol && propostaCol) {
+      let sum = 0, has = false
+      ytdRows.forEach(r => {
+        if (r[propostaCol.id] !== 'Sim') return
+        const n = Number(r[valorCol.id])
+        if (!isNaN(n)) { sum += n; has = true }
       })
+      total = has ? sum : null
     }
-    return {
-      count,
-      total: count > 0 ? total : null,
-      avg: filledCount > 0 ? total / filledCount : null,
+
+    let avg = null
+    if (valorCol && statusCol) {
+      let sum = 0, cnt = 0
+      ytdRows.forEach(r => {
+        if (r[statusCol.id] !== 'Fechado') return
+        const n = Number(r[valorCol.id])
+        if (!isNaN(n)) { sum += n; cnt++ }
+      })
+      avg = cnt > 0 ? sum / cnt : null
     }
-  }, [filtered, valorCol])
+
+    return { count, total, avg }
+  }, [rows, dataEntradaCol, valorCol, propostaCol, statusCol, currentYear])
 
   // Scroll infinito (mobile): janeia a lista já carregada em memória, sem nova consulta ao banco.
   useEffect(() => { setMobileVisibleCount(20) }, [filtered])
@@ -1117,22 +1134,23 @@ export default function CRM() {
         {filtered.length === 0 && <div className="crm-empty">Nenhum registro encontrado.</div>}
       </div>
 
-      {/* Resumo dos registros visíveis */}
+      {/* Resumo do ano atual (YTD), independente dos filtros da tabela */}
       <div className="crm-summary-card">
+        <span className="crm-summary-badge">Ano atual · {currentYear}</span>
         <div className="crm-summary-item">
           <span className="crm-summary-label">Pedidos</span>
           <span className="crm-summary-dot">·</span>
-          <span className="crm-summary-value">{summary.count}</span>
+          <span className="crm-summary-value">{ytdSummary.count > 0 ? ytdSummary.count : '—'}</span>
         </div>
         <div className="crm-summary-item">
           <span className="crm-summary-label">Valor total</span>
           <span className="crm-summary-dot">·</span>
-          <span className="crm-summary-value">{summary.total !== null ? fmtMoney(summary.total) : '—'}</span>
+          <span className="crm-summary-value">{ytdSummary.total !== null ? fmtMoney(ytdSummary.total) : '—'}</span>
         </div>
         <div className="crm-summary-item">
           <span className="crm-summary-label">Ticket médio</span>
           <span className="crm-summary-dot">·</span>
-          <span className="crm-summary-value">{summary.avg !== null ? fmtMoney(summary.avg) : '—'}</span>
+          <span className="crm-summary-value">{ytdSummary.avg !== null ? fmtMoney(ytdSummary.avg) : '—'}</span>
         </div>
       </div>
       </div>
