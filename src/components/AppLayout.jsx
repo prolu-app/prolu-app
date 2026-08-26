@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import {
@@ -52,11 +52,26 @@ const ADMIN_NAV = [
   { to: '/agente-prolu', label: 'Agente Prolu', Icon: IconAgente },
 ]
 
-// Seção que contém a rota atual — usada para abrir automaticamente ao
-// carregar/navegar e fechar as demais.
-function sectionKeyForPath(pathname) {
-  const section = NAV_SECTIONS.find((s) => s.items.some((i) => i.to === pathname))
-  return section ? section.key : null
+// Estado de seções abertas/fechadas do menu, persistido no navegador —
+// navegar entre rotas não deve alterar o que o usuário escolheu.
+const SECTIONS_STORAGE_KEY = 'sidebar_sections'
+
+function loadOpenSections() {
+  try {
+    const raw = localStorage.getItem(SECTIONS_STORAGE_KEY)
+    if (raw) return new Set(JSON.parse(raw))
+  } catch {
+    // ignora localStorage indisponível/corrompido
+  }
+  return new Set(NAV_SECTIONS.map((s) => s.key))
+}
+
+function saveOpenSections(set) {
+  try {
+    localStorage.setItem(SECTIONS_STORAGE_KEY, JSON.stringify([...set]))
+  } catch {
+    // ignora localStorage indisponível
+  }
 }
 
 export default function AppLayout() {
@@ -70,23 +85,14 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const close = () => setOpen(false)
 
-  const [openSections, setOpenSections] = useState(() => {
-    const key = sectionKeyForPath(location.pathname)
-    return key ? new Set([key]) : new Set()
-  })
-
-  // Ao navegar para outra rota, abre a seção correspondente e fecha as outras.
-  useEffect(() => {
-    const key = sectionKeyForPath(location.pathname)
-    if (key) setOpenSections(new Set([key]))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname])
+  const [openSections, setOpenSections] = useState(loadOpenSections)
 
   function toggleSection(key) {
     setOpenSections((prev) => {
       const next = new Set(prev)
       if (next.has(key)) next.delete(key)
       else next.add(key)
+      saveOpenSections(next)
       return next
     })
   }
@@ -218,15 +224,6 @@ export default function AppLayout() {
               })}
             </nav>
 
-            <NavLink
-              to="/configuracoes"
-              className={({ isActive }) => `nav-item settings-item${isActive ? ' active' : ''}`}
-              onClick={() => { if (window.innerWidth <= 860) close() }}
-            >
-              <IconSettings className="nav-icon" />
-              Configurações
-            </NavLink>
-
             <div className="sidebar-footer">
               <div
                 className="sidebar-footer-info"
@@ -244,6 +241,15 @@ export default function AppLayout() {
                 <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>
               </button>
             </div>
+
+            <NavLink
+              to="/configuracoes"
+              className={({ isActive }) => `settings-link${isActive ? ' active' : ''}`}
+              onClick={() => { if (window.innerWidth <= 860) close() }}
+            >
+              <IconSettings className="settings-link-icon" />
+              Configurações
+            </NavLink>
           </aside>
         )}
 
