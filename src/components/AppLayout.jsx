@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import {
   IconInicio, IconBase, IconCRM, IconDashboard,
   IconPlano, IconCliente, IconIndicadores, IconBurger, IconClose, IconAgente, IconBell,
-  IconBuilding, IconSettings, IconContacts, IconMoney, IconChevronDown,
+  IconBuilding, IconSettings, IconContacts, IconMoney, IconChevronLeft, IconChevronRight,
 } from './Icons.jsx'
 import './AppLayout.css'
 
@@ -15,16 +15,16 @@ const NAV_SECTIONS = [
     items: [
       { to: '/crm', label: 'CRM', Icon: IconCRM },
       { to: '/dashboard', label: 'Dashboard', Icon: IconDashboard },
+      { to: '/indicadores', label: 'Indicadores', Icon: IconIndicadores },
       { label: 'Precificação', Icon: IconMoney, soon: true },
     ],
   },
   {
-    key: 'metodo',
-    label: 'Método',
+    key: 'ferramentas',
+    label: 'Ferramentas',
     items: [
       { to: '/plano-pratico', label: 'Plano Prático', Icon: IconPlano },
       { to: '/cliente-ideal', label: 'Cliente Ideal', Icon: IconCliente },
-      { to: '/indicadores', label: 'Indicadores', Icon: IconIndicadores },
       { to: '/agente-prolu', label: 'Agente Prolu', Icon: IconAgente },
     ],
   },
@@ -52,23 +52,21 @@ const ADMIN_NAV = [
   { to: '/agente-prolu', label: 'Agente Prolu', Icon: IconAgente },
 ]
 
-// Estado de seções abertas/fechadas do menu, persistido no navegador —
-// navegar entre rotas não deve alterar o que o usuário escolheu.
-const SECTIONS_STORAGE_KEY = 'sidebar_sections'
+// Sidebar recolhida (só ícones) — persistida no navegador para não "resetar"
+// a cada navegação ou reload.
+const COLLAPSED_STORAGE_KEY = 'sidebar_collapsed'
 
-function loadOpenSections() {
+function loadCollapsed() {
   try {
-    const raw = localStorage.getItem(SECTIONS_STORAGE_KEY)
-    if (raw) return new Set(JSON.parse(raw))
+    return localStorage.getItem(COLLAPSED_STORAGE_KEY) === '1'
   } catch {
-    // ignora localStorage indisponível/corrompido
+    return false
   }
-  return new Set(NAV_SECTIONS.map((s) => s.key))
 }
 
-function saveOpenSections(set) {
+function saveCollapsed(value) {
   try {
-    localStorage.setItem(SECTIONS_STORAGE_KEY, JSON.stringify([...set]))
+    localStorage.setItem(COLLAPSED_STORAGE_KEY, value ? '1' : '0')
   } catch {
     // ignora localStorage indisponível
   }
@@ -85,14 +83,12 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const close = () => setOpen(false)
 
-  const [openSections, setOpenSections] = useState(loadOpenSections)
+  const [collapsed, setCollapsed] = useState(loadCollapsed)
 
-  function toggleSection(key) {
-    setOpenSections((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      saveOpenSections(next)
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev
+      saveCollapsed(next)
       return next
     })
   }
@@ -122,13 +118,12 @@ export default function AppLayout() {
       <div className="app">
         {showAdminSidebar ? (
           <aside className={`sidebar${open ? ' open' : ''}`}>
-            <button className="drawer-close" onClick={close} aria-label="Fechar menu">
-              <IconClose />
-            </button>
-
-            <div className="logo">
-              <div className="logo-mark"><span>prolu</span></div>
-              <div className="logo-sub">admin</div>
+            <div className="sidebar-top">
+              <img src="/prolu_app_logo_neg.png" alt="Prolu App" className="sidebar-logo" />
+              <div className="brand-label">Admin</div>
+              <button className="drawer-close" onClick={close} aria-label="Fechar menu">
+                <IconClose />
+              </button>
             </div>
 
             <nav className="nav">
@@ -137,11 +132,12 @@ export default function AppLayout() {
                   key={item.to}
                   to={item.to}
                   end={item.end}
+                  title={item.label}
                   className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
                   onClick={() => { if (window.innerWidth <= 860) close() }}
                 >
                   <item.Icon className="nav-icon" />
-                  {item.label}
+                  <span className="nav-item-label">{item.label}</span>
                 </NavLink>
               ))}
             </nav>
@@ -163,65 +159,61 @@ export default function AppLayout() {
             </div>
           </aside>
         ) : (
-          <aside className={`sidebar${open ? ' open' : ''}`}>
-            <button className="drawer-close" onClick={close} aria-label="Fechar menu">
-              <IconClose />
-            </button>
-
-            <div className="logo">
-              <div className="logo-mark"><span>prolu</span></div>
-              <div className="logo-sub">app</div>
+          <aside className={`sidebar${open ? ' open' : ''}${collapsed ? ' collapsed' : ''}`}>
+            <div className="sidebar-top">
+              <img src="/prolu_app_logo_neg.png" alt="Prolu App" className="sidebar-logo" />
+              <img src="/prolu_app_icon_logo.png" alt="Prolu" className="sidebar-icon-logo" />
+              <button
+                className="sidebar-collapse-btn"
+                onClick={toggleCollapsed}
+                aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+                title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+              >
+                {collapsed ? <IconChevronRight /> : <IconChevronLeft />}
+              </button>
+              <button className="drawer-close" onClick={close} aria-label="Fechar menu">
+                <IconClose />
+              </button>
             </div>
 
             <nav className="nav">
               <NavLink
                 to="/"
                 end
+                title="Início"
                 className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
                 onClick={() => { if (window.innerWidth <= 860) close() }}
               >
                 <IconInicio className="nav-icon" />
-                Início
+                <span className="nav-item-label">Início</span>
               </NavLink>
 
-              {NAV_SECTIONS.map((section) => {
-                const isOpen = openSections.has(section.key)
-                return (
-                  <div className="nav-section" key={section.key}>
-                    <button
-                      type="button"
-                      className="nav-section-header"
-                      onClick={() => toggleSection(section.key)}
-                      aria-expanded={isOpen}
-                    >
-                      <span className="nav-section-label">{section.label}</span>
-                      <IconChevronDown className={`nav-section-chevron${isOpen ? ' open' : ''}`} />
-                    </button>
-                    <div className={`nav-section-items${isOpen ? ' open' : ''}`}>
-                      {section.items.map((item) => (
-                        item.soon ? (
-                          <div className="nav-item nav-item-disabled" key={item.label}>
-                            <item.Icon className="nav-icon" />
-                            {item.label}
-                            <span className="nav-soon">Em breve</span>
-                          </div>
-                        ) : (
-                          <NavLink
-                            key={item.to}
-                            to={item.to}
-                            end={item.end}
-                            className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-                            onClick={() => { if (window.innerWidth <= 860) close() }}
-                          >
-                            <item.Icon className="nav-icon" />
-                            {item.label}
-                          </NavLink>
-                        )
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
+              {NAV_SECTIONS.map((section, i) => (
+                <div className={`nav-section${i === 0 ? ' first' : ''}`} key={section.key}>
+                  <div className="nav-section-label">{section.label}</div>
+                  {section.items.map((item) => (
+                    item.soon ? (
+                      <div className="nav-item nav-item-disabled" key={item.label} title={item.label}>
+                        <item.Icon className="nav-icon" />
+                        <span className="nav-item-label">{item.label}</span>
+                        <span className="nav-soon">Em breve</span>
+                      </div>
+                    ) : (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        end={item.end}
+                        title={item.label}
+                        className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+                        onClick={() => { if (window.innerWidth <= 860) close() }}
+                      >
+                        <item.Icon className="nav-icon" />
+                        <span className="nav-item-label">{item.label}</span>
+                      </NavLink>
+                    )
+                  ))}
+                </div>
+              ))}
             </nav>
 
             <div className="sidebar-footer">
@@ -232,24 +224,24 @@ export default function AppLayout() {
                 title={isEmpresaMaster ? 'Gerenciar equipe' : undefined}
               >
                 <div className="avatar">{initial}</div>
-                <div style={{ minWidth: 0 }}>
+                <div className="sidebar-footer-user">
                   <div className="user-name">{user?.nome}</div>
                   <div className="user-co">{user?.empresa || 'Prolu'}</div>
                 </div>
+                <button className="signout-btn" onClick={(e) => { e.stopPropagation(); signOut() }} aria-label="Sair" title="Sair">
+                  <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>
+                </button>
               </div>
-              <button className="signout-btn" onClick={signOut} aria-label="Sair" title="Sair">
-                <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>
-              </button>
+              <NavLink
+                to="/configuracoes"
+                title="Configurações"
+                className={({ isActive }) => `settings-link${isActive ? ' active' : ''}`}
+                onClick={() => { if (window.innerWidth <= 860) close() }}
+              >
+                <IconSettings className="settings-link-icon" />
+                <span className="nav-item-label">Configurações</span>
+              </NavLink>
             </div>
-
-            <NavLink
-              to="/configuracoes"
-              className={({ isActive }) => `settings-link${isActive ? ' active' : ''}`}
-              onClick={() => { if (window.innerWidth <= 860) close() }}
-            >
-              <IconSettings className="settings-link-icon" />
-              Configurações
-            </NavLink>
           </aside>
         )}
 
