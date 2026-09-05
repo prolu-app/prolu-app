@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import {
@@ -82,6 +82,7 @@ export default function AppLayout() {
   const location = useLocation()
   const navigate = useNavigate()
   const close = () => setOpen(false)
+  const closeOnMobile = () => { if (window.innerWidth <= 860) close() }
 
   const [collapsed, setCollapsed] = useState(loadCollapsed)
 
@@ -118,15 +119,15 @@ export default function AppLayout() {
       <div className="app">
         {showAdminSidebar ? (
           <aside className={`sidebar${open ? ' open' : ''}`}>
-            <div className="sidebar-top">
+            <div className="sidebar-header">
               <img src="/prolu_app_logo_neg.png" alt="Prolu App" className="sidebar-logo" />
-              <div className="brand-label">Admin</div>
+              <span className="sidebar-header-note">Admin</span>
               <button className="drawer-close" onClick={close} aria-label="Fechar menu">
                 <IconClose />
               </button>
             </div>
 
-            <nav className="nav">
+            <nav className="sidebar-nav">
               {ADMIN_NAV.map((item) => (
                 <NavLink
                   key={item.to}
@@ -134,7 +135,7 @@ export default function AppLayout() {
                   end={item.end}
                   title={item.label}
                   className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-                  onClick={() => { if (window.innerWidth <= 860) close() }}
+                  onClick={closeOnMobile}
                 >
                   <item.Icon className="nav-icon" />
                   <span className="nav-item-label">{item.label}</span>
@@ -143,9 +144,9 @@ export default function AppLayout() {
             </nav>
 
             <div className="sidebar-footer admin-sidebar-footer">
-              <div className="admin-sidebar-user">
+              <div className="sidebar-footer-user" style={{ cursor: 'default' }}>
                 <div className="avatar">{initial}</div>
-                <div style={{ minWidth: 0 }}>
+                <div className="sidebar-footer-user-info">
                   <div className="user-name">{user?.nome}</div>
                   <div className="user-co">Prolu admin</div>
                 </div>
@@ -160,7 +161,7 @@ export default function AppLayout() {
           </aside>
         ) : (
           <aside className={`sidebar${open ? ' open' : ''}${collapsed ? ' collapsed' : ''}`}>
-            <div className="sidebar-top">
+            <div className="sidebar-header">
               <img src="/prolu_app_logo_neg.png" alt="Prolu App" className="sidebar-logo" />
               <img src="/prolu_app_icon_logo.png" alt="Prolu" className="sidebar-icon-logo" />
               <button
@@ -176,28 +177,28 @@ export default function AppLayout() {
               </button>
             </div>
 
-            <nav className="nav">
+            <nav className="sidebar-nav">
               <NavLink
                 to="/"
                 end
                 title="Início"
                 className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-                onClick={() => { if (window.innerWidth <= 860) close() }}
+                onClick={closeOnMobile}
               >
                 <IconInicio className="nav-icon" />
                 <span className="nav-item-label">Início</span>
               </NavLink>
 
-              {NAV_SECTIONS.map((section, i) => (
-                <div className={`nav-section${i === 0 ? ' first' : ''}`} key={section.key}>
-                  <div className="nav-section-label">{section.label}</div>
+              {NAV_SECTIONS.map((section) => (
+                <Fragment key={section.key}>
+                  <span className="nav-section-label">{section.label}</span>
                   {section.items.map((item) => (
                     item.soon ? (
-                      <div className="nav-item nav-item-disabled" key={item.label} title={item.label}>
+                      <span className="nav-item disabled" key={item.label} title={item.label}>
                         <item.Icon className="nav-icon" />
                         <span className="nav-item-label">{item.label}</span>
-                        <span className="nav-soon">Em breve</span>
-                      </div>
+                        <span className="nav-soon-tag">em breve</span>
+                      </span>
                     ) : (
                       <NavLink
                         key={item.to}
@@ -205,26 +206,26 @@ export default function AppLayout() {
                         end={item.end}
                         title={item.label}
                         className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-                        onClick={() => { if (window.innerWidth <= 860) close() }}
+                        onClick={closeOnMobile}
                       >
                         <item.Icon className="nav-icon" />
                         <span className="nav-item-label">{item.label}</span>
                       </NavLink>
                     )
                   ))}
-                </div>
+                </Fragment>
               ))}
             </nav>
 
             <div className="sidebar-footer">
               <div
-                className="sidebar-footer-info"
-                onClick={() => { if (isEmpresaMaster) { navigate('/equipe'); if (window.innerWidth <= 860) close() } }}
+                className="sidebar-footer-user"
+                onClick={() => { if (isEmpresaMaster) { navigate('/equipe'); closeOnMobile() } }}
                 style={{ cursor: isEmpresaMaster ? 'pointer' : 'default' }}
                 title={isEmpresaMaster ? 'Gerenciar equipe' : undefined}
               >
                 <div className="avatar">{initial}</div>
-                <div className="sidebar-footer-user">
+                <div className="sidebar-footer-user-info">
                   <div className="user-name">{user?.nome}</div>
                   <div className="user-co">{user?.empresa || 'Prolu'}</div>
                 </div>
@@ -235,10 +236,10 @@ export default function AppLayout() {
               <NavLink
                 to="/configuracoes"
                 title="Configurações"
-                className={({ isActive }) => `settings-link${isActive ? ' active' : ''}`}
-                onClick={() => { if (window.innerWidth <= 860) close() }}
+                className={({ isActive }) => `sidebar-footer-config${isActive ? ' active' : ''}`}
+                onClick={closeOnMobile}
               >
-                <IconSettings className="settings-link-icon" />
+                <IconSettings />
                 <span className="nav-item-label">Configurações</span>
               </NavLink>
             </div>
