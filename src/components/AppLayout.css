@@ -22,7 +22,7 @@ body, #root, .app {
   background: rgba(243, 242, 237, 0.88);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  z-index: 40;
+  z-index: 90; /* abaixo do scrim (95) e do drawer (100) */
   align-items: center;
   gap: 10px;
   padding: 0 12px;
@@ -36,12 +36,7 @@ body, #root, .app {
 }
 .burger:active { background: rgba(18, 18, 16, 0.06); }
 .burger svg { width: 22px; height: 22px; stroke: var(--ink); stroke-width: 2; fill: none; }
-.topbar-logo { font-family: 'Abhaya Libre', serif; font-weight: 700; font-size: 22px; }
-.topbar-logo em {
-  font-style: normal; display: inline-block;
-  width: 6px; height: 6px; background: var(--green);
-  border-radius: 50%; margin-left: 3px; vertical-align: 2px;
-}
+.mobile-logo { height: 28px; width: auto; display: block; }
 
 /* ───────── Sidebar flutuante ───────── */
 .sidebar {
@@ -63,7 +58,7 @@ body, #root, .app {
 .scrim {
   position: fixed; inset: 0;
   background: rgba(18, 18, 16, 0.4);
-  z-index: 55; opacity: 0; pointer-events: none;
+  z-index: 95; opacity: 0; pointer-events: none;
   transition: opacity 0.25s;
 }
 .scrim.show { opacity: 1; pointer-events: auto; }
@@ -113,13 +108,17 @@ body, #root, .app {
 
 .drawer-close {
   display: none;
-  position: absolute; top: 16px; right: 14px;
-  width: 36px; height: 36px;
+  position: absolute; top: 16px; right: 16px;
+  width: 34px; height: 34px;
   border: none; background: none;
   cursor: pointer; border-radius: 10px;
   align-items: center; justify-content: center;
+  color: rgba(255, 255, 255, 0.6);
+  transition: color 0.15s;
+  z-index: 2;
 }
-.drawer-close svg { width: 18px; height: 18px; stroke: rgba(255, 255, 255, 0.7); stroke-width: 2.2; fill: none; }
+.drawer-close:hover { color: #fff; }
+.drawer-close svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2.2; fill: none; }
 
 /* ── Navegação (único trecho com scroll) ── */
 .sidebar-nav {
@@ -364,6 +363,14 @@ body, #root, .app {
 @media (max-width: 860px) {
   .topbar { display: flex; }
   body, #root, .app { background: var(--cream); }
+  /* Sem contexto de empilhamento próprio no mobile: o drawer (fixed, z-index 100)
+     precisa vencer o navbar (90) e o scrim (95), que ficam fora de .app */
+  .app {
+    position: static;
+    z-index: auto;
+    overflow: visible;
+    height: auto;
+  }
   .sidebar {
     position: fixed;
     top: 0; left: 0; bottom: 0;
@@ -374,6 +381,7 @@ body, #root, .app {
     border-radius: 0;
     background: var(--cream);
     box-shadow: none;
+    z-index: 100; /* acima do navbar e do scrim */
   }
   .sidebar.open { transform: translateX(0); box-shadow: 0 0 60px rgba(18, 18, 16, 0.25); }
   .sidebar.collapsed { width: 280px; }

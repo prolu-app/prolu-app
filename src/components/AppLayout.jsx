@@ -111,7 +111,7 @@ export default function AppLayout() {
         <button className="burger" onClick={() => setOpen(true)} aria-label="Abrir menu">
           <IconBurger />
         </button>
-        <div className="topbar-logo">prolu<em /></div>
+        <img src="/prolu_app_logo_pos.png" alt="Prolu App" className="mobile-logo" />
       </header>
 
       <div className={`scrim${open ? ' show' : ''}`} onClick={close} />
