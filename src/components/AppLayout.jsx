@@ -182,7 +182,7 @@ export default function AppLayout() {
                 to="/"
                 end
                 title="Início"
-                className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+                className={({ isActive }) => `nav-item nav-item-inicio${isActive ? ' active' : ''}`}
                 onClick={closeOnMobile}
               >
                 <IconInicio className="nav-icon" />
