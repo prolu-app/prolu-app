@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useLayoutEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import {
@@ -83,6 +83,24 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const close = () => setOpen(false)
   const closeOnMobile = () => { if (window.innerWidth <= 860) close() }
+
+  // Mede a altura da pilha de banners de contexto (fixa no mobile) e expõe em
+  // --context-banner-h, para o navbar e os cabeçalhos fixos se empilharem sem
+  // sobreposição nem espaço em branco, seja qual for a altura do banner.
+  const bannerStackRef = useRef(null)
+  useLayoutEffect(() => {
+    const el = bannerStackRef.current
+    if (!el) return
+    const measure = () => {
+      document.documentElement.style.setProperty(
+        '--context-banner-h', `${Math.ceil(el.getBoundingClientRect().height)}px`,
+      )
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const [collapsed, setCollapsed] = useState(loadCollapsed)
 
@@ -247,18 +265,20 @@ export default function AppLayout() {
         )}
 
         <main className="main" key={location.pathname}>
-          {impersonatedEmpresaId && (
-            <div className="context-banner banner-impersonate">
-              <span>Vendo como: {impersonatedEmpresaNome}</span>
-              <button onClick={() => { exitImpersonation(); navigate('/admin') }}>Sair</button>
-            </div>
-          )}
-          {viewAsUser && (
-            <div className="context-banner banner-viewuser">
-              <span>Modo visualização de usuário</span>
-              <button onClick={() => { exitUserView(); navigate('/admin') }}>Sair</button>
-            </div>
-          )}
+          <div className="context-banner-stack" ref={bannerStackRef}>
+            {impersonatedEmpresaId && (
+              <div className="context-banner banner-impersonate">
+                <span>Vendo como: {impersonatedEmpresaNome}</span>
+                <button onClick={() => { exitImpersonation(); navigate('/admin') }}>Sair</button>
+              </div>
+            )}
+            {viewAsUser && (
+              <div className="context-banner banner-viewuser">
+                <span>Modo visualização de usuário</span>
+                <button onClick={() => { exitUserView(); navigate('/admin') }}>Sair</button>
+              </div>
+            )}
+          </div>
           <Outlet />
         </main>
       </div>

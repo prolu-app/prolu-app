@@ -467,30 +467,22 @@
     gap: 8px;
   }
 
-  /* ── header (título + toolbar + resumo) fixo no topo; só os cards rolam ── */
+  /* ── header (título + toolbar + resumo) fixo, logo abaixo de banner + navbar ── */
   .crm-header-fixed {
-    position: sticky;
-    top: 58px;
-    z-index: 20; /* acima dos cards da lista (z-index: auto) */
-    background-color: var(--cream); /* superfície 100% opaca, sem alpha */
-    padding-bottom: 12px;
-    isolation: isolate; /* contexto de empilhamento próprio e previsível */
-  }
-  /* Backstop opaco atrás da navbar translúcida: impede que o conteúdo dos
-     cards apareça no vão de 58px acima do cabeçalho durante o scroll.
-     Não afeta o position: sticky nem o top. */
-  .crm-header-fixed::before {
-    content: '';
-    position: absolute;
+    position: fixed;
+    top: calc(var(--context-banner-h, 0px) + 58px); /* encostado no navbar, sem vão */
     left: 0;
     right: 0;
-    bottom: 100%;
-    height: 64px;
-    background-color: var(--cream);
+    z-index: 92; /* > navbar (90); < banner de contexto (93) e scrim (95) */
+    background-color: var(--cream); /* 100% opaco, sem alpha */
+    padding: 0 16px 12px;
+    box-sizing: border-box;
   }
+  /* .main já reserva (banner + 58px navbar + 20px de folga); o container de
+     cards só precisa compensar a altura do cabeçalho menos essa folga. */
   .crm-cards {
-    padding-top: 4px;
+    padding-top: calc(var(--crm-header-h, 320px) - 20px);
     position: relative;
-    z-index: 0; /* garante que os cards fiquem abaixo do cabeçalho */
+    z-index: 0; /* abaixo do cabeçalho fixo */
   }
 }

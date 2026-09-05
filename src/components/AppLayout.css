@@ -1,5 +1,11 @@
 /* ───────── Shell do app: sidebar fixa + drawer mobile ───────── */
 
+:root {
+  /* Altura da pilha de banners de contexto — medida em runtime (0 quando não há
+     banner). Usada para empilhar navbar + cabeçalhos fixos no mobile. */
+  --context-banner-h: 0px;
+}
+
 /* Fundo geral — tom levemente mais escuro que o conteúdo, dá profundidade
    sem precisar de sombras pesadas. */
 body, #root, .app {
@@ -17,11 +23,10 @@ body, #root, .app {
 .topbar {
   display: none;
   position: fixed;
-  top: 0; left: 0; right: 0;
+  top: var(--context-banner-h, 0px); /* abaixo do banner de contexto fixo */
+  left: 0; right: 0;
   height: 58px;
-  background: rgba(243, 242, 237, 0.88);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: var(--cream); /* opaco — nada pode vazar por trás */
   z-index: 90; /* abaixo do scrim (95) e do drawer (100) */
   align-items: center;
   gap: 10px;
@@ -326,7 +331,14 @@ body, #root, .app {
   font-size: 13.5px; font-weight: 500;
 }
 @media (max-width: 860px) {
-  .context-banner { margin: 0 -16px 20px; border-radius: 0; }
+  /* Pilha de banners fixa no topo absoluto da viewport, sempre visível */
+  .context-banner-stack {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 93; /* acima do navbar (90) e do cabeçalho CRM (92); abaixo do scrim (95) */
+    background: var(--cream);
+  }
+  .context-banner { margin: 0; border-radius: 0; }
 }
 .context-banner button {
   border: none; background: none; cursor: pointer;
@@ -391,7 +403,8 @@ body, #root, .app {
     margin: 0;
     height: 100vh;
     border-radius: 0;
-    padding: 78px 16px 110px;
+    /* topo = banner de contexto + navbar (58px) + folga de 20px */
+    padding: calc(var(--context-banner-h, 0px) + 78px) 16px 110px;
   }
   .page-title { font-size: 28px; }
 }

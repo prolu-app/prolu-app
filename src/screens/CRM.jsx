@@ -420,6 +420,7 @@ export default function CRM() {
   const [colDateFilters, setColDateFilters] = useState({}) // { [colId]: { start, end } } aplicado
   const [colDateDraft, setColDateDraft] = useState({}) // { [colId]: { start, end } } rascunho
   const tableRef = useRef(null)
+  const crmHeaderRef = useRef(null)
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 860)
   const [draftValues, setDraftValues] = useState({})
   const [mobileVisibleCount, setMobileVisibleCount] = useState(20)
@@ -443,6 +444,25 @@ export default function CRM() {
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
+
+  // Mede a altura do cabeçalho fixo do CRM (mobile) e expõe em --crm-header-h,
+  // para o container de cards receber padding-top exato — sem sobreposição e
+  // sem espaço em branco, mesmo quando o card de resumo quebra de linha.
+  useLayoutEffect(() => {
+    if (!isMobile) {
+      document.documentElement.style.removeProperty('--crm-header-h')
+      return
+    }
+    const el = crmHeaderRef.current
+    if (!el) return
+    const measure = () => {
+      document.documentElement.style.setProperty('--crm-header-h', `${Math.ceil(el.getBoundingClientRect().height)}px`)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => { ro.disconnect(); document.documentElement.style.removeProperty('--crm-header-h') }
+  }, [isMobile])
 
   useEffect(() => { carregar() }, [activeEmpresaId])
   useEffect(() => { if (supabaseReady && activeEmpresaId) loadClientes() }, [activeEmpresaId])
@@ -927,7 +947,7 @@ export default function CRM() {
 
   return (
     <>
-      <div className="crm-header-fixed">
+      <div className="crm-header-fixed" ref={crmHeaderRef}>
       <div className="page-header between">
         <div>
           <div className="page-title">CRM</div>
