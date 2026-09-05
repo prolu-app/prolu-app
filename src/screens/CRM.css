@@ -471,11 +471,26 @@
   .crm-header-fixed {
     position: sticky;
     top: 58px;
-    z-index: 10;
-    background: var(--cream);
+    z-index: 20; /* acima dos cards da lista (z-index: auto) */
+    background-color: var(--cream); /* superfície 100% opaca, sem alpha */
     padding-bottom: 12px;
+    isolation: isolate; /* contexto de empilhamento próprio e previsível */
+  }
+  /* Backstop opaco atrás da navbar translúcida: impede que o conteúdo dos
+     cards apareça no vão de 58px acima do cabeçalho durante o scroll.
+     Não afeta o position: sticky nem o top. */
+  .crm-header-fixed::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 64px;
+    background-color: var(--cream);
   }
   .crm-cards {
     padding-top: 4px;
+    position: relative;
+    z-index: 0; /* garante que os cards fiquem abaixo do cabeçalho */
   }
 }
