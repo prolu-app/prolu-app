@@ -1,3 +1,40 @@
+/* ── seções: Conteúdo Prolu / Seu escritório ── */
+.kb-section { margin-top: 34px; }
+.kb-section:first-of-type { margin-top: 24px; }
+.kb-section-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; min-height: 34px; }
+.kb-section-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.9px;
+  text-transform: uppercase; color: var(--ink-40);
+}
+.kb-section .folders-grid { margin-top: 14px; }
+
+/* badge "Prolu" discreto na capa do card */
+.folder-badge-prolu {
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  color: var(--white);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 4px 8px; border-radius: 99px;
+  margin-right: 6px; flex-shrink: 0;
+}
+
+/* CTA quando o escritório ainda não tem conteúdo próprio */
+.kb-empresa-cta {
+  display: flex; align-items: center; gap: 13px;
+  margin-top: 14px; padding: 20px 22px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px dashed var(--ink-divider);
+  border-radius: var(--r-lg);
+  color: var(--ink-60); font-size: 13.5px;
+}
+.kb-empresa-cta p { margin: 0; }
+.kb-empresa-cta svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.8; fill: none; flex-shrink: 0; }
+.kb-empresa-cta.is-clickable { cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+.kb-empresa-cta.is-clickable:hover { background: var(--green-soft); color: var(--ink); border-color: transparent; }
+
 /* ── grid de pastas ── */
 .folders-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 24px; }
 .folder-card { background: var(--white); border-radius: var(--r-lg); box-shadow: var(--shadow-rest); cursor: pointer; transition: box-shadow 0.2s, transform 0.15s; overflow: hidden; }

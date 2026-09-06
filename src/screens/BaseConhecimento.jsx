@@ -58,6 +58,7 @@ function buildPastas(pastasData, modulosData, aulasData, pdfsData, progressoData
       sub: p.subtitulo || '',
       cover: p.cor_capa || 'green',
       ordem: p.ordem || 0,
+      empresa_id: p.empresa_id ?? null,
       modules: (modulosByPasta[p.id] || []).sort((a, b) => a.ordem - b.ordem),
     }))
     .sort((a, b) => a.ordem - b.ordem)
@@ -65,7 +66,7 @@ function buildPastas(pastasData, modulosData, aulasData, pdfsData, progressoData
 
 export default function BaseConhecimento() {
   const toast = useToast()
-  const { isProluAdmin, user } = useAuth()
+  const { isProluAdmin, isEmpresaMaster, activeEmpresaId, user } = useAuth()
 
   const [pastas, setPastas] = useState([])
   const [loading, setLoading] = useState(true)
@@ -88,10 +89,22 @@ export default function BaseConhecimento() {
 
   const pasta = pastas.find(p => p.id === currentPastaId)
 
+  // ── permissões de edição de conteúdo ──
+  // Conteúdo Prolu (empresa_id null): só prolu_admin.
+  const podeEditarProlu = isProluAdmin
+  // Conteúdo da empresa: master da empresa OU prolu_admin.
+  const podeEditarEmpresa = isEmpresaMaster || isProluAdmin
+  // Pode criar/editar/excluir dentro de uma pasta específica?
+  function podeEditarPasta(pasta) {
+    if (!pasta || pasta.empresa_id == null) return podeEditarProlu
+    return podeEditarEmpresa && (pasta.empresa_id === user?.empresaId || isProluAdmin)
+  }
+
   async function carregar() {
     if (!supabaseReady || !user?.id) {
       const seed = FOLDERS.map(f => ({
         id: f.id, title: f.title, sub: f.sub, cover: f.cover, ordem: 0,
+        empresa_id: f.empresa_id ?? null,
         modules: (f.modules || []).map(m => ({
           id: m.id, title: m.title, ordem: 0,
           lessons: (m.lessons || []).map(l => ({ ...l, url: l.url || '', pdfs: l.pdfs || [] })),
@@ -102,24 +115,34 @@ export default function BaseConhecimento() {
       return
     }
     setLoading(true)
+    // Conteúdo Prolu (empresa_id null) e conteúdo do escritório são buscados
+    // separadamente — a UI mostra cada grupo em sua própria seção.
+    const nested = '*, kb_modulos(*, kb_aulas(*))'
     const [
-      { data: pastasData },
-      { data: modulosData },
-      { data: aulasData },
+      { data: pastasProlu },
+      { data: pastasEmpresa },
       { data: pdfsData },
       { data: progressoData },
     ] = await Promise.all([
-      supabase.from('kb_pastas').select('*').order('ordem'),
-      supabase.from('kb_modulos').select('*').order('ordem'),
-      supabase.from('kb_aulas').select('*').order('ordem'),
+      supabase.from('kb_pastas').select(nested).is('empresa_id', null).order('ordem'),
+      activeEmpresaId
+        ? supabase.from('kb_pastas').select(nested).eq('empresa_id', activeEmpresaId).order('ordem')
+        : Promise.resolve({ data: [] }),
       supabase.from('kb_aula_pdfs').select('*'),
       supabase.from('kb_progresso').select('*').eq('usuario_id', user.id),
     ])
+
+    // Achata a estrutura aninhada para o formato plano que buildPastas espera.
+    const pastasRaw = [...(pastasProlu || []), ...(pastasEmpresa || [])]
+    const pastasData = pastasRaw.map(({ kb_modulos, ...p }) => p)
+    const modulosData = pastasRaw.flatMap(p => (p.kb_modulos || []).map(({ kb_aulas, ...m }) => m))
+    const aulasData = pastasRaw.flatMap(p => (p.kb_modulos || []).flatMap(m => m.kb_aulas || []))
+
     setPastas(buildPastas(pastasData, modulosData, aulasData, pdfsData, progressoData))
     setLoading(false)
   }
 
-  useEffect(() => { carregar() }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { carregar() }, [user?.id, activeEmpresaId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── helpers ──
   const pastaLessons = p => (p?.modules || []).flatMap(m => m.lessons)
@@ -173,11 +196,13 @@ export default function BaseConhecimento() {
     const { nome, subtitulo, cor } = pastaForm
     if (!nome.trim()) return
     const editing = pastaModal !== 'new'
+    // Pasta nova pertence à empresa de quem cria; prolu_admin cria conteúdo Prolu.
+    const novaEmpresaId = isProluAdmin ? null : (user?.empresaId ?? null)
     if (!supabaseReady || !user?.id) {
       if (editing) {
         setPastas(prev => prev.map(p => p.id !== pastaModal ? p : { ...p, title: nome.trim(), sub: subtitulo.trim(), cover: cor }))
       } else {
-        setPastas(prev => [...prev, { id: 'p' + Date.now(), title: nome.trim(), sub: subtitulo.trim(), cover: cor, ordem: prev.length, modules: [] }])
+        setPastas(prev => [...prev, { id: 'p' + Date.now(), title: nome.trim(), sub: subtitulo.trim(), cover: cor, ordem: prev.length, empresa_id: novaEmpresaId, modules: [] }])
       }
       setPastaModal(null)
       toast(editing ? 'Pasta atualizada' : 'Pasta criada')
@@ -190,10 +215,10 @@ export default function BaseConhecimento() {
       toast('Pasta atualizada')
     } else {
       const { data, error } = await supabase.from('kb_pastas')
-        .insert({ titulo: nome.trim(), subtitulo: subtitulo.trim(), cor_capa: cor, ordem: pastas.length })
+        .insert({ titulo: nome.trim(), subtitulo: subtitulo.trim(), cor_capa: cor, ordem: pastas.length, empresa_id: novaEmpresaId })
         .select('*').single()
       if (error) { toast('Erro ao criar pasta'); return }
-      setPastas(prev => [...prev, { id: data.id, title: data.titulo, sub: data.subtitulo || '', cover: data.cor_capa, ordem: data.ordem, modules: [] }])
+      setPastas(prev => [...prev, { id: data.id, title: data.titulo, sub: data.subtitulo || '', cover: data.cor_capa, ordem: data.ordem, empresa_id: data.empresa_id ?? null, modules: [] }])
       toast('Pasta criada')
     }
     setPastaModal(null)
@@ -326,54 +351,86 @@ export default function BaseConhecimento() {
   if (loading) return <div className="crm-empty">Carregando…</div>
 
   // ════════ VIEW: PASTAS ════════
+  function renderFolder(p) {
+    const fprog = pastaProgress(p)
+    const isProlu = p.empresa_id == null
+    return (
+      <div className="folder-card" key={p.id} onClick={() => setCurrentPastaId(p.id)}>
+        <div className={`folder-cover ${COVER_CLASS[p.cover] || 'cover-green'}`}>
+          <div className="folder-icon"><IconBase /></div>
+          <div className="folder-cover-end">
+            {podeEditarPasta(p) && (
+              <div className="folder-admin-actions" onClick={e => e.stopPropagation()}>
+                <button className="folder-admin-btn" onClick={() => openEditPasta(p)} title="Editar pasta"><IconEdit /></button>
+                <button className="folder-admin-btn" onClick={() => setDeleteModal({ type: 'pasta', id: p.id, nome: p.title })} title="Excluir pasta"><IconTrash /></button>
+              </div>
+            )}
+            {isProlu && <span className="folder-badge-prolu">Prolu</span>}
+            <div className="folder-count">{p.modules.length} módulos</div>
+          </div>
+        </div>
+        <div className="folder-body">
+          <div className="folder-title">{p.title}</div>
+          <div className="folder-sub">{p.sub}</div>
+          <div className="folder-progress">
+            <div className="folder-progress-head">
+              <span><strong>{fprog.done}</strong> de {fprog.total} aulas</span>
+              <span>{fprog.pct}%</span>
+            </div>
+            <div className="folder-progress-track"><div className="folder-progress-fill" style={{ width: `${fprog.pct}%` }} /></div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (!pasta) {
+    const pastasProlu = pastas.filter(p => p.empresa_id == null)
+    const pastasEmpresa = pastas.filter(p => p.empresa_id != null)
     return (
       <>
-        <div className="page-header between">
-          <div>
-            <div className="page-title">Base de Conhecimento</div>
-            <div className="page-sub">Tudo que você precisa aprender, organizado por curso.</div>
-          </div>
-          {isProluAdmin && <button className="btn-primary kb-new-btn" onClick={openNewPasta}><IconPlus /> Nova pasta</button>}
+        <div className="page-header">
+          <div className="page-title">Base de Conhecimento</div>
+          <div className="page-sub">Tudo que você precisa aprender, organizado por curso.</div>
         </div>
 
-        <div className="folders-grid">
-          {pastas.map(p => {
-            const prog = pastaProgress(p)
-            return (
-              <div className="folder-card" key={p.id} onClick={() => setCurrentPastaId(p.id)}>
-                <div className={`folder-cover ${COVER_CLASS[p.cover] || 'cover-green'}`}>
-                  <div className="folder-icon"><IconBase /></div>
-                  <div className="folder-cover-end">
-                    {isProluAdmin && (
-                      <div className="folder-admin-actions" onClick={e => e.stopPropagation()}>
-                        <button className="folder-admin-btn" onClick={() => openEditPasta(p)} title="Editar pasta"><IconEdit /></button>
-                        <button className="folder-admin-btn" onClick={() => setDeleteModal({ type: 'pasta', id: p.id, nome: p.title })} title="Excluir pasta"><IconTrash /></button>
-                      </div>
-                    )}
-                    <div className="folder-count">{p.modules.length} módulos</div>
-                  </div>
+        {pastasProlu.length > 0 && (
+          <section className="kb-section">
+            <div className="kb-section-head">
+              <h2 className="kb-section-title">Conteúdo Prolu</h2>
+            </div>
+            <div className="folders-grid">
+              {pastasProlu.map(renderFolder)}
+            </div>
+          </section>
+        )}
+
+        <section className="kb-section">
+          <div className="kb-section-head">
+            <h2 className="kb-section-title">Seu escritório</h2>
+            {podeEditarEmpresa && pastasEmpresa.length > 0 && (
+              <button className="btn-primary kb-new-btn" onClick={openNewPasta}><IconPlus /> Nova pasta</button>
+            )}
+          </div>
+          {pastasEmpresa.length > 0 ? (
+            <div className="folders-grid">
+              {pastasEmpresa.map(renderFolder)}
+              {podeEditarEmpresa && (
+                <div className="folder-card-add" onClick={openNewPasta}>
+                  <IconPlus /> Nova pasta
                 </div>
-                <div className="folder-body">
-                  <div className="folder-title">{p.title}</div>
-                  <div className="folder-sub">{p.sub}</div>
-                  <div className="folder-progress">
-                    <div className="folder-progress-head">
-                      <span><strong>{prog.done}</strong> de {prog.total} aulas</span>
-                      <span>{prog.pct}%</span>
-                    </div>
-                    <div className="folder-progress-track"><div className="folder-progress-fill" style={{ width: `${prog.pct}%` }} /></div>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-          {isProluAdmin && (
-            <div className="folder-card-add" onClick={openNewPasta}>
-              <IconPlus /> Nova pasta
+              )}
+            </div>
+          ) : (
+            <div
+              className={`kb-empresa-cta${podeEditarEmpresa ? ' is-clickable' : ''}`}
+              onClick={podeEditarEmpresa ? openNewPasta : undefined}
+            >
+              <IconPlus />
+              <p>Adicione seus próprios cursos e processos internos para sua equipe.</p>
             </div>
           )}
-        </div>
+        </section>
 
         {pastaModal && (
           <PastaModal form={pastaForm} setForm={setPastaForm} editing={pastaModal !== 'new'} onClose={() => setPastaModal(null)} onConfirm={savePasta} />
@@ -398,7 +455,7 @@ export default function BaseConhecimento() {
           <div className="page-title">{pasta.title}</div>
           <div className="page-sub">{pasta.sub}</div>
         </div>
-        {isProluAdmin && (
+        {podeEditarPasta(pasta) && (
           <button className="btn-primary kb-new-btn" onClick={() => openNewModulo(pasta.id)}>
             <IconPlus /> Novo módulo
           </button>
@@ -422,7 +479,7 @@ export default function BaseConhecimento() {
             {nextLesson ? `Continue de onde parou: ${nextLesson.title}` : 'Você concluiu todas as aulas deste curso 🎉'}
           </div>
         </div>
-        {isProluAdmin && (
+        {podeEditarPasta(pasta) && (
           <div className="kb-pasta-admin">
             <button className="kb-pasta-admin-btn" onClick={() => openEditPasta(pasta)} title="Editar pasta"><IconEdit /></button>
             <button className="kb-pasta-admin-btn" onClick={() => setDeleteModal({ type: 'pasta', id: pasta.id, nome: pasta.title })} title="Excluir pasta"><IconTrash /></button>
@@ -445,7 +502,7 @@ export default function BaseConhecimento() {
                 <div className="module-progress-track"><div className="module-progress-fill" style={{ width: `${mp.pct}%` }} /></div>
                 <span className="module-progress-pct">{mp.pct}%</span>
               </div>
-              {isProluAdmin && (
+              {podeEditarPasta(pasta) && (
                 <div className="module-actions" onClick={e => e.stopPropagation()}>
                   <button className="icon-btn" onClick={() => openEditModulo(pasta.id, m)}><IconEdit /></button>
                   <button className="icon-btn" onClick={() => setDeleteModal({ type: 'modulo', id: m.id, nome: m.title, ctx: { pastaId: pasta.id } })}><IconTrash /></button>
@@ -461,7 +518,7 @@ export default function BaseConhecimento() {
                     <div className="lesson-title">{l.title}</div>
                     {l.pdfs.length > 0 && <div className="lesson-meta"><span className="lesson-pdf-tag">📎 {l.pdfs.length} PDF</span></div>}
                   </div>
-                  {isProluAdmin && (
+                  {podeEditarPasta(pasta) && (
                     <div className="lesson-admin-actions" onClick={e => e.stopPropagation()}>
                       <button className="icon-btn" onClick={() => openEditAula(m.id, l)}><IconEdit /></button>
                       <button className="icon-btn" onClick={() => setDeleteModal({ type: 'aula', id: l.id, nome: l.title, ctx: { moduloId: m.id } })}><IconTrash /></button>
@@ -470,7 +527,7 @@ export default function BaseConhecimento() {
                   <div className="lesson-play"><IconPlay /></div>
                 </div>
               ))}
-              {isProluAdmin && (
+              {podeEditarPasta(pasta) && (
                 <div className="add-lesson-row" onClick={() => openNewAula(m.id)}>
                   <IconPlus /> Adicionar aula neste módulo
                 </div>
@@ -480,7 +537,7 @@ export default function BaseConhecimento() {
         )
       })}
 
-      {isProluAdmin && (
+      {podeEditarPasta(pasta) && (
         <div className="add-module-row" onClick={() => openNewModulo(pasta.id)}>
           <IconPlus /> Adicionar módulo nesta pasta
         </div>
