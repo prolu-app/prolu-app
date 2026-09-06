@@ -258,7 +258,10 @@ export default function BaseConhecimento() {
       toast('Módulo atualizado')
     } else {
       const ordem = p ? p.modules.length : 0
-      const { data, error } = await supabase.from('kb_modulos').insert({ pasta_id: pastaId, titulo, ordem }).select('*').single()
+      // propaga o empresa_id da pasta pai (null = conteúdo Prolu)
+      const { data, error } = await supabase.from('kb_modulos')
+        .insert({ pasta_id: pastaId, titulo, ordem, empresa_id: p?.empresa_id ?? null })
+        .select('*').single()
       if (error) { toast('Erro ao criar módulo'); return }
       setPastas(prev => prev.map(pa => pa.id !== pastaId ? pa : {
         ...pa, modules: [...pa.modules, { id: data.id, title: data.titulo, ordem: data.ordem, lessons: [] }],
@@ -306,12 +309,14 @@ export default function BaseConhecimento() {
       toast('Aula atualizada')
     } else {
       let ordem = 0
+      let empresaId = null
       for (const pa of pastas) {
         const m = pa.modules.find(x => x.id === moduloId)
-        if (m) { ordem = m.lessons.length; break }
+        if (m) { ordem = m.lessons.length; empresaId = pa.empresa_id ?? null; break }
       }
+      // propaga o empresa_id da pasta do módulo pai (null = conteúdo Prolu)
       const { data, error } = await supabase.from('kb_aulas')
-        .insert({ modulo_id: moduloId, titulo: titulo.trim(), descricao: descricao.trim(), youtube_url: youtube_url.trim(), ordem })
+        .insert({ modulo_id: moduloId, titulo: titulo.trim(), descricao: descricao.trim(), youtube_url: youtube_url.trim(), ordem, empresa_id: empresaId })
         .select('*').single()
       if (error) { toast('Erro ao criar aula'); return }
       setPastas(prev => prev.map(pa => ({
