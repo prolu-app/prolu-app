@@ -363,6 +363,7 @@ export default function BaseConhecimento() {
     return (
       <div className="folder-card" key={p.id} onClick={() => setCurrentPastaId(p.id)}>
         <div className={`folder-cover ${COVER_CLASS[p.cover] || 'cover-green'}`}>
+          {isProlu && <span className="kb-badge-prolu">Prolu</span>}
           <div className="folder-icon"><IconBase /></div>
           <div className="folder-cover-end">
             {podeEditarPasta(p) && (
@@ -371,8 +372,7 @@ export default function BaseConhecimento() {
                 <button className="folder-admin-btn" onClick={() => setDeleteModal({ type: 'pasta', id: p.id, nome: p.title })} title="Excluir pasta"><IconTrash /></button>
               </div>
             )}
-            {isProlu && <span className="folder-badge-prolu">Prolu</span>}
-            <div className="folder-count">{p.modules.length} módulos</div>
+            {!isProlu && <div className="folder-count">{p.modules.length} módulos</div>}
           </div>
         </div>
         <div className="folder-body">
@@ -401,42 +401,35 @@ export default function BaseConhecimento() {
         </div>
 
         {pastasProlu.length > 0 && (
-          <section className="kb-section">
-            <div className="kb-section-head">
-              <h2 className="kb-section-title">Conteúdo Prolu</h2>
-            </div>
-            <div className="folders-grid">
-              {pastasProlu.map(renderFolder)}
-            </div>
-          </section>
+          <>
+            <div className="kb-section-label">Conteúdo Prolu</div>
+            <div className="folders-grid">{pastasProlu.map(renderFolder)}</div>
+          </>
         )}
 
-        <section className="kb-section">
-          <div className="kb-section-head">
-            <h2 className="kb-section-title">Seu escritório</h2>
-            {podeEditarEmpresa && pastasEmpresa.length > 0 && (
+        {(podeEditarEmpresa || pastasEmpresa.length > 0) && (
+          <div className="kb-section-label">
+            <span>Seu escritório</span>
+            {podeEditarEmpresa && (
               <button className="btn-primary kb-new-btn" onClick={openNewPasta}><IconPlus /> Nova pasta</button>
             )}
           </div>
-          {pastasEmpresa.length > 0 ? (
-            <div className="folders-grid">
-              {pastasEmpresa.map(renderFolder)}
-              {podeEditarEmpresa && (
-                <div className="folder-card-add" onClick={openNewPasta}>
-                  <IconPlus /> Nova pasta
-                </div>
-              )}
-            </div>
-          ) : (
-            <div
-              className={`kb-empresa-cta${podeEditarEmpresa ? ' is-clickable' : ''}`}
-              onClick={podeEditarEmpresa ? openNewPasta : undefined}
-            >
-              <IconPlus />
-              <p>Adicione seus próprios cursos e processos internos para sua equipe.</p>
-            </div>
-          )}
-        </section>
+        )}
+        {pastasEmpresa.length > 0 ? (
+          <div className="folders-grid">
+            {pastasEmpresa.map(renderFolder)}
+            {podeEditarEmpresa && (
+              <div className="folder-card-add" onClick={openNewPasta}>
+                <IconPlus /> Nova pasta
+              </div>
+            )}
+          </div>
+        ) : podeEditarEmpresa && (
+          <div className="kb-empresa-cta is-clickable" onClick={openNewPasta}>
+            <IconPlus />
+            <p>Adicione seus próprios cursos e processos internos para sua equipe.</p>
+          </div>
+        )}
 
         {pastaModal && (
           <PastaModal form={pastaForm} setForm={setPastaForm} editing={pastaModal !== 'new'} onClose={() => setPastaModal(null)} onConfirm={savePasta} />
