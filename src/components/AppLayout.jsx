@@ -1,4 +1,4 @@
-import { Fragment, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import {
@@ -85,12 +85,16 @@ export default function AppLayout() {
   const closeOnMobile = () => { if (window.innerWidth <= 860) close() }
 
   // Mede a altura da pilha de banners de contexto (fixa no mobile) e expõe em
-  // --context-banner-h, para o navbar e os cabeçalhos fixos se empilharem sem
+  // --context-banner-h, para o navbar e os cabeçalhos fixos empilharem sem
   // sobreposição nem espaço em branco, seja qual for a altura do banner.
-  const bannerStackRef = useRef(null)
-  useLayoutEffect(() => {
-    const el = bannerStackRef.current
-    if (!el) return
+  // Callback ref: reobserva o nó a cada remonte do <main key={pathname}>.
+  const bannerRoRef = useRef(null)
+  const bannerStackRef = useCallback((el) => {
+    if (bannerRoRef.current) { bannerRoRef.current.disconnect(); bannerRoRef.current = null }
+    if (!el) {
+      document.documentElement.style.setProperty('--context-banner-h', '0px')
+      return
+    }
     const measure = () => {
       document.documentElement.style.setProperty(
         '--context-banner-h', `${Math.ceil(el.getBoundingClientRect().height)}px`,
@@ -99,7 +103,7 @@ export default function AppLayout() {
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
-    return () => ro.disconnect()
+    bannerRoRef.current = ro
   }, [])
 
   const [collapsed, setCollapsed] = useState(loadCollapsed)
