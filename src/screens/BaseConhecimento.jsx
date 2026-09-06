@@ -196,8 +196,9 @@ export default function BaseConhecimento() {
     const { nome, subtitulo, cor } = pastaForm
     if (!nome.trim()) return
     const editing = pastaModal !== 'new'
-    // Pasta nova pertence à empresa de quem cria; prolu_admin cria conteúdo Prolu.
-    const novaEmpresaId = isProluAdmin ? null : (user?.empresaId ?? null)
+    // Pasta nova pertence à empresa ativa de quem cria; prolu_admin cria
+    // conteúdo global (empresa_id null). Transparente para o usuário no modal.
+    const novaEmpresaId = isProluAdmin ? null : activeEmpresaId
     if (!supabaseReady || !user?.id) {
       if (editing) {
         setPastas(prev => prev.map(p => p.id !== pastaModal ? p : { ...p, title: nome.trim(), sub: subtitulo.trim(), cover: cor }))
