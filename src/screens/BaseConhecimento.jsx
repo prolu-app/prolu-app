@@ -66,7 +66,7 @@ function buildPastas(pastasData, modulosData, aulasData, pdfsData, progressoData
 
 export default function BaseConhecimento() {
   const toast = useToast()
-  const { isProluAdmin, isEmpresaMaster, activeEmpresaId, user } = useAuth()
+  const { isProluAdmin, isGestorOuSuperior, activeEmpresaId, user } = useAuth()
 
   const [pastas, setPastas] = useState([])
   const [loading, setLoading] = useState(true)
@@ -92,12 +92,12 @@ export default function BaseConhecimento() {
   // ── permissões de edição de conteúdo ──
   // Conteúdo Prolu (empresa_id null): só prolu_admin.
   const podeEditarProlu = isProluAdmin
-  // Conteúdo da empresa: master da empresa OU prolu_admin.
-  const podeEditarEmpresa = isEmpresaMaster || isProluAdmin
+  // Conteúdo da empresa: gestor, master da empresa OU prolu_admin.
+  const podeEditarEmpresa = isGestorOuSuperior
   // Pode criar/editar/excluir dentro de uma pasta específica?
   function podeEditarPasta(pasta) {
     if (!pasta || pasta.empresa_id == null) return podeEditarProlu
-    return podeEditarEmpresa && (pasta.empresa_id === user?.empresaId || isProluAdmin)
+    return podeEditarEmpresa && (pasta.empresa_id === activeEmpresaId || isProluAdmin)
   }
 
   async function carregar() {

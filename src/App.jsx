@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext.jsx'
+import { useToast } from './contexts/ToastContext.jsx'
 import AppLayout from './components/AppLayout.jsx'
 import Login from './screens/Login.jsx'
 import Onboarding from './screens/Onboarding.jsx'
@@ -14,14 +15,30 @@ import PlanoPratico from './screens/PlanoPratico.jsx'
 import ClienteIdeal from './screens/ClienteIdeal.jsx'
 import Indicadores from './screens/Indicadores.jsx'
 import AgentePrl from './screens/AgentePrl.jsx'
-import Equipe from './screens/Equipe.jsx'
 import Configuracoes from './screens/Configuracoes.jsx'
 import Avisos from './screens/Avisos.jsx'
 import AdminInicio from './screens/admin/AdminInicio.jsx'
 import AdminEscritorios from './screens/admin/AdminEscritorios.jsx'
 
+// Bloqueia o acesso direto a uma rota por URL quando o usuário não tem
+// permissão (acesso.<tela> === false): redireciona para / com um toast
+// discreto em vez de renderizar a tela.
+function RotaProtegida({ children, temAcesso }) {
+  const toast = useToast()
+
+  useEffect(() => {
+    if (!temAcesso) toast('Você não tem acesso a essa área.')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [temAcesso])
+
+  if (!temAcesso) {
+    return <Navigate to="/" replace />
+  }
+  return children
+}
+
 export default function App() {
-  const { user, loading, isProluAdmin, impersonatedEmpresaId, viewAsUser } = useAuth()
+  const { user, loading, isProluAdmin, impersonatedEmpresaId, viewAsUser, acesso } = useAuth()
   const [showOnboarding, setShowOnboarding] = useState(false)
 
   if (loading) {
@@ -50,16 +67,17 @@ export default function App() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route index element={isAdminMode ? <Navigate to="/admin" replace /> : <Inicio />} />
-        <Route path="/base-conhecimento" element={<BaseConhecimento />} />
-        <Route path="/crm" element={<CRM />} />
-        <Route path="/clientes" element={<Clientes />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/plano-pratico" element={<PlanoPratico />} />
-        <Route path="/cliente-ideal" element={<ClienteIdeal />} />
-        <Route path="/indicadores" element={<Indicadores />} />
+        <Route path="/base-conhecimento" element={<RotaProtegida temAcesso={acesso.baseConhecimento}><BaseConhecimento /></RotaProtegida>} />
+        <Route path="/crm" element={<RotaProtegida temAcesso={acesso.crm}><CRM /></RotaProtegida>} />
+        <Route path="/clientes" element={<RotaProtegida temAcesso={acesso.contatos}><Clientes /></RotaProtegida>} />
+        <Route path="/dashboard" element={<RotaProtegida temAcesso={acesso.dashboard}><Dashboard /></RotaProtegida>} />
+        <Route path="/plano-pratico" element={<RotaProtegida temAcesso={acesso.planoPratico}><PlanoPratico /></RotaProtegida>} />
+        <Route path="/cliente-ideal" element={<RotaProtegida temAcesso={acesso.clienteIdeal}><ClienteIdeal /></RotaProtegida>} />
+        <Route path="/indicadores" element={<RotaProtegida temAcesso={acesso.indicadores}><Indicadores /></RotaProtegida>} />
         <Route path="/agente-prolu" element={<AgentePrl />} />
-        <Route path="/equipe" element={<Equipe />} />
-        <Route path="/configuracoes" element={<Configuracoes />} />
+        {/* /equipe foi substituída pela aba "Equipe" de /configuracoes */}
+        <Route path="/equipe" element={<Navigate to="/configuracoes" replace />} />
+        <Route path="/configuracoes" element={<RotaProtegida temAcesso={acesso.configuracoes}><Configuracoes /></RotaProtegida>} />
         <Route path="/avisos" element={<Avisos />} />
         <Route path="/admin" element={<AdminInicio />} />
         <Route path="/admin/escritorios" element={<AdminEscritorios />} />

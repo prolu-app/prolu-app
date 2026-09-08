@@ -8,23 +8,26 @@ import {
 } from './Icons.jsx'
 import './AppLayout.css'
 
+// `access` referencia uma chave do objeto `acesso` (AuthContext) — o item só
+// aparece no menu se `acesso[access]` for true. Itens sem `access` são
+// sempre visíveis.
 const NAV_SECTIONS = [
   {
     key: 'comercial',
     label: 'Comercial',
     items: [
-      { to: '/crm', label: 'CRM', Icon: IconCRM },
-      { to: '/dashboard', label: 'Dashboard', Icon: IconDashboard },
-      { to: '/indicadores', label: 'Indicadores', Icon: IconIndicadores },
-      { label: 'Precificação', Icon: IconMoney, soon: true },
+      { to: '/crm', label: 'CRM', Icon: IconCRM, access: 'crm' },
+      { to: '/dashboard', label: 'Dashboard', Icon: IconDashboard, access: 'dashboard' },
+      { to: '/indicadores', label: 'Indicadores', Icon: IconIndicadores, access: 'indicadores' },
+      { label: 'Precificação', Icon: IconMoney, soon: true, access: 'crm' },
     ],
   },
   {
     key: 'ferramentas',
     label: 'Ferramentas',
     items: [
-      { to: '/plano-pratico', label: 'Plano Prático', Icon: IconPlano },
-      { to: '/cliente-ideal', label: 'Cliente Ideal', Icon: IconCliente },
+      { to: '/plano-pratico', label: 'Plano Prático', Icon: IconPlano, access: 'planoPratico' },
+      { to: '/cliente-ideal', label: 'Cliente Ideal', Icon: IconCliente, access: 'clienteIdeal' },
       { to: '/agente-prolu', label: 'Agente Prolu', Icon: IconAgente },
     ],
   },
@@ -32,14 +35,14 @@ const NAV_SECTIONS = [
     key: 'aprender',
     label: 'Aprender',
     items: [
-      { to: '/base-conhecimento', label: 'Base de Conhecimento', Icon: IconBase },
+      { to: '/base-conhecimento', label: 'Base de Conhecimento', Icon: IconBase, access: 'baseConhecimento' },
     ],
   },
   {
     key: 'escritorio',
     label: 'Escritório',
     items: [
-      { to: '/clientes', label: 'Contatos', Icon: IconContacts },
+      { to: '/clientes', label: 'Contatos', Icon: IconContacts, access: 'contatos' },
     ],
   },
 ]
@@ -75,7 +78,7 @@ function saveCollapsed(value) {
 export default function AppLayout() {
   const [open, setOpen] = useState(false)
   const {
-    user, signOut, isEmpresaMaster, isProluAdmin,
+    user, signOut, isProluAdmin, acesso,
     impersonatedEmpresaId, impersonatedEmpresaNome, viewAsUser,
     enterUserView, exitImpersonation, exitUserView,
   } = useAuth()
@@ -211,40 +214,44 @@ export default function AppLayout() {
                 <span className="nav-item-label">Início</span>
               </NavLink>
 
-              {NAV_SECTIONS.map((section) => (
-                <Fragment key={section.key}>
-                  <span className="nav-section-label">{section.label}</span>
-                  {section.items.map((item) => (
-                    item.soon ? (
-                      <span className="nav-item disabled" key={item.label} title={item.label}>
-                        <item.Icon className="nav-icon" />
-                        <span className="nav-item-label">{item.label}</span>
-                        <span className="nav-soon-tag">em breve</span>
-                      </span>
-                    ) : (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        end={item.end}
-                        title={item.label}
-                        className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-                        onClick={closeOnMobile}
-                      >
-                        <item.Icon className="nav-icon" />
-                        <span className="nav-item-label">{item.label}</span>
-                      </NavLink>
-                    )
-                  ))}
-                </Fragment>
-              ))}
+              {NAV_SECTIONS.map((section) => {
+                const visibleItems = section.items.filter((item) => !item.access || acesso[item.access])
+                if (visibleItems.length === 0) return null
+                return (
+                  <Fragment key={section.key}>
+                    <span className="nav-section-label">{section.label}</span>
+                    {visibleItems.map((item) => (
+                      item.soon ? (
+                        <span className="nav-item disabled" key={item.label} title={item.label}>
+                          <item.Icon className="nav-icon" />
+                          <span className="nav-item-label">{item.label}</span>
+                          <span className="nav-soon-tag">em breve</span>
+                        </span>
+                      ) : (
+                        <NavLink
+                          key={item.to}
+                          to={item.to}
+                          end={item.end}
+                          title={item.label}
+                          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+                          onClick={closeOnMobile}
+                        >
+                          <item.Icon className="nav-icon" />
+                          <span className="nav-item-label">{item.label}</span>
+                        </NavLink>
+                      )
+                    ))}
+                  </Fragment>
+                )
+              })}
             </nav>
 
             <div className="sidebar-footer">
               <div
                 className="sidebar-footer-user"
-                onClick={() => { if (isEmpresaMaster) { navigate('/equipe'); closeOnMobile() } }}
-                style={{ cursor: isEmpresaMaster ? 'pointer' : 'default' }}
-                title={isEmpresaMaster ? 'Gerenciar equipe' : undefined}
+                onClick={() => { if (acesso.equipe) { navigate('/configuracoes?tab=equipe'); closeOnMobile() } }}
+                style={{ cursor: acesso.equipe ? 'pointer' : 'default' }}
+                title={acesso.equipe ? 'Gerenciar equipe' : undefined}
               >
                 <div className="avatar">{initial}</div>
                 <div className="sidebar-footer-user-info">

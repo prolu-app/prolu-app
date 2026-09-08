@@ -3,6 +3,16 @@ import { supabase, supabaseReady } from '../services/supabaseClient.js'
 
 const AuthContext = createContext(null)
 
+// Regra de permissão para atribuir papéis a convites/usuários: Master e
+// Prolu admin podem atribuir qualquer papel; Gestor pode atribuir Gestor ou
+// Colaborador, mas nunca Master. Usada tanto ao criar o convite quanto —
+// no backend (policy de `convites`) — ao validar o insert.
+export function roleValido(roleCriador, roleConvite) {
+  if (roleCriador === 'master' || roleCriador === 'prolu_admin') return true
+  if (roleCriador === 'gestor') return roleConvite !== 'master'
+  return false
+}
+
 /**
  * Usuário de demonstração usado enquanto o Supabase não está configurado
  * (ex: rodando local sem .env). Em produção com as chaves certas, nunca entra aqui.
@@ -222,6 +232,25 @@ export function AuthProvider({ children }) {
   // ações de conteúdo Prolu (Base de Conhecimento). Aponta para prolu_admin.
   const isMaster = isProluAdmin
 
+  const isGestor = user?.role === 'gestor'
+  const isGestorOuSuperior = isGestor || isEmpresaMaster
+
+  // Helpers de acesso por tela
+  const acesso = {
+    crm:              isEmpresaMaster,
+    dashboard:        isEmpresaMaster,
+    indicadores:      isEmpresaMaster,
+    planoPratico:     true, // todos
+    clienteIdeal:     isGestorOuSuperior,
+    baseConhecimento: true, // todos podem ver
+    editarConteudo:   isGestorOuSuperior, // criar/editar na BC
+    projetos:         true, // todos (futuro)
+    contatos:         isGestorOuSuperior,
+    configuracoes:    true, // todos (abas diferentes por role)
+    equipe:           isGestorOuSuperior,
+    escritorio:       isEmpresaMaster,
+  }
+
   const activeEmpresaId = impersonatedEmpresaId != null ? impersonatedEmpresaId : (user?.empresaId ?? null)
 
   function enterAsEmpresa(empresaId, empresaNome) {
@@ -244,7 +273,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{
-      user, loading, isMaster, isProluAdmin, isEmpresaMaster,
+      user, loading, isMaster, isProluAdmin, isEmpresaMaster, isGestor, isGestorOuSuperior, acesso,
       impersonatedEmpresaId, impersonatedEmpresaNome, viewAsUser, activeEmpresaId,
       enterAsEmpresa, exitImpersonation, enterUserView, exitUserView,
       signIn, signUp, signOut, completeOnboarding, findConvitePendente, resendConfirmation, refreshUser,
