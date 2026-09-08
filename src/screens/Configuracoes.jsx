@@ -182,6 +182,7 @@ function AbaEquipe({ user, isEmpresaMaster, isGestor, activeEmpresaId, toast }) 
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [inviteBusy, setInviteBusy] = useState(false)
   const [form, setForm] = useState({ nome: '', email: '', role: 'comum' })
 
   const options = assignableRoles(isEmpresaMaster, isGestor)
@@ -208,19 +209,27 @@ function AbaEquipe({ user, isEmpresaMaster, isGestor, activeEmpresaId, toast }) 
   async function convidar() {
     if (!form.email.trim()) { toast('Informe o e-mail'); return }
     if (!roleValido(user.role, form.role)) { toast('Você não pode atribuir essa permissão'); return }
-    const { error } = await supabase.from('convites').insert({
-      empresa_id: activeEmpresaId,
-      email: form.email.trim().toLowerCase(),
-      nome: form.nome.trim() || null,
-      role: form.role,
-      convidado_por: user.id,
+
+    setInviteBusy(true)
+    // A Edge Function dispara o e-mail de convite pelo Supabase Auth e só
+    // então grava a linha em `convites` — mantém as duas coisas em sincronia
+    // sem expor a service role key no front-end.
+    const { error } = await supabase.functions.invoke('invite-user', {
+      body: {
+        email: form.email.trim().toLowerCase(),
+        nome: form.nome.trim(),
+        role: form.role,
+        empresa_id: activeEmpresaId,
+        convidado_por: user.id,
+      },
     })
-    if (error) {
-      toast(error.code === '23505' ? 'Esse e-mail já foi convidado' : 'Não foi possível convidar')
-      return
-    }
+    setInviteBusy(false)
+
+    if (error) { toast('Não foi possível enviar o convite'); return }
+
     setInviteOpen(false)
-    toast('Convite criado — compartilhe o acesso do app com a pessoa')
+    setForm({ nome: '', email: '', role: options[options.length - 1] || 'comum' })
+    toast('Convite enviado por email')
     carregar()
   }
 
@@ -334,7 +343,9 @@ function AbaEquipe({ user, isEmpresaMaster, isGestor, activeEmpresaId, toast }) 
             </div>
             <div className="modal-actions">
               <button className="btn-cancel" onClick={() => setInviteOpen(false)}>Cancelar</button>
-              <button className="btn-confirm" onClick={convidar}>Convidar</button>
+              <button className="btn-confirm" onClick={convidar} disabled={inviteBusy}>
+                {inviteBusy ? 'Enviando…' : 'Convidar'}
+              </button>
             </div>
           </div>
         </div>

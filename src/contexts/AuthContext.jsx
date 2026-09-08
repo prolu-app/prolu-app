@@ -208,7 +208,7 @@ export function AuthProvider({ children }) {
   async function findConvitePendente(email) {
     const { data } = await supabase
       .from('convites')
-      .select('id, empresa_id, role, empresas(nome)')
+      .select('id, empresa_id, role, nome, empresas(nome)')
       .eq('email', email)
       .eq('status', 'pendente')
       .maybeSingle()

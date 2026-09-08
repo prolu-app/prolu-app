@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext.jsx'
 import { useToast } from './contexts/ToastContext.jsx'
 import AppLayout from './components/AppLayout.jsx'
 import Login from './screens/Login.jsx'
 import Onboarding from './screens/Onboarding.jsx'
+import AceitarConvite from './screens/AceitarConvite.jsx'
 
 import Inicio from './screens/Inicio.jsx'
 import BaseConhecimento from './screens/BaseConhecimento.jsx'
@@ -40,6 +41,14 @@ function RotaProtegida({ children, temAcesso }) {
 export default function App() {
   const { user, loading, isProluAdmin, impersonatedEmpresaId, viewAsUser, acesso } = useAuth()
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const location = useLocation()
+
+  // Fora do AppLayout e independente do estado de autenticação: o link do
+  // e-mail de convite autentica a pessoa via Supabase Auth, mas ela ainda
+  // não tem registro em `usuarios` — sem esse desvio, o fluxo abaixo
+  // (needsOnboarding) tentaria te mandar pro cadastro normal em vez da
+  // tela de aceite do convite.
+  if (location.pathname === '/aceitar-convite') return <AceitarConvite />
 
   if (loading) {
     return (
