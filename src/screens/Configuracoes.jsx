@@ -184,6 +184,7 @@ function AbaEquipe({ user, isEmpresaMaster, isGestor, activeEmpresaId, toast }) 
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteBusy, setInviteBusy] = useState(false)
   const [form, setForm] = useState({ nome: '', email: '', role: 'comum' })
+  const [resendingIds, setResendingIds] = useState(() => new Set())
 
   const options = assignableRoles(isEmpresaMaster, isGestor)
 
@@ -194,7 +195,7 @@ function AbaEquipe({ user, isEmpresaMaster, isGestor, activeEmpresaId, toast }) 
     setLoading(true)
     const [{ data: us, error: usErr }, { data: cv, error: cvErr }] = await Promise.all([
       supabase.from('usuarios').select('id, nome, email, role').eq('empresa_id', activeEmpresaId),
-      supabase.from('convites').select('id, nome, email, role, status').eq('empresa_id', activeEmpresaId).eq('status', 'pendente'),
+      supabase.from('convites').select('id, nome, email, role, status, convidado_por').eq('empresa_id', activeEmpresaId).eq('status', 'pendente'),
     ])
     if (usErr) console.error('[Equipe] Erro ao carregar usuários:', usErr)
     if (cvErr) console.error('[Equipe] Erro ao carregar convites:', cvErr)
@@ -240,6 +241,29 @@ function AbaEquipe({ user, isEmpresaMaster, isGestor, activeEmpresaId, toast }) 
     await supabase.from('convites').delete().eq('id', id)
     toast('Convite removido')
     carregar()
+  }
+
+  async function reenviarConvite(c) {
+    setResendingIds((prev) => new Set(prev).add(c.id))
+    setTimeout(() => {
+      setResendingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(c.id)
+        return next
+      })
+    }, 3000)
+
+    const { error } = await supabase.functions.invoke('invite-user', {
+      body: {
+        email: c.email,
+        nome: c.nome,
+        role: c.role,
+        empresa_id: activeEmpresaId,
+        convidado_por: c.convidado_por,
+      },
+    })
+
+    toast(error ? 'Não foi possível reenviar' : 'Convite reenviado')
   }
 
   async function alterarRole(usuarioId, role) {
@@ -292,6 +316,13 @@ function AbaEquipe({ user, isEmpresaMaster, isGestor, activeEmpresaId, toast }) 
                       <div className="eq-email">{c.email} · aguardando aceite</div>
                     </div>
                     <RolePill role={c.role} />
+                    <button
+                      className="eq-resend-btn"
+                      onClick={() => reenviarConvite(c)}
+                      disabled={resendingIds.has(c.id)}
+                    >
+                      Reenviar
+                    </button>
                     <button className="icon-btn" onClick={() => removerConvite(c.id)} aria-label="Cancelar convite"><IconTrash /></button>
                   </div>
                 ))}

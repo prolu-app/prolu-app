@@ -67,6 +67,23 @@
 
 .eq-role-select { border: none; background: var(--gray-soft); border-radius: 99px; padding: 7px 14px; font-size: 12.5px; font-weight: 500; color: var(--ink-60); cursor: pointer; font-family: inherit; }
 
+.eq-resend-btn {
+  border: none;
+  background: var(--gray-soft);
+  color: var(--ink-60);
+  border-radius: 99px;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s, opacity 0.15s;
+}
+.eq-resend-btn:hover:not(:disabled) { background: #e0e0dc; }
+.eq-resend-btn:disabled { opacity: 0.5; cursor: default; }
+
 .eq-row-btn {
   width: 100%;
   border: none;

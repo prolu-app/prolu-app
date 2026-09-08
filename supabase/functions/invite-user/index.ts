@@ -83,14 +83,17 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: inviteErr.message }, 400)
   }
 
-  const { error: convError } = await supabase.from('convites').insert({
+  // upsert (não insert): reenviar um convite já pendente pra esse
+  // e-mail/empresa cai no mesmo unique (empresa_id, email) — aqui a gente
+  // quer atualizar a linha existente, não falhar com 23505.
+  const { error: convError } = await supabase.from('convites').upsert({
     email,
     nome,
     role,
     empresa_id,
     convidado_por,
     status: 'pendente',
-  })
+  }, { onConflict: 'empresa_id,email' })
 
   if (convError) {
     return jsonResponse({ error: convError.message }, 400)
