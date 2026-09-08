@@ -192,10 +192,13 @@ function AbaEquipe({ user, isEmpresaMaster, isGestor, activeEmpresaId, toast }) 
   async function carregar() {
     if (!supabaseReady || !activeEmpresaId) { setLoading(false); return }
     setLoading(true)
-    const [{ data: us }, { data: cv }] = await Promise.all([
+    const [{ data: us, error: usErr }, { data: cv, error: cvErr }] = await Promise.all([
       supabase.from('usuarios').select('id, nome, email, role').eq('empresa_id', activeEmpresaId),
       supabase.from('convites').select('id, nome, email, role, status').eq('empresa_id', activeEmpresaId).eq('status', 'pendente'),
     ])
+    if (usErr) console.error('[Equipe] Erro ao carregar usuários:', usErr)
+    if (cvErr) console.error('[Equipe] Erro ao carregar convites:', cvErr)
+    if (usErr || cvErr) toast('Não foi possível carregar a equipe por completo')
     setUsuarios(us || [])
     setConvites(cv || [])
     setLoading(false)
