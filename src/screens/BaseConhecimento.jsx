@@ -11,6 +11,12 @@ import './BaseConhecimento.css'
 
 const COVER_CLASS = { green: 'cover-green', blue: 'cover-blue', orange: 'cover-orange' }
 
+const NIVEIS = [
+  { value: 'todos', label: 'Todos' },
+  { value: 'gestor', label: 'Gestor e acima' },
+  { value: 'master', label: 'Somente Master' },
+]
+
 function getYouTubeEmbed(url) {
   if (!url) return null
   const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
@@ -59,6 +65,7 @@ function buildPastas(pastasData, modulosData, aulasData, pdfsData, progressoData
       cover: p.cor_capa || 'green',
       ordem: p.ordem || 0,
       empresa_id: p.empresa_id ?? null,
+      nivel_acesso: p.nivel_acesso || 'todos',
       modules: (modulosByPasta[p.id] || []).sort((a, b) => a.ordem - b.ordem),
     }))
     .sort((a, b) => a.ordem - b.ordem)
@@ -66,7 +73,7 @@ function buildPastas(pastasData, modulosData, aulasData, pdfsData, progressoData
 
 export default function BaseConhecimento() {
   const toast = useToast()
-  const { isProluAdmin, isGestorOuSuperior, activeEmpresaId, user } = useAuth()
+  const { isProluAdmin, isEmpresaMaster, isGestorOuSuperior, activeEmpresaId, user } = useAuth()
 
   const [pastas, setPastas] = useState([])
   const [loading, setLoading] = useState(true)
@@ -83,11 +90,9 @@ export default function BaseConhecimento() {
   // deleteModal: null | { type, id, nome, ctx? }
   const [deleteModal, setDeleteModal] = useState(null)
 
-  const [pastaForm, setPastaForm] = useState({ nome: '', subtitulo: '', cor: 'green' })
+  const [pastaForm, setPastaForm] = useState({ nome: '', subtitulo: '', cor: 'green', nivel_acesso: 'todos' })
   const [moduloForm, setModuloForm] = useState('')
   const [aulaForm, setAulaForm] = useState({ titulo: '', descricao: '', youtube_url: '' })
-
-  const pasta = pastas.find(p => p.id === currentPastaId)
 
   // ── permissões de edição de conteúdo ──
   // Conteúdo Prolu (empresa_id null): só prolu_admin.
@@ -100,11 +105,26 @@ export default function BaseConhecimento() {
     return podeEditarEmpresa && (pasta.empresa_id === activeEmpresaId || isProluAdmin)
   }
 
+  // Reforço no front do que a RLS já garante no banco — evita que uma
+  // pasta sem permissão apareça por um instante em caso de cache/delay
+  // (ex: activeEmpresaId ainda não atualizou após trocar de impersonação).
+  function podeVerPasta(pasta) {
+    if (isProluAdmin) return true
+    if (pasta.nivel_acesso === 'todos') return true
+    if (pasta.nivel_acesso === 'gestor') return isGestorOuSuperior
+    if (pasta.nivel_acesso === 'master') return isEmpresaMaster
+    return true
+  }
+
+  const pastasVisiveis = pastas.filter(podeVerPasta)
+  const pasta = pastasVisiveis.find(p => p.id === currentPastaId)
+
   async function carregar() {
     if (!supabaseReady || !user?.id) {
       const seed = FOLDERS.map(f => ({
         id: f.id, title: f.title, sub: f.sub, cover: f.cover, ordem: 0,
         empresa_id: f.empresa_id ?? null,
+        nivel_acesso: f.nivel_acesso || 'todos',
         modules: (f.modules || []).map(m => ({
           id: m.id, title: m.title, ordem: 0,
           lessons: (m.lessons || []).map(l => ({ ...l, url: l.url || '', pdfs: l.pdfs || [] })),
@@ -189,11 +209,11 @@ export default function BaseConhecimento() {
   }
 
   // ── CRUD pastas ──
-  function openNewPasta() { setPastaForm({ nome: '', subtitulo: '', cor: 'green' }); setPastaModal('new') }
-  function openEditPasta(p) { setPastaForm({ nome: p.title, subtitulo: p.sub, cor: p.cover }); setPastaModal(p.id) }
+  function openNewPasta() { setPastaForm({ nome: '', subtitulo: '', cor: 'green', nivel_acesso: 'todos' }); setPastaModal('new') }
+  function openEditPasta(p) { setPastaForm({ nome: p.title, subtitulo: p.sub, cor: p.cover, nivel_acesso: p.nivel_acesso || 'todos' }); setPastaModal(p.id) }
 
   async function savePasta() {
-    const { nome, subtitulo, cor } = pastaForm
+    const { nome, subtitulo, cor, nivel_acesso } = pastaForm
     if (!nome.trim()) return
     const editing = pastaModal !== 'new'
     // Pasta nova pertence à empresa ativa de quem cria; prolu_admin cria
@@ -201,25 +221,25 @@ export default function BaseConhecimento() {
     const novaEmpresaId = isProluAdmin ? null : activeEmpresaId
     if (!supabaseReady || !user?.id) {
       if (editing) {
-        setPastas(prev => prev.map(p => p.id !== pastaModal ? p : { ...p, title: nome.trim(), sub: subtitulo.trim(), cover: cor }))
+        setPastas(prev => prev.map(p => p.id !== pastaModal ? p : { ...p, title: nome.trim(), sub: subtitulo.trim(), cover: cor, nivel_acesso }))
       } else {
-        setPastas(prev => [...prev, { id: 'p' + Date.now(), title: nome.trim(), sub: subtitulo.trim(), cover: cor, ordem: prev.length, empresa_id: novaEmpresaId, modules: [] }])
+        setPastas(prev => [...prev, { id: 'p' + Date.now(), title: nome.trim(), sub: subtitulo.trim(), cover: cor, ordem: prev.length, empresa_id: novaEmpresaId, nivel_acesso, modules: [] }])
       }
       setPastaModal(null)
       toast(editing ? 'Pasta atualizada' : 'Pasta criada')
       return
     }
     if (editing) {
-      const { error } = await supabase.from('kb_pastas').update({ titulo: nome.trim(), subtitulo: subtitulo.trim(), cor_capa: cor }).eq('id', pastaModal)
+      const { error } = await supabase.from('kb_pastas').update({ titulo: nome.trim(), subtitulo: subtitulo.trim(), cor_capa: cor, nivel_acesso }).eq('id', pastaModal)
       if (error) { toast('Erro ao salvar'); return }
-      setPastas(prev => prev.map(p => p.id !== pastaModal ? p : { ...p, title: nome.trim(), sub: subtitulo.trim(), cover: cor }))
+      setPastas(prev => prev.map(p => p.id !== pastaModal ? p : { ...p, title: nome.trim(), sub: subtitulo.trim(), cover: cor, nivel_acesso }))
       toast('Pasta atualizada')
     } else {
       const { data, error } = await supabase.from('kb_pastas')
-        .insert({ titulo: nome.trim(), subtitulo: subtitulo.trim(), cor_capa: cor, ordem: pastas.length, empresa_id: novaEmpresaId })
+        .insert({ titulo: nome.trim(), subtitulo: subtitulo.trim(), cor_capa: cor, ordem: pastas.length, empresa_id: novaEmpresaId, nivel_acesso })
         .select('*').single()
       if (error) { toast('Erro ao criar pasta'); return }
-      setPastas(prev => [...prev, { id: data.id, title: data.titulo, sub: data.subtitulo || '', cover: data.cor_capa, ordem: data.ordem, empresa_id: data.empresa_id ?? null, modules: [] }])
+      setPastas(prev => [...prev, { id: data.id, title: data.titulo, sub: data.subtitulo || '', cover: data.cor_capa, ordem: data.ordem, empresa_id: data.empresa_id ?? null, nivel_acesso: data.nivel_acesso || 'todos', modules: [] }])
       toast('Pasta criada')
     }
     setPastaModal(null)
@@ -376,7 +396,15 @@ export default function BaseConhecimento() {
           </div>
         </div>
         <div className="folder-body">
-          <div className="folder-title">{p.title}</div>
+          <div className="folder-title-row">
+            <div className="folder-title">{p.title}</div>
+            {p.nivel_acesso === 'gestor' && (
+              <span className="kb-badge-nivel">Gestor+</span>
+            )}
+            {p.nivel_acesso === 'master' && (
+              <span className="kb-badge-nivel">Master</span>
+            )}
+          </div>
           <div className="folder-sub">{p.sub}</div>
           <div className="folder-progress">
             <div className="folder-progress-head">
@@ -391,8 +419,8 @@ export default function BaseConhecimento() {
   }
 
   if (!pasta) {
-    const pastasProlu = pastas.filter(p => p.empresa_id == null)
-    const pastasEmpresa = pastas.filter(p => p.empresa_id != null)
+    const pastasProlu = pastasVisiveis.filter(p => p.empresa_id == null)
+    const pastasEmpresa = pastasVisiveis.filter(p => p.empresa_id != null)
     return (
       <>
         <div className="page-header">
@@ -661,6 +689,15 @@ function PastaModal({ form, setForm, editing, onClose, onConfirm }) {
             {[['green', 'Verde'], ['blue', 'Azul'], ['orange', 'Laranja']].map(([c, lbl]) => (
               <button key={c} className={`icon-color-pill${form.cor === c ? ' selected' : ''}`}
                 onClick={() => setForm(f => ({ ...f, cor: c }))}>{lbl}</button>
+            ))}
+          </div>
+        </div>
+        <div className="modal-field">
+          <label className="modal-label">Quem pode ver</label>
+          <div className="icon-color-pills">
+            {NIVEIS.map(({ value, label }) => (
+              <button key={value} className={`icon-color-pill${form.nivel_acesso === value ? ' selected' : ''}`}
+                onClick={() => setForm(f => ({ ...f, nivel_acesso: value }))}>{label}</button>
             ))}
           </div>
         </div>
