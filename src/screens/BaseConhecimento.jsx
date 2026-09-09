@@ -73,7 +73,14 @@ function buildPastas(pastasData, modulosData, aulasData, pdfsData, progressoData
 
 export default function BaseConhecimento() {
   const toast = useToast()
-  const { isProluAdmin, isEmpresaMaster, isGestorOuSuperior, activeEmpresaId, user } = useAuth()
+  const { isProluAdmin, isEmpresaMaster, isGestorOuSuperior, activeEmpresaId, user, impersonatedEmpresaId, viewAsUser } = useAuth()
+
+  // Prolu admin "puro" (sem estar impersonando nem em modo visualização de
+  // usuário) não tem escritório próprio — só o conteúdo Prolu global. O
+  // mesmo critério usado pra decidir a sidebar de admin em AppLayout.jsx.
+  // Impersonando uma empresa, ele deve ver e editar o escritório dela
+  // normalmente (é para isso que a impersonação existe).
+  const isAdminMode = isProluAdmin && !impersonatedEmpresaId && !viewAsUser
 
   const [pastas, setPastas] = useState([])
   const [loading, setLoading] = useState(true)
@@ -421,6 +428,41 @@ export default function BaseConhecimento() {
   if (!pasta) {
     const pastasProlu = pastasVisiveis.filter(p => p.empresa_id == null)
     const pastasEmpresa = pastasVisiveis.filter(p => p.empresa_id != null)
+
+    // Prolu admin puro: só o conteúdo Prolu, numa lista limpa — sem
+    // seções, sem "Seu escritório" (ele não tem um).
+    if (isAdminMode) {
+      return (
+        <>
+          <div className="page-header">
+            <div className="page-title">Base de Conhecimento</div>
+            <div className="page-sub">Tudo que você precisa aprender, organizado por curso.</div>
+          </div>
+
+          {pastasProlu.length > 0 ? (
+            <div className="folders-grid">
+              {pastasProlu.map(renderFolder)}
+              <div className="folder-card-add" onClick={openNewPasta}>
+                <IconPlus /> Nova pasta
+              </div>
+            </div>
+          ) : (
+            <div className="kb-empresa-cta is-clickable" onClick={openNewPasta}>
+              <IconPlus />
+              <p>Adicione o primeiro curso ou processo da Base de Conhecimento.</p>
+            </div>
+          )}
+
+          {pastaModal && (
+            <PastaModal form={pastaForm} setForm={setPastaForm} editing={pastaModal !== 'new'} onClose={() => setPastaModal(null)} onConfirm={savePasta} />
+          )}
+          {deleteModal && (
+            <DeleteModal {...deleteModal} onClose={() => setDeleteModal(null)} onConfirm={confirmDelete} />
+          )}
+        </>
+      )
+    }
+
     return (
       <>
         <div className="page-header">
