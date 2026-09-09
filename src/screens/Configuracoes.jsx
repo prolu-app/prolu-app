@@ -465,8 +465,13 @@ function AbaEscritorio({ user, activeEmpresaId, refreshUser, toast }) {
   async function salvarEmpresa() {
     const valor = empresaNome.trim()
     if (!valor || valor === user?.empresa) { setEmpresaNome(user?.empresa || ''); return }
-    if (!supabaseReady || !activeEmpresaId) { toast('Escritório atualizado (modo demonstração)'); return }
-    const { error } = await supabase.from('empresas').update({ nome: valor }).eq('id', activeEmpresaId)
+    if (!supabaseReady) { toast('Escritório atualizado (modo demonstração)'); return }
+    if (!activeEmpresaId) { toast('Nenhum escritório ativo para salvar'); setEmpresaNome(user?.empresa || ''); return }
+    // .select().single() é de propósito: sem select, um update que a RLS
+    // filtra pra 0 linhas não vira erro (Prefer: return=minimal) e a tela
+    // mostraria "atualizado" sem ter persistido nada — como .single() exige
+    // exatamente 1 linha de volta, isso aparece como erro de verdade.
+    const { error } = await supabase.from('empresas').update({ nome: valor }).eq('id', activeEmpresaId).select('id').single()
     if (error) { toast('Não foi possível salvar o nome do escritório'); setEmpresaNome(user?.empresa || ''); return }
     toast('Escritório atualizado')
     refreshUser()
