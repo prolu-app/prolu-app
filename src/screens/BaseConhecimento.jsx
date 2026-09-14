@@ -30,6 +30,28 @@ function pdfStoragePath(url) {
   return url.split('/kb-pdfs/')[1]
 }
 
+function modulosAbertosKey(pastaId) {
+  return `kb_modulos_abertos_${pastaId}`
+}
+
+function lerModulosAbertos(pastaId) {
+  try {
+    const raw = localStorage.getItem(modulosAbertosKey(pastaId))
+    const ids = raw ? JSON.parse(raw) : null
+    return Array.isArray(ids) ? ids : null
+  } catch {
+    return null
+  }
+}
+
+function salvarModulosAbertos(pastaId, ids) {
+  try {
+    localStorage.setItem(modulosAbertosKey(pastaId), JSON.stringify(ids))
+  } catch {
+    // localStorage indisponível (modo privado, quota etc) — falha em silêncio
+  }
+}
+
 function isEmptyHtml(html) {
   if (!html) return true
   return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim() === ''
@@ -196,6 +218,26 @@ export default function BaseConhecimento() {
   }
 
   useEffect(() => { carregar() }, [user?.id, activeEmpresaId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Restaura quais módulos estavam abertos/fechados nesta pasta
+  // (localStorage, por pasta). Sem nada salvo, abre todos por padrão.
+  useEffect(() => {
+    if (!pasta) return
+    const salvos = lerModulosAbertos(pasta.id)
+    const abertosSet = salvos ? new Set(salvos) : new Set(pasta.modules.map(m => m.id))
+    setExpanded(Object.fromEntries(pasta.modules.map(m => [m.id, abertosSet.has(m.id)])))
+  }, [pasta?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function toggleModulo(moduloId) {
+    setExpanded(prev => {
+      const next = { ...prev, [moduloId]: !(prev[moduloId] ?? true) }
+      if (pasta) {
+        const abertos = pasta.modules.filter(m => next[m.id] ?? true).map(m => m.id)
+        salvarModulosAbertos(pasta.id, abertos)
+      }
+      return next
+    })
+  }
 
   // ── helpers ──
   const pastaLessons = p => (p?.modules || []).flatMap(m => m.lessons)
@@ -768,10 +810,10 @@ export default function BaseConhecimento() {
 
       {pasta.modules.map((m, idx) => {
         const mp = moduleProgress(m)
-        const isOpen = expanded[m.id] ?? idx === 0
+        const isOpen = expanded[m.id] ?? true
         return (
           <div className={`module-card${isOpen ? ' expanded' : ''}`} key={m.id}>
-            <div className="module-head" onClick={() => setExpanded(prev => ({ ...prev, [m.id]: !isOpen }))}>
+            <div className="module-head" onClick={() => toggleModulo(m.id)}>
               <div className="module-number">{String(idx + 1).padStart(2, '0')}</div>
               <div className="module-info">
                 <div className="module-title">{m.title}</div>
