@@ -126,8 +126,12 @@ export default function BaseConhecimento() {
   // Impersonando uma empresa, ele deve ver e editar o escritório dela
   // normalmente (é para isso que a impersonação existe).
   const isAdminMode = isProluAdmin && !impersonatedEmpresaId && !viewAsUser
+  // Aba "Painel" (progresso da equipe): só master/gestor de um escritório
+  // de verdade — prolu_admin puro não tem equipe pra ver.
+  const podeVerPainel = isGestorOuSuperior && !isAdminMode
 
   const [pastas, setPastas] = useState([])
+  const [kbTab, setKbTab] = useState('cursos')
   const [loading, setLoading] = useState(true)
   const [currentPastaId, setCurrentPastaId] = useState(null)
   const [expanded, setExpanded] = useState({})
@@ -627,35 +631,48 @@ export default function BaseConhecimento() {
           <div className="page-sub">Tudo que você precisa aprender, organizado por curso.</div>
         </div>
 
-        {pastasProlu.length > 0 && (
-          <>
-            <div className="kb-section-label">Conteúdo Prolu</div>
-            <div className="folders-grid">{pastasProlu.map(renderFolder)}</div>
-          </>
+        {podeVerPainel && (
+          <div className="kb-tabs">
+            <button className={`kb-tab${kbTab === 'cursos' ? ' active' : ''}`} onClick={() => setKbTab('cursos')}>Cursos</button>
+            <button className={`kb-tab${kbTab === 'painel' ? ' active' : ''}`} onClick={() => setKbTab('painel')}>Painel</button>
+          </div>
         )}
 
-        {(podeEditarEmpresa || pastasEmpresa.length > 0) && (
-          <div className="kb-section-label">
-            <span>Seu escritório</span>
-            {podeEditarEmpresa && (
-              <button className="btn-primary kb-new-btn" onClick={openNewPasta}><IconPlus /> Nova pasta</button>
+        {podeVerPainel && kbTab === 'painel' ? (
+          <PainelEquipe activeEmpresaId={activeEmpresaId} currentUserId={user?.id} />
+        ) : (
+          <>
+            {pastasProlu.length > 0 && (
+              <>
+                <div className="kb-section-label">Conteúdo Prolu</div>
+                <div className="folders-grid">{pastasProlu.map(renderFolder)}</div>
+              </>
             )}
-          </div>
-        )}
-        {pastasEmpresa.length > 0 ? (
-          <div className="folders-grid">
-            {pastasEmpresa.map(renderFolder)}
-            {podeEditarEmpresa && (
-              <div className="folder-card-add" onClick={openNewPasta}>
-                <IconPlus /> Nova pasta
+
+            {(podeEditarEmpresa || pastasEmpresa.length > 0) && (
+              <div className="kb-section-label">
+                <span>Seu escritório</span>
+                {podeEditarEmpresa && (
+                  <button className="btn-primary kb-new-btn" onClick={openNewPasta}><IconPlus /> Nova pasta</button>
+                )}
               </div>
             )}
-          </div>
-        ) : podeEditarEmpresa && (
-          <div className="kb-empresa-cta is-clickable" onClick={openNewPasta}>
-            <IconPlus />
-            <p>Adicione seus próprios cursos e processos internos para sua equipe.</p>
-          </div>
+            {pastasEmpresa.length > 0 ? (
+              <div className="folders-grid">
+                {pastasEmpresa.map(renderFolder)}
+                {podeEditarEmpresa && (
+                  <div className="folder-card-add" onClick={openNewPasta}>
+                    <IconPlus /> Nova pasta
+                  </div>
+                )}
+              </div>
+            ) : podeEditarEmpresa && (
+              <div className="kb-empresa-cta is-clickable" onClick={openNewPasta}>
+                <IconPlus />
+                <p>Adicione seus próprios cursos e processos internos para sua equipe.</p>
+              </div>
+            )}
+          </>
         )}
 
         {pastaModal && (
@@ -1009,6 +1026,160 @@ function DeleteModal({ type, nome, onClose, onConfirm }) {
           <button className="btn-danger" onClick={onConfirm}>Excluir</button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ════════ Painel: progresso da equipe (master/gestor) ════════
+const ROLE_LABEL_PAINEL = { master: 'Master', gestor: 'Gestor', comum: 'Colaborador' }
+const ROLE_PILL_PAINEL = { master: 'pill-dark', gestor: 'pill-blue', comum: 'pill-gray' }
+
+// Mesma regra de podeVerPasta, mas aplicada ao role de outro usuário (não
+// de quem está logado) — pra saber quantas aulas cada um enxerga.
+function nivelPermiteRole(nivelAcesso, role) {
+  if (nivelAcesso === 'gestor') return role === 'gestor' || role === 'master'
+  if (nivelAcesso === 'master') return role === 'master'
+  return true
+}
+
+function formatDataCurta(iso) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+}
+
+function PainelEquipe({ activeEmpresaId, currentUserId }) {
+  const [loading, setLoading] = useState(true)
+  const [linhas, setLinhas] = useState([])
+  const [expandedUser, setExpandedUser] = useState(null)
+
+  useEffect(() => {
+    let cancelado = false
+    async function carregar() {
+      if (!supabaseReady || !activeEmpresaId) { setLinhas([]); setLoading(false); return }
+      setLoading(true)
+
+      const [{ data: usuarios }, { data: aulas }] = await Promise.all([
+        supabase.from('usuarios').select('id, nome, email, role').eq('empresa_id', activeEmpresaId).eq('ativo', true),
+        // Pastas Prolu (empresa_id null) + pastas de qualquer empresa — filtra
+        // pra esta empresa em JS logo abaixo, já respeitando nivel_acesso.
+        supabase.from('kb_aulas').select('id, titulo, modulo_id, kb_modulos(id, titulo, ordem, pasta_id, kb_pastas(id, nivel_acesso, empresa_id, ordem))'),
+      ])
+      const listaUsuarios = usuarios || []
+      if (cancelado) return
+      if (!listaUsuarios.length) { setLinhas([]); setLoading(false); return }
+
+      const { data: progresso } = await supabase
+        .from('kb_progresso')
+        .select('usuario_id, aula_id, concluida, concluida_em')
+        .eq('concluida', true)
+        .in('usuario_id', listaUsuarios.map(u => u.id))
+      if (cancelado) return
+
+      const aulasFlat = (aulas || [])
+        .map(a => ({
+          id: a.id,
+          titulo: a.titulo,
+          moduloId: a.kb_modulos?.id,
+          moduloTitulo: a.kb_modulos?.titulo || '',
+          moduloOrdem: a.kb_modulos?.ordem || 0,
+          pastaOrdem: a.kb_modulos?.kb_pastas?.ordem || 0,
+          nivelAcesso: a.kb_modulos?.kb_pastas?.nivel_acesso || 'todos',
+          empresaId: a.kb_modulos?.kb_pastas?.empresa_id ?? null,
+        }))
+        .filter(a => a.moduloId && (a.empresaId == null || a.empresaId === activeEmpresaId))
+
+      const progressoPorUsuario = {}
+      ;(progresso || []).forEach(p => {
+        if (!progressoPorUsuario[p.usuario_id]) progressoPorUsuario[p.usuario_id] = []
+        progressoPorUsuario[p.usuario_id].push(p)
+      })
+
+      const linhasCalc = listaUsuarios.map(u => {
+        const aulasVisiveis = aulasFlat.filter(a => nivelPermiteRole(a.nivelAcesso, u.role))
+        const doneIds = new Set((progressoPorUsuario[u.id] || []).map(p => p.aula_id))
+        const total = aulasVisiveis.length
+        const done = aulasVisiveis.filter(a => doneIds.has(a.id)).length
+        const pct = total ? Math.round((done / total) * 100) : 0
+
+        const moduloMap = {}
+        aulasVisiveis.forEach(a => {
+          if (!moduloMap[a.moduloId]) {
+            moduloMap[a.moduloId] = { id: a.moduloId, titulo: a.moduloTitulo, ordem: a.moduloOrdem, pastaOrdem: a.pastaOrdem, total: 0, done: 0 }
+          }
+          moduloMap[a.moduloId].total += 1
+          if (doneIds.has(a.id)) moduloMap[a.moduloId].done += 1
+        })
+        const modulos = Object.values(moduloMap).sort((x, y) => (x.pastaOrdem - y.pastaOrdem) || (x.ordem - y.ordem))
+
+        const ultimoRegistro = (progressoPorUsuario[u.id] || [])
+          .filter(p => aulasVisiveis.some(a => a.id === p.aula_id))
+          .sort((x, y) => new Date(y.concluida_em) - new Date(x.concluida_em))[0]
+        const ultimaAula = ultimoRegistro ? aulasVisiveis.find(a => a.id === ultimoRegistro.aula_id) : null
+
+        return {
+          usuario: u, total, done, pct, modulos,
+          ultimaAulaTitulo: ultimaAula?.titulo || null,
+          ultimaAulaData: ultimoRegistro?.concluida_em || null,
+        }
+      })
+
+      linhasCalc.sort((a, b) => a.pct - b.pct)
+      setLinhas(linhasCalc)
+      setLoading(false)
+    }
+    carregar()
+    return () => { cancelado = true }
+  }, [activeEmpresaId])
+
+  if (loading) return <div className="crm-empty">Carregando…</div>
+
+  const temEquipe = linhas.some(l => l.usuario.id !== currentUserId)
+  if (!temEquipe) {
+    return (
+      <div className="kb-empresa-cta">
+        <p>Nenhum colaborador cadastrado ainda. Convide sua equipe em Configurações → Equipe.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="painel-lista">
+      {linhas.map(l => {
+        const isOpen = expandedUser === l.usuario.id
+        return (
+          <div className="painel-card" key={l.usuario.id} onClick={() => setExpandedUser(isOpen ? null : l.usuario.id)}>
+            <div className="painel-card-head">
+              <div className="painel-avatar">{(l.usuario.nome || l.usuario.email || '?').charAt(0).toUpperCase()}</div>
+              <div className="painel-card-info">
+                <div className="painel-card-name">
+                  {l.usuario.nome || l.usuario.email}
+                  <span className={`pill ${ROLE_PILL_PAINEL[l.usuario.role] || 'pill-gray'}`}>{ROLE_LABEL_PAINEL[l.usuario.role] || l.usuario.role}</span>
+                </div>
+                <div className="painel-card-meta"><strong>{l.done}</strong> de {l.total} aulas concluídas · {l.pct}%</div>
+                <div className="painel-progress-bar"><div className="painel-progress-fill" style={{ width: `${l.pct}%` }} /></div>
+                {l.ultimaAulaTitulo && (
+                  <div className="painel-card-ultima">Última aula: {l.ultimaAulaTitulo} · {formatDataCurta(l.ultimaAulaData)}</div>
+                )}
+              </div>
+              <IconChevronDown className={`painel-chevron${isOpen ? ' open' : ''}`} />
+            </div>
+            {isOpen && (
+              <div className="painel-modulos" onClick={e => e.stopPropagation()}>
+                {l.modulos.map((m, idx) => {
+                  const mpct = m.total ? Math.round((m.done / m.total) * 100) : 0
+                  return (
+                    <div className="painel-modulo-row" key={m.id}>
+                      <span className="painel-modulo-nome">Módulo {idx + 1} — {m.titulo}</span>
+                      <div className="painel-modulo-track"><div className="painel-modulo-fill" style={{ width: `${mpct}%` }} /></div>
+                      <span className="painel-modulo-count">{m.done}/{m.total} aulas</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
