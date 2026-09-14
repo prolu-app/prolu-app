@@ -668,10 +668,10 @@ export default function BaseConhecimento() {
               </div>
             )}
 
-            {(playerLesson.tipo !== 'doc' || !isEmptyHtml(playerLesson.desc) || playerLesson.pdfs.length > 0) && (
+            {(playerLesson.tipo !== 'doc' || playerLesson.pdfs.length > 0) && (
               <div className="player-body">
                 {playerLesson.tipo !== 'doc' && <div className="player-title">{playerLesson.title}</div>}
-                {!isEmptyHtml(playerLesson.desc) && (
+                {playerLesson.tipo !== 'doc' && !isEmptyHtml(playerLesson.desc) && (
                   <div className="aula-descricao" dangerouslySetInnerHTML={{ __html: sanitizeHtml(playerLesson.desc) }} />
                 )}
                 {playerLesson.pdfs.length > 0 && (
@@ -885,16 +885,18 @@ export default function BaseConhecimento() {
                   placeholder="https://youtube.com/watch?v=…" />
               </div>
             )}
-            {descExpanded ? (
-              <div className="modal-field">
-                <label className="modal-label">Descrição</label>
-                <RichEditor key={`desc-${aulaModal.aulaId || 'new'}`} content={aulaForm.descricao}
-                  onChange={html => setAulaForm(f => ({ ...f, descricao: html }))} editable />
-              </div>
-            ) : (
-              <button type="button" className="kb-add-desc-btn" onClick={() => setDescExpanded(true)}>
-                <IconPlus /> Adicionar descrição
-              </button>
+            {aulaForm.tipo !== 'doc' && (
+              descExpanded ? (
+                <div className="modal-field">
+                  <label className="modal-label">Descrição</label>
+                  <RichEditor key={`desc-${aulaModal.aulaId || 'new'}`} content={aulaForm.descricao}
+                    onChange={html => setAulaForm(f => ({ ...f, descricao: html }))} editable />
+                </div>
+              ) : (
+                <button type="button" className="kb-add-desc-btn" onClick={() => setDescExpanded(true)}>
+                  <IconPlus /> Adicionar descrição
+                </button>
+              )
             )}
             <div className="modal-actions">
               <button className="btn-cancel" onClick={() => setAulaModal(null)}>Cancelar</button>
