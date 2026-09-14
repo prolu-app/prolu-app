@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { FOLDERS } from '../data/seed.js'
 import {
-  IconPlus, IconCheck, IconClose, IconBack, IconPlay, IconChevronDown,
+  IconPlus, IconCheck, IconBack, IconPlay, IconChevronDown,
   IconChevronLeft, IconChevronRight, IconEdit, IconTrash, IconBase, IconPdf,
 } from '../components/Icons.jsx'
 import './BaseConhecimento.css'
@@ -21,6 +21,11 @@ function getYouTubeEmbed(url) {
   if (!url) return null
   const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
   return m ? `https://www.youtube.com/embed/${m[1]}` : null
+}
+
+function pdfStoragePath(url) {
+  if (!url || !url.includes('/kb-pdfs/')) return null
+  return url.split('/kb-pdfs/')[1]
 }
 
 function buildPastas(pastasData, modulosData, aulasData, pdfsData, progressoData) {
@@ -40,6 +45,8 @@ function buildPastas(pastasData, modulosData, aulasData, pdfsData, progressoData
       title: a.titulo,
       desc: a.descricao || '',
       url: a.youtube_url || '',
+      tipo: a.tipo || 'video',
+      pdf_url: a.pdf_url || '',
       ordem: a.ordem || 0,
       done: doneSet.has(a.id),
       pdfs: pdfsByAula[a.id] || [],
@@ -87,6 +94,8 @@ export default function BaseConhecimento() {
   const [currentPastaId, setCurrentPastaId] = useState(null)
   const [expanded, setExpanded] = useState({})
   const [player, setPlayer] = useState(null)
+  const [mobileSidebar, setMobileSidebar] = useState(false)
+  const [aulaUploading, setAulaUploading] = useState(false)
 
   // pastaModal: null | 'new' | pastaId (editando)
   const [pastaModal, setPastaModal] = useState(null)
@@ -99,7 +108,7 @@ export default function BaseConhecimento() {
 
   const [pastaForm, setPastaForm] = useState({ nome: '', subtitulo: '', cor: 'green', nivel_acesso: 'todos' })
   const [moduloForm, setModuloForm] = useState('')
-  const [aulaForm, setAulaForm] = useState({ titulo: '', descricao: '', youtube_url: '' })
+  const [aulaForm, setAulaForm] = useState({ titulo: '', descricao: '', youtube_url: '', tipo: 'video', pdf_url: '', pdf_nome: '' })
 
   // ── permissões de edição de conteúdo ──
   // Conteúdo Prolu (empresa_id null): só prolu_admin.
@@ -134,7 +143,7 @@ export default function BaseConhecimento() {
         nivel_acesso: f.nivel_acesso || 'todos',
         modules: (f.modules || []).map(m => ({
           id: m.id, title: m.title, ordem: 0,
-          lessons: (m.lessons || []).map(l => ({ ...l, url: l.url || '', pdfs: l.pdfs || [] })),
+          lessons: (m.lessons || []).map(l => ({ ...l, url: l.url || '', tipo: l.tipo || 'video', pdf_url: l.pdf_url || '', pdfs: l.pdfs || [] })),
         })),
       }))
       setPastas(seed)
@@ -299,25 +308,76 @@ export default function BaseConhecimento() {
   }
 
   // ── CRUD aulas ──
-  function openNewAula(moduloId) { setAulaForm({ titulo: '', descricao: '', youtube_url: '' }); setAulaModal({ moduloId }) }
-  function openEditAula(moduloId, aula) { setAulaForm({ titulo: aula.title, descricao: aula.desc, youtube_url: aula.url }); setAulaModal({ moduloId, aulaId: aula.id }) }
+  function openNewAula(moduloId) { setAulaForm({ titulo: '', descricao: '', youtube_url: '', tipo: 'video', pdf_url: '', pdf_nome: '' }); setAulaModal({ moduloId, originalPdfUrl: null }) }
+  function openEditAula(moduloId, aula) {
+    setAulaForm({
+      titulo: aula.title, descricao: aula.desc, youtube_url: aula.url,
+      tipo: aula.tipo || 'video', pdf_url: aula.pdf_url || '', pdf_nome: aula.pdf_url ? 'Arquivo atual' : '',
+    })
+    setAulaModal({ moduloId, aulaId: aula.id, originalPdfUrl: aula.pdf_url || null })
+  }
+
+  // Substitui o PDF antigo (se houver, e não for só uma preview local em
+  // blob:) pelo novo assim que o upload termina — evita acumular arquivo
+  // órfão no bucket a cada troca de arquivo antes de salvar.
+  async function replaceOldPdf(newUrl) {
+    const old = aulaModal?.originalPdfUrl
+    setAulaModal(prev => (prev ? { ...prev, originalPdfUrl: newUrl } : prev))
+    if (old && old.startsWith('blob:')) { URL.revokeObjectURL(old); return }
+    const path = pdfStoragePath(old)
+    if (path && supabaseReady) await supabase.storage.from('kb-pdfs').remove([path])
+  }
+
+  async function handlePdfSelect(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (file.size > 50 * 1024 * 1024) { toast('Arquivo muito grande. Máximo: 50MB'); return }
+    if (!supabaseReady || !user?.id) {
+      const blobUrl = URL.createObjectURL(file)
+      await replaceOldPdf(blobUrl)
+      setAulaForm(f => ({ ...f, pdf_url: blobUrl, pdf_nome: file.name }))
+      return
+    }
+    setAulaUploading(true)
+    const filePath = `${activeEmpresaId ?? 'prolu'}/${Date.now()}_${file.name}`
+    const { error } = await supabase.storage.from('kb-pdfs').upload(filePath, file, { contentType: 'application/pdf', upsert: false })
+    if (error) { toast('Erro ao enviar PDF'); setAulaUploading(false); return }
+    const { data: { publicUrl } } = supabase.storage.from('kb-pdfs').getPublicUrl(filePath)
+    await replaceOldPdf(publicUrl)
+    setAulaForm(f => ({ ...f, pdf_url: publicUrl, pdf_nome: file.name }))
+    setAulaUploading(false)
+  }
 
   async function saveAula() {
-    const { titulo, descricao, youtube_url } = aulaForm
+    const { titulo, descricao, youtube_url, tipo, pdf_url } = aulaForm
     if (!titulo.trim()) return
     const { moduloId, aulaId } = aulaModal
     const editing = Boolean(aulaId)
+    const payload = {
+      titulo: titulo.trim(),
+      descricao: descricao.trim(),
+      youtube_url: tipo === 'pdf' ? '' : youtube_url.trim(),
+      tipo,
+      pdf_url: tipo === 'pdf' ? (pdf_url || null) : null,
+    }
+    // Se o tipo virou 'video' (ou o PDF foi limpo) descartando um PDF que
+    // já estava salvo no bucket, remove o arquivo órfão.
+    if (payload.pdf_url == null) {
+      const oldPath = pdfStoragePath(aulaModal?.originalPdfUrl)
+      if (oldPath && supabaseReady) await supabase.storage.from('kb-pdfs').remove([oldPath])
+    }
     if (!supabaseReady || !user?.id) {
       if (editing) {
         setPastas(prev => prev.map(pa => ({
           ...pa, modules: pa.modules.map(m => m.id !== moduloId ? m : {
-            ...m, lessons: m.lessons.map(l => l.id !== aulaId ? l : { ...l, title: titulo.trim(), desc: descricao.trim(), url: youtube_url.trim() }),
+            ...m, lessons: m.lessons.map(l => l.id !== aulaId ? l : { ...l, title: payload.titulo, desc: payload.descricao, url: payload.youtube_url, tipo: payload.tipo, pdf_url: payload.pdf_url || '' }),
           }),
         })))
       } else {
         setPastas(prev => prev.map(pa => ({
           ...pa, modules: pa.modules.map(m => m.id !== moduloId ? m : {
-            ...m, lessons: [...m.lessons, { id: 'l' + Date.now(), title: titulo.trim(), desc: descricao.trim(), url: youtube_url.trim(), done: false, pdfs: [], ordem: m.lessons.length }],
+            ...m, lessons: [...m.lessons, { id: 'l' + Date.now(), title: payload.titulo, desc: payload.descricao, url: payload.youtube_url, tipo: payload.tipo, pdf_url: payload.pdf_url || '', done: false, pdfs: [], ordem: m.lessons.length }],
           }),
         })))
       }
@@ -326,11 +386,11 @@ export default function BaseConhecimento() {
       return
     }
     if (editing) {
-      const { error } = await supabase.from('kb_aulas').update({ titulo: titulo.trim(), descricao: descricao.trim(), youtube_url: youtube_url.trim() }).eq('id', aulaId)
+      const { error } = await supabase.from('kb_aulas').update(payload).eq('id', aulaId)
       if (error) { toast('Erro ao salvar'); return }
       setPastas(prev => prev.map(pa => ({
         ...pa, modules: pa.modules.map(m => m.id !== moduloId ? m : {
-          ...m, lessons: m.lessons.map(l => l.id !== aulaId ? l : { ...l, title: titulo.trim(), desc: descricao.trim(), url: youtube_url.trim() }),
+          ...m, lessons: m.lessons.map(l => l.id !== aulaId ? l : { ...l, title: payload.titulo, desc: payload.descricao, url: payload.youtube_url, tipo: payload.tipo, pdf_url: payload.pdf_url || '' }),
         }),
       })))
       toast('Aula atualizada')
@@ -343,12 +403,12 @@ export default function BaseConhecimento() {
       }
       // propaga o empresa_id da pasta do módulo pai (null = conteúdo Prolu)
       const { data, error } = await supabase.from('kb_aulas')
-        .insert({ modulo_id: moduloId, titulo: titulo.trim(), descricao: descricao.trim(), youtube_url: youtube_url.trim(), ordem, empresa_id: empresaId })
+        .insert({ modulo_id: moduloId, ordem, empresa_id: empresaId, ...payload })
         .select('*').single()
       if (error) { toast('Erro ao criar aula'); return }
       setPastas(prev => prev.map(pa => ({
         ...pa, modules: pa.modules.map(m => m.id !== moduloId ? m : {
-          ...m, lessons: [...m.lessons, { id: data.id, title: data.titulo, desc: data.descricao || '', url: data.youtube_url || '', done: false, pdfs: [], ordem: data.ordem }],
+          ...m, lessons: [...m.lessons, { id: data.id, title: data.titulo, desc: data.descricao || '', url: data.youtube_url || '', tipo: data.tipo || 'video', pdf_url: data.pdf_url || '', done: false, pdfs: [], ordem: data.ordem }],
         }),
       })))
       toast('Aula criada')
@@ -357,22 +417,53 @@ export default function BaseConhecimento() {
   }
 
   // ── deletar ──
+  // Junta os PDFs (já salvos no bucket) de uma lista de módulos, pra
+  // limpar o Storage antes de um delete em cascata (pasta ou módulo).
+  function collectPdfPaths(modules) {
+    return modules
+      .flatMap(m => m.lessons)
+      .map(l => pdfStoragePath(l.pdf_url))
+      .filter(Boolean)
+  }
+
   async function confirmDelete() {
     const { type, id, ctx } = deleteModal
     if (type === 'pasta') {
+      const alvo = pastas.find(p => p.id === id)
       setPastas(prev => prev.filter(p => p.id !== id))
       if (currentPastaId === id) setCurrentPastaId(null)
-      if (supabaseReady && user?.id) await supabase.from('kb_pastas').delete().eq('id', id)
+      if (supabaseReady && user?.id) {
+        const paths = collectPdfPaths(alvo?.modules || [])
+        if (paths.length) await supabase.storage.from('kb-pdfs').remove(paths)
+        await supabase.from('kb_pastas').delete().eq('id', id)
+      }
       toast('Pasta excluída')
     } else if (type === 'modulo') {
+      const pa0 = pastas.find(p => p.id === ctx.pastaId)
+      const moduloAlvo = pa0?.modules.find(m => m.id === id)
       setPastas(prev => prev.map(pa => pa.id !== ctx.pastaId ? pa : { ...pa, modules: pa.modules.filter(m => m.id !== id) }))
-      if (supabaseReady && user?.id) await supabase.from('kb_modulos').delete().eq('id', id)
+      if (supabaseReady && user?.id) {
+        const paths = collectPdfPaths(moduloAlvo ? [moduloAlvo] : [])
+        if (paths.length) await supabase.storage.from('kb-pdfs').remove(paths)
+        await supabase.from('kb_modulos').delete().eq('id', id)
+      }
       toast('Módulo excluído')
     } else if (type === 'aula') {
+      let aulaExcluida = null
+      for (const pa of pastas) {
+        const m = pa.modules.find(x => x.id === ctx.moduloId)
+        if (m) { aulaExcluida = m.lessons.find(l => l.id === id); break }
+      }
       setPastas(prev => prev.map(pa => ({
         ...pa, modules: pa.modules.map(m => m.id !== ctx.moduloId ? m : { ...m, lessons: m.lessons.filter(l => l.id !== id) }),
       })))
-      if (supabaseReady && user?.id) await supabase.from('kb_aulas').delete().eq('id', id)
+      if (supabaseReady && user?.id) {
+        if (aulaExcluida?.pdf_url) {
+          const path = aulaExcluida.pdf_url.split('/kb-pdfs/')[1]
+          if (path) await supabase.storage.from('kb-pdfs').remove([path])
+        }
+        await supabase.from('kb_aulas').delete().eq('id', id)
+      }
       toast('Aula excluída')
     }
     setDeleteModal(null)
@@ -517,6 +608,92 @@ export default function BaseConhecimento() {
   const dashoffset = circ - (circ * prog.pct) / 100
   const nextLesson = pastaLessons(pasta).find(l => !l.done)
 
+  // ════════ VIEW: AULA (tela dividida) ════════
+  if (playerLesson) {
+    const allLessons = pastaLessons(pasta)
+    const curIdx = allLessons.findIndex(l => l.id === player)
+    const hasPrev = curIdx > 0
+    const hasNext = curIdx > -1 && curIdx < allLessons.length - 1
+    return (
+      <>
+        <div className="lesson-view-top">
+          <div className="back-link" onClick={() => setPlayer(null)}><IconBack /> Voltar ao curso</div>
+          <button className="lesson-mobile-toggle" onClick={() => setMobileSidebar(true)}>Ver aulas</button>
+        </div>
+
+        <div className="lesson-view-body">
+          <div className="lesson-content">
+            {playerLesson.tipo === 'pdf' && playerLesson.pdf_url ? (
+              <iframe src={playerLesson.pdf_url} className="pdf-viewer" title={playerLesson.title} />
+            ) : (
+              <div className="youtube-embed">
+                {embedUrl
+                  ? <iframe src={embedUrl} title={playerLesson.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen />
+                  : <div className="player-video-fake">
+                      <IconPlay style={{ width: 44, height: 44, stroke: 'rgba(255,255,255,.25)', strokeWidth: 1.2, fill: 'none' }} />
+                      Player de vídeo (YouTube embed)
+                    </div>
+                }
+              </div>
+            )}
+
+            <div className="player-body">
+              <div className="player-title">{playerLesson.title}</div>
+              <div className="player-desc">{playerLesson.desc}</div>
+              {playerLesson.pdfs.length > 0 && (
+                <div className="player-pdfs">
+                  {playerLesson.pdfs.map(p => (
+                    <a href={p.url} className="player-pdf-item" key={p.id} target="_blank" rel="noreferrer">
+                      <div className="pdf-icon"><IconPdf /></div>
+                      <div className="pdf-name">{p.nome}</div>
+                      <div className="pdf-dl">Baixar ↓</div>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="lesson-footer">
+              <button className="nav-lesson-text-btn" onClick={() => navLesson(-1)} disabled={!hasPrev}>
+                <IconChevronLeft /> Anterior
+              </button>
+              <button className={`mark-done-btn${playerLesson.done ? ' is-done' : ''}`} onClick={() => toggleLessonDone(playerLesson.id)}>
+                <IconCheck /> {playerLesson.done ? 'Concluída' : 'Marcar como concluída'}
+              </button>
+              <button className="nav-lesson-text-btn" onClick={() => navLesson(1)} disabled={!hasNext}>
+                Próxima <IconChevronRight />
+              </button>
+            </div>
+          </div>
+
+          <div className={`lesson-sidebar${mobileSidebar ? ' is-open' : ''}`}>
+            <div className="lesson-sidebar-overlay" onClick={() => setMobileSidebar(false)} />
+            <div className="lesson-sidebar-sheet">
+              <div className="lesson-sidebar-handle" />
+              {pasta.modules.map(m => (
+                <div className="lesson-sidebar-section" key={m.id}>
+                  <div className="lesson-sidebar-section-title">{m.title}</div>
+                  {m.lessons.map(l => (
+                    <div
+                      className={`lesson-sidebar-item${l.id === player ? ' active' : ''}`}
+                      key={l.id}
+                      onClick={() => { setPlayer(l.id); setMobileSidebar(false) }}
+                    >
+                      <div className={`lesson-check ${l.done ? 'done' : 'pend'}`}>{l.done && <IconCheck />}</div>
+                      <span className="lesson-sidebar-title">{l.title}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
   return (
     <>
       <div className="page-header between">
@@ -612,50 +789,6 @@ export default function BaseConhecimento() {
         </div>
       )}
 
-      {/* player */}
-      {playerLesson && (
-        <div className="player-overlay" onClick={e => { if (e.target === e.currentTarget) setPlayer(null) }}>
-          <div className="player-modal">
-            <div className="player-video">
-              <button className="player-close" onClick={() => setPlayer(null)}><IconClose /></button>
-              {embedUrl
-                ? <iframe src={embedUrl} title={playerLesson.title}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen style={{ width: '100%', height: '100%', border: 'none' }} />
-                : <div className="player-video-fake">
-                    <IconPlay style={{ width: 44, height: 44, stroke: 'rgba(255,255,255,.25)', strokeWidth: 1.2, fill: 'none' }} />
-                    Player de vídeo (YouTube embed)
-                  </div>
-              }
-            </div>
-            <div className="player-body">
-              <div className="player-title">{playerLesson.title}</div>
-              <div className="player-desc">{playerLesson.desc}</div>
-              {playerLesson.pdfs.length > 0 && (
-                <div className="player-pdfs">
-                  {playerLesson.pdfs.map(p => (
-                    <a href={p.url} className="player-pdf-item" key={p.id} target="_blank" rel="noreferrer">
-                      <div className="pdf-icon"><IconPdf /></div>
-                      <div className="pdf-name">{p.nome}</div>
-                      <div className="pdf-dl">Baixar ↓</div>
-                    </a>
-                  ))}
-                </div>
-              )}
-              <div className="player-footer">
-                <button className={`mark-done-btn${playerLesson.done ? ' is-done' : ''}`} onClick={() => toggleLessonDone(playerLesson.id)}>
-                  <IconCheck /> {playerLesson.done ? 'Concluída' : 'Marcar como concluída'}
-                </button>
-                <div className="nav-lessons">
-                  <button className="nav-lesson-btn" onClick={() => navLesson(-1)}><IconChevronLeft /></button>
-                  <button className="nav-lesson-btn" onClick={() => navLesson(1)}><IconChevronRight /></button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {moduloModal && (
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setModuloModal(null) }}>
           <div className="modal">
@@ -685,11 +818,32 @@ export default function BaseConhecimento() {
                 placeholder="Ex: Como precificar por hora" autoFocus />
             </div>
             <div className="modal-field">
-              <label className="modal-label">Link do YouTube (não listado)</label>
-              <input className="modal-input" value={aulaForm.youtube_url}
-                onChange={e => setAulaForm(f => ({ ...f, youtube_url: e.target.value }))}
-                placeholder="https://youtube.com/watch?v=…" />
+              <label className="modal-label">Tipo de aula</label>
+              <div className="icon-color-pills">
+                <button type="button" className={`icon-color-pill${aulaForm.tipo === 'video' ? ' selected' : ''}`}
+                  onClick={() => setAulaForm(f => ({ ...f, tipo: 'video' }))}>Vídeo</button>
+                <button type="button" className={`icon-color-pill${aulaForm.tipo === 'pdf' ? ' selected' : ''}`}
+                  onClick={() => setAulaForm(f => ({ ...f, tipo: 'pdf' }))}>PDF</button>
+              </div>
             </div>
+            {aulaForm.tipo === 'pdf' ? (
+              <div className="modal-field">
+                <label className="modal-label">Arquivo PDF</label>
+                <label className="kb-file-btn">
+                  {aulaUploading ? 'Enviando…' : 'Selecionar arquivo PDF'}
+                  <input type="file" accept="application/pdf" hidden disabled={aulaUploading} onChange={handlePdfSelect} />
+                </label>
+                {aulaForm.pdf_nome && <div className="kb-pdf-selected"><IconPdf /> {aulaForm.pdf_nome}</div>}
+                {aulaUploading && <div className="kb-upload-bar"><div className="kb-upload-bar-fill" /></div>}
+              </div>
+            ) : (
+              <div className="modal-field">
+                <label className="modal-label">Link do YouTube (não listado)</label>
+                <input className="modal-input" value={aulaForm.youtube_url}
+                  onChange={e => setAulaForm(f => ({ ...f, youtube_url: e.target.value }))}
+                  placeholder="https://youtube.com/watch?v=…" />
+              </div>
+            )}
             <div className="modal-field">
               <label className="modal-label">Descrição</label>
               <textarea className="modal-input" value={aulaForm.descricao}
@@ -698,7 +852,7 @@ export default function BaseConhecimento() {
             </div>
             <div className="modal-actions">
               <button className="btn-cancel" onClick={() => setAulaModal(null)}>Cancelar</button>
-              <button className="btn-confirm" onClick={saveAula}>{aulaModal.aulaId ? 'Salvar' : 'Criar aula'}</button>
+              <button className="btn-confirm" onClick={saveAula} disabled={aulaUploading}>{aulaModal.aulaId ? 'Salvar' : 'Criar aula'}</button>
             </div>
           </div>
         </div>

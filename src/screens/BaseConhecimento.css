@@ -152,43 +152,94 @@
 .add-module-row:hover { color: var(--ink); background: var(--green-soft); box-shadow: var(--shadow-rest); }
 .add-module-row svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 2.2; fill: none; }
 
-/* ── player ── */
-.player-overlay { position: fixed; inset: 0; background: rgba(18, 18, 16, 0.7); z-index: 90; display: flex; align-items: center; justify-content: center; padding: 24px; backdrop-filter: blur(6px); animation: overlayIn 0.2s; }
-.player-modal { background: var(--white); border-radius: var(--r-lg); width: 100%; max-width: 800px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-pop); animation: modalIn 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.1); }
-.player-video { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: var(--r-lg) var(--r-lg) 0 0; display: flex; align-items: center; justify-content: center; position: relative; }
+/* ── tela dividida da aula ── */
+.lesson-view-top { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 18px; }
+.lesson-view-body { display: flex; align-items: flex-start; gap: 20px; }
+.lesson-content { flex: 1; min-width: 0; }
+
+.youtube-embed { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: var(--r-md); overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; }
+.youtube-embed iframe { width: 100%; height: 100%; border: none; }
 .player-video-fake { color: rgba(255, 255, 255, 0.3); font-size: 13px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.player-close { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 50%; background: rgba(0, 0, 0, 0.4); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 5; }
-.player-close svg { width: 16px; height: 16px; stroke: var(--white); stroke-width: 2.2; fill: none; }
-.player-body { padding: 24px 28px 28px; }
+
+.pdf-viewer {
+  width: 100%;
+  height: calc(100vh - 220px);
+  min-height: 500px;
+  border: none;
+  border-radius: var(--r-md);
+  background: var(--white);
+}
+
+.player-body { background: var(--white); border-radius: var(--r-lg); box-shadow: var(--shadow-rest); padding: 22px 24px; margin-top: 16px; }
 .player-title { font-family: 'Abhaya Libre', serif; font-size: 22px; font-weight: 600; margin-bottom: 8px; }
-.player-desc { font-size: 13.5px; color: var(--ink-60); line-height: 1.6; margin-bottom: 18px; }
-.player-pdfs { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.player-desc { font-size: 13.5px; color: var(--ink-60); line-height: 1.6; }
+.player-pdfs { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .player-pdf-item { display: flex; align-items: center; gap: 10px; background: var(--cream); border-radius: var(--r-sm); padding: 11px 14px; text-decoration: none; color: var(--ink); transition: background 0.15s; }
 .player-pdf-item:hover { background: var(--orange-soft); }
 .pdf-icon { width: 30px; height: 30px; border-radius: 8px; background: var(--orange-soft); color: var(--orange-ink); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .pdf-icon svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
 .pdf-name { font-size: 13px; font-weight: 500; flex: 1; }
 .pdf-dl { font-size: 11.5px; color: var(--ink-40); }
-.player-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid var(--ink-divider); padding-top: 18px; }
+
+.lesson-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 16px; background: var(--white); border-radius: var(--r-lg); box-shadow: var(--shadow-rest); padding: 14px 18px; }
 .mark-done-btn { display: flex; align-items: center; gap: 7px; background: var(--green); color: var(--ink); border: none; border-radius: 99px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; transition: box-shadow 0.15s; }
 .mark-done-btn:hover { box-shadow: 0 4px 14px rgba(184, 212, 15, 0.4); }
 .mark-done-btn.is-done { background: var(--green-soft); color: var(--green-ink); }
 .mark-done-btn svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2.6; fill: none; }
-.nav-lessons { display: flex; gap: 8px; }
-.nav-lesson-btn { width: 34px; height: 34px; border-radius: 50%; background: var(--gray-soft); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
-.nav-lesson-btn:hover { background: var(--ink); }
-.nav-lesson-btn:hover svg { stroke: var(--green); }
-.nav-lesson-btn svg { width: 14px; height: 14px; stroke: var(--ink-60); stroke-width: 2.2; fill: none; }
+.nav-lesson-text-btn { display: flex; align-items: center; gap: 6px; background: var(--gray-soft); border: none; border-radius: 99px; padding: 9px 16px; font-size: 13px; font-weight: 500; color: var(--ink-60); cursor: pointer; transition: background 0.15s, opacity 0.15s; }
+.nav-lesson-text-btn:hover:not(:disabled) { background: #e0e0dc; }
+.nav-lesson-text-btn:disabled { opacity: 0.4; cursor: default; }
+.nav-lesson-text-btn svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2.2; fill: none; }
+
+/* ── sidebar de módulos/aulas (desktop) / bottom sheet (mobile) ── */
+.lesson-sidebar { width: 300px; flex-shrink: 0; }
+.lesson-sidebar-overlay { display: none; }
+.lesson-sidebar-handle { display: none; }
+.lesson-sidebar-sheet {
+  background: var(--white); border-radius: var(--r-lg); box-shadow: var(--shadow-rest);
+  padding: 14px; max-height: calc(100vh - 160px); overflow-y: auto; position: sticky; top: 20px;
+}
+.lesson-sidebar-section { margin-bottom: 14px; }
+.lesson-sidebar-section:last-child { margin-bottom: 0; }
+.lesson-sidebar-section-title { font-family: 'Montserrat', sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--ink-40); padding: 6px 10px; }
+.lesson-sidebar-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--r-sm); cursor: pointer; transition: background 0.15s; }
+.lesson-sidebar-item:hover { background: var(--cream); }
+.lesson-sidebar-item.active { background: var(--gray-soft); }
+.lesson-sidebar-title { font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lesson-mobile-toggle { display: none; align-items: center; gap: 6px; background: var(--ink); color: var(--white); border: none; border-radius: 99px; padding: 8px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
 
 .icon-color-pills { display: flex; gap: 8px; flex-wrap: wrap; }
 .icon-color-pill { padding: 7px 14px; border-radius: 99px; font-size: 13px; cursor: pointer; background: var(--gray-soft); color: var(--ink-60); border: none; transition: all 0.15s; }
 .icon-color-pill.selected { background: var(--ink); color: var(--white); }
+
+/* ── upload de PDF no modal de aula ── */
+.kb-file-btn { display: inline-flex; align-items: center; gap: 8px; background: var(--gray-soft); color: var(--ink); border-radius: 99px; padding: 9px 16px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s; }
+.kb-file-btn:hover { background: #e0e0dc; }
+.kb-pdf-selected { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-60); margin-top: 8px; }
+.kb-pdf-selected svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2; fill: none; }
+.kb-upload-bar { height: 5px; background: var(--gray-soft); border-radius: 99px; overflow: hidden; margin-top: 8px; }
+.kb-upload-bar-fill { height: 100%; width: 40%; background: var(--green-deep); border-radius: 99px; animation: kbUploadPulse 1.1s ease-in-out infinite; }
+@keyframes kbUploadPulse { 0% { margin-left: -40%; } 100% { margin-left: 100%; } }
 
 @media (max-width: 860px) {
   .folders-grid { grid-template-columns: 1fr 1fr; }
   .kb-new-btn { display: none; }
   .lesson-row, .add-lesson-row { padding-left: 22px; }
   .folder-admin-actions { display: none; }
+
+  .lesson-view-body { flex-direction: column; }
+  .lesson-content { width: 100%; }
+  .lesson-footer { flex-wrap: wrap; }
+  .lesson-mobile-toggle { display: inline-flex; }
+  .lesson-sidebar { display: none; width: auto; }
+  .lesson-sidebar.is-open { display: block; position: fixed; inset: 0; z-index: 95; }
+  .lesson-sidebar.is-open .lesson-sidebar-overlay { display: block; position: absolute; inset: 0; background: rgba(18, 18, 16, 0.5); }
+  .lesson-sidebar.is-open .lesson-sidebar-sheet {
+    position: absolute; left: 0; right: 0; bottom: 0; top: auto;
+    max-height: 70vh; border-radius: var(--r-lg) var(--r-lg) 0 0; box-shadow: var(--shadow-pop);
+    padding: 16px 16px 24px;
+  }
+  .lesson-sidebar.is-open .lesson-sidebar-handle { display: block; width: 36px; height: 4px; border-radius: 99px; background: var(--ink-divider); margin: 0 auto 14px; }
 }
 @media (max-width: 480px) {
   .folders-grid { grid-template-columns: 1fr; }
