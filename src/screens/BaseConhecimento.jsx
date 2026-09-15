@@ -1080,6 +1080,9 @@ function PainelEquipe({ activeEmpresaId, currentUserId }) {
       if (cancelado) return
       if (!listaUsuarios.length) { setLinhas([]); setLoading(false); return }
 
+      // Depende da policy de SELECT adicionada na migration_014 — sem ela o
+      // RLS de kb_progresso deixa passar só a própria linha de quem está
+      // logado, e o .in() abaixo volta vazio pra todo o resto da equipe.
       const { data: progresso } = await supabase
         .from('kb_progresso')
         .select('usuario_id, aula_id, concluida, concluida_em')
