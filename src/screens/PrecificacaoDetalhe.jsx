@@ -367,8 +367,16 @@ export default function PrecificacaoDetalhe() {
       .insert({ precificacao_id: id, nome })
       .select('id, nome')
       .single()
-    if (error || !data) {
-      console.error('[etiquetas] erro ao inserir em precificacao_etiquetas:', error, { precificacao_id: id, nome })
+
+    if (error) {
+      console.error('Erro ao salvar etiqueta:', JSON.stringify(error, null, 2))
+      console.error('precificacao_id usado:', id)
+      console.error('nome usado:', nome)
+      toast('Erro ao salvar etiqueta')
+      return
+    }
+    if (!data) {
+      console.error('[etiquetas] insert em precificacao_etiquetas não retornou erro nem dado', { precificacao_id: id, nome })
       toast('Erro ao salvar etiqueta')
       return
     }
