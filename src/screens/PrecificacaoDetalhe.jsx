@@ -182,10 +182,11 @@ export default function PrecificacaoDetalhe() {
       carregarEtapasTree(id),
       supabase.from('precificacao_custos_extras').select('id, nome, valor:valor_estimado, ordem').eq('precificacao_id', id).order('ordem'),
       supabase.from('precificacao_etiquetas_cadastro').select('id, nome').eq('empresa_id', activeEmpresaId).order('nome'),
-      supabase.from('precificacao_etiquetas').select('nome').eq('precificacao_id', id),
+      supabase.from('precificacao_etiquetas').select('id, nome').eq('precificacao_id', id),
     ])
 
     if (precifRes.error || !precifRes.data) { toast('Precificação não encontrada'); navigate('/precificacao'); return }
+    if (etiquetasLinkRes.error) console.error('[etiquetas] erro ao carregar precificacao_etiquetas:', etiquetasLinkRes.error)
 
     const p = precifRes.data
     setPrecificacao(p)
@@ -194,7 +195,7 @@ export default function PrecificacaoDetalhe() {
       valorHora: p.valor_hora, margemLucro: p.margem_pct,
       nfAtivo: p.nf_ativo, nfPercentual: p.nf_pct,
       metragem: p.metragem ?? '', complexidade: p.complexidade,
-      etiquetas: (etiquetasLinkRes.data || []).map((r) => r.nome),
+      etiquetas: etiquetasLinkRes.data || [], // [{ id, nome }]
     })
     setClientes(clientesRes.data || [])
     setEtiquetasCadastro(etiquetasRes.data || [])
@@ -344,20 +345,35 @@ export default function PrecificacaoDetalhe() {
   // ── Etiquetas ──
   const sugestoesEtiqueta = etiquetaBusca.trim()
     ? etiquetasCadastro.filter((et) =>
-        et.nome.toLowerCase().includes(etiquetaBusca.trim().toLowerCase()) && !form.etiquetas.includes(et.nome))
+        et.nome.toLowerCase().includes(etiquetaBusca.trim().toLowerCase()) && !form.etiquetas.some((e) => e.nome === et.nome))
     : []
   const etiquetaJaExiste = etiquetasCadastro.some((et) => et.nome.toLowerCase() === etiquetaBusca.trim().toLowerCase())
 
   // Etiquetas aplicadas à precificação ficam em `precificacao_etiquetas`
   // (precificacao_id, nome) — uma linha por etiqueta vinculada. O catálogo
   // (`precificacao_etiquetas_cadastro`) é só a fonte do autocomplete.
+  // form.etiquetas guarda [{ id, nome }] — precisa do id de volta do
+  // insert pra poder deletar por id depois, não por texto.
   async function adicionarEtiquetaExistente(nome) {
     setEtiquetaBusca('')
     setEtiquetaDropdownAberto(false)
-    if (form.etiquetas.includes(nome)) return
-    updateForm({ etiquetas: [...form.etiquetas, nome] })
-    const { error } = await supabase.from('precificacao_etiquetas').insert({ precificacao_id: id, nome })
-    if (error) toast('Erro ao salvar etiqueta'); else markSaved()
+    if (form.etiquetas.some((e) => e.nome === nome)) return
+    if (!id) {
+      console.error('[etiquetas] precificacao_id ausente ao tentar vincular etiqueta', { id, nome })
+      toast('Erro ao salvar etiqueta')
+      return
+    }
+    const { data, error } = await supabase.from('precificacao_etiquetas')
+      .insert({ precificacao_id: id, nome })
+      .select('id, nome')
+      .single()
+    if (error || !data) {
+      console.error('[etiquetas] erro ao inserir em precificacao_etiquetas:', error, { precificacao_id: id, nome })
+      toast('Erro ao salvar etiqueta')
+      return
+    }
+    updateForm({ etiquetas: [...form.etiquetas, data] })
+    markSaved()
   }
 
   async function criarEtiqueta(nome) {
@@ -367,15 +383,26 @@ export default function PrecificacaoDetalhe() {
     const { data, error } = await supabase.from('precificacao_etiquetas_cadastro')
       .insert({ empresa_id: activeEmpresaId, nome: limpo }).select('id, nome').single()
     setCriandoEtiqueta(false)
-    if (error || !data) { toast('Erro ao criar etiqueta'); return }
+    if (error || !data) {
+      console.error('[etiquetas] erro ao inserir em precificacao_etiquetas_cadastro:', error, { empresa_id: activeEmpresaId, nome: limpo })
+      toast('Erro ao criar etiqueta')
+      return
+    }
     setEtiquetasCadastro((prev) => [...prev, data].sort((a, b) => a.nome.localeCompare(b.nome)))
     adicionarEtiquetaExistente(data.nome)
   }
 
-  async function removeEtiqueta(tag) {
-    updateForm({ etiquetas: form.etiquetas.filter((t) => t !== tag) })
-    const { error } = await supabase.from('precificacao_etiquetas').delete().eq('precificacao_id', id).eq('nome', tag)
-    if (error) toast('Erro ao remover etiqueta'); else markSaved()
+  async function removeEtiqueta(etiquetaId) {
+    const anterior = form.etiquetas
+    updateForm({ etiquetas: form.etiquetas.filter((e) => e.id !== etiquetaId) })
+    const { error } = await supabase.from('precificacao_etiquetas').delete().eq('id', etiquetaId)
+    if (error) {
+      console.error('[etiquetas] erro ao remover de precificacao_etiquetas:', error, { id: etiquetaId })
+      toast('Erro ao remover etiqueta')
+      updateForm({ etiquetas: anterior })
+      return
+    }
+    markSaved()
   }
 
   // ── Etapas ──
@@ -811,8 +838,8 @@ export default function PrecificacaoDetalhe() {
             <div className="modal-field pd-etiquetas-field">
               <label className="modal-label">Etiquetas</label>
               <div className="pd-tags-input">
-                {form.etiquetas.map((t) => (
-                  <span className="pd-itag" key={t}>{t}<button onClick={() => removeEtiqueta(t)}>×</button></span>
+                {form.etiquetas.map((et) => (
+                  <span className="pd-itag" key={et.id}>{et.nome}<button onClick={() => removeEtiqueta(et.id)}>×</button></span>
                 ))}
                 <input
                   className="pd-tag-inline-input"
