@@ -129,6 +129,10 @@ export default function BaseConhecimento() {
   // Aba "Painel" (progresso da equipe): só master/gestor de um escritório
   // de verdade — prolu_admin puro não tem equipe pra ver.
   const podeVerPainel = isGestorOuSuperior && !isAdminMode
+  // Modo visitante: prolu_admin navegando como outro escritório (impersonate
+  // ou "ver como usuário"). Não é dono do progresso de ninguém ali, então
+  // nem lê nem grava kb_progresso — tudo aparece como não concluído.
+  const modoVisitante = isProluAdmin && Boolean(impersonatedEmpresaId || viewAsUser)
 
   const [pastas, setPastas] = useState([])
   const [kbTab, setKbTab] = useState('cursos')
@@ -208,7 +212,9 @@ export default function BaseConhecimento() {
         ? supabase.from('kb_pastas').select(nested).eq('empresa_id', activeEmpresaId).order('ordem')
         : Promise.resolve({ data: [] }),
       supabase.from('kb_aula_pdfs').select('*'),
-      supabase.from('kb_progresso').select('*').eq('usuario_id', user.id),
+      // Modo visitante não lê progresso de ninguém — tudo entra como
+      // não concluído (buildPastas trata array vazio normalmente).
+      modoVisitante ? Promise.resolve({ data: [] }) : supabase.from('kb_progresso').select('*').eq('usuario_id', user.id),
     ])
 
     // Achata a estrutura aninhada para o formato plano que buildPastas espera.
@@ -221,7 +227,7 @@ export default function BaseConhecimento() {
     setLoading(false)
   }
 
-  useEffect(() => { carregar() }, [user?.id, activeEmpresaId]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { carregar() }, [user?.id, activeEmpresaId, modoVisitante]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Restaura quais módulos estavam abertos/fechados nesta pasta
   // (localStorage, por pasta). Sem nada salvo, abre todos por padrão.
@@ -264,6 +270,7 @@ export default function BaseConhecimento() {
 
   // ── toggle concluída ──
   async function toggleLessonDone(lessonId) {
+    if (modoVisitante) return
     const l = findLesson(lessonId)
     const newDone = !l?.done
     setPastas(prev => prev.map(p => p.id !== currentPastaId ? p : {
@@ -751,9 +758,11 @@ export default function BaseConhecimento() {
               <button className="nav-lesson-text-btn" onClick={() => navLesson(-1)} disabled={!hasPrev}>
                 <IconChevronLeft /> Anterior
               </button>
-              <button className={`btn-concluir${playerLesson.done ? ' concluida' : ''}`} onClick={() => toggleLessonDone(playerLesson.id)}>
-                <IconCheck /> {playerLesson.done ? 'Concluída' : 'Marcar como concluída'}
-              </button>
+              {!modoVisitante && (
+                <button className={`btn-concluir${playerLesson.done ? ' concluida' : ''}`} onClick={() => toggleLessonDone(playerLesson.id)}>
+                  <IconCheck /> {playerLesson.done ? 'Concluída' : 'Marcar como concluída'}
+                </button>
+              )}
               <button className="nav-lesson-text-btn" onClick={() => navLesson(1)} disabled={!hasNext}>
                 Próxima <IconChevronRight />
               </button>
