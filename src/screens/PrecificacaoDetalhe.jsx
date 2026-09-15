@@ -415,6 +415,7 @@ export default function PrecificacaoDetalhe() {
     if (error || !data) { toast('Erro ao criar etapa'); return }
     setEtapas((prev) => [...prev, { ...data, tarefas: [] }])
     markSaved()
+    return data.id
   }
   async function handleRenameEtapa(etapaId, nome) {
     setEtapas((prev) => prev.map((e) => e.id === etapaId ? { ...e, nome } : e))
@@ -448,6 +449,7 @@ export default function PrecificacaoDetalhe() {
     if (error || !data) { toast('Erro ao criar tarefa'); return }
     setEtapas((prev) => addTarefaToEtapa(prev, etapaId, { ...data, subtarefas: [] }))
     markSaved()
+    return data.id
   }
   async function handleRenameTarefa(tarefaId, nome) {
     setEtapas((prev) => updateTarefaInTree(prev, tarefaId, { nome }))
@@ -488,6 +490,26 @@ export default function PrecificacaoDetalhe() {
       .select('id, tarefa_id, nome, horas:horas_estimadas, ordem').single()
     if (error || !data) { toast('Erro ao criar subtarefa'); return }
     setEtapas((prev) => addSubtarefaToTarefa(prev, tarefaId, data))
+    markSaved()
+    return data.id
+  }
+  async function handleReorderSubtarefas(tarefaId, draggedId, targetId, position) {
+    let tarefaAtual = null
+    etapas.forEach((e) => e.tarefas.forEach((t) => { if (t.id === tarefaId) tarefaAtual = t }))
+    if (!tarefaAtual) return
+    const list = [...tarefaAtual.subtarefas]
+    const fromIdx = list.findIndex((st) => st.id === draggedId)
+    if (fromIdx === -1) return
+    const [moved] = list.splice(fromIdx, 1)
+    let insertIdx = list.findIndex((st) => st.id === targetId)
+    if (position === 'after') insertIdx += 1
+    list.splice(insertIdx, 0, moved)
+    const reordered = list.map((st, i) => ({ ...st, ordem: i }))
+    setEtapas((prev) => prev.map((e) => ({
+      ...e,
+      tarefas: e.tarefas.map((t) => t.id === tarefaId ? { ...t, subtarefas: reordered } : t),
+    })))
+    await Promise.all(reordered.map((st) => supabase.from('precificacao_subtarefas').update({ ordem: st.ordem }).eq('id', st.id)))
     markSaved()
   }
   async function handleRenameSubtarefa(subId, nome) {
@@ -906,6 +928,7 @@ export default function PrecificacaoDetalhe() {
           onRenameSubtarefa={handleRenameSubtarefa}
           onSetSubtarefaHoras={handleSetSubtarefaHoras}
           onDeleteSubtarefa={handleDeleteSubtarefa}
+          onReorderSubtarefas={handleReorderSubtarefas}
           onImportModelo={abrirImportarModelo}
         />
       )}

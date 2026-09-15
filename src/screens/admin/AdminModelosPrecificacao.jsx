@@ -105,8 +105,11 @@ export default function AdminModelosPrecificacao() {
   async function refetchEtapas() { setEtapas(await carregarModeloTree(selecionadoId)) }
 
   async function handleAddEtapa() {
-    await supabase.from('precificacao_modelo_etapas').insert({ modelo_id: selecionadoId, nome: 'Nova etapa', ordem: etapas.length })
-    refetchEtapas()
+    const { data } = await supabase.from('precificacao_modelo_etapas')
+      .insert({ modelo_id: selecionadoId, nome: 'Nova etapa', ordem: etapas.length })
+      .select('id').single()
+    await refetchEtapas()
+    return data?.id
   }
   async function handleRenameEtapa(etapaId, nome) {
     await supabase.from('precificacao_modelo_etapas').update({ nome }).eq('id', etapaId)
@@ -131,8 +134,11 @@ export default function AdminModelosPrecificacao() {
 
   async function handleAddTarefa(etapaId) {
     const etapa = etapas.find((e) => e.id === etapaId)
-    await supabase.from('precificacao_modelo_tarefas').insert({ etapa_id: etapaId, nome: 'Nova tarefa', horas_estimadas_soltas: 0, ordem: (etapa?.tarefas || []).length })
-    refetchEtapas()
+    const { data } = await supabase.from('precificacao_modelo_tarefas')
+      .insert({ etapa_id: etapaId, nome: 'Nova tarefa', horas_estimadas_soltas: 0, ordem: (etapa?.tarefas || []).length })
+      .select('id').single()
+    await refetchEtapas()
+    return data?.id
   }
   async function handleRenameTarefa(tarefaId, nome) {
     await supabase.from('precificacao_modelo_tarefas').update({ nome }).eq('id', tarefaId)
@@ -164,8 +170,29 @@ export default function AdminModelosPrecificacao() {
   async function handleAddSubtarefa(tarefaId) {
     let subCount = 0
     etapas.forEach((e) => e.tarefas.forEach((t) => { if (t.id === tarefaId) subCount = t.subtarefas.length }))
-    await supabase.from('precificacao_modelo_subtarefas').insert({ tarefa_id: tarefaId, nome: 'Nova subtarefa', horas_estimadas: 0, ordem: subCount })
-    refetchEtapas()
+    const { data } = await supabase.from('precificacao_modelo_subtarefas')
+      .insert({ tarefa_id: tarefaId, nome: 'Nova subtarefa', horas_estimadas: 0, ordem: subCount })
+      .select('id').single()
+    await refetchEtapas()
+    return data?.id
+  }
+  async function handleReorderSubtarefas(tarefaId, draggedId, targetId, position) {
+    let tarefaAtual = null
+    etapas.forEach((e) => e.tarefas.forEach((t) => { if (t.id === tarefaId) tarefaAtual = t }))
+    if (!tarefaAtual) return
+    const list = [...tarefaAtual.subtarefas]
+    const fromIdx = list.findIndex((st) => st.id === draggedId)
+    if (fromIdx === -1) return
+    const [moved] = list.splice(fromIdx, 1)
+    let insertIdx = list.findIndex((st) => st.id === targetId)
+    if (position === 'after') insertIdx += 1
+    list.splice(insertIdx, 0, moved)
+    const reordered = list.map((st, i) => ({ ...st, ordem: i }))
+    setEtapas((prev) => prev.map((e) => ({
+      ...e,
+      tarefas: e.tarefas.map((t) => t.id === tarefaId ? { ...t, subtarefas: reordered } : t),
+    })))
+    await Promise.all(reordered.map((st) => supabase.from('precificacao_modelo_subtarefas').update({ ordem: st.ordem }).eq('id', st.id)))
   }
   async function handleRenameSubtarefa(subId, nome) {
     await supabase.from('precificacao_modelo_subtarefas').update({ nome }).eq('id', subId)
@@ -228,6 +255,7 @@ export default function AdminModelosPrecificacao() {
                 onRenameSubtarefa={handleRenameSubtarefa}
                 onSetSubtarefaHoras={handleSetSubtarefaHoras}
                 onDeleteSubtarefa={handleDeleteSubtarefa}
+                onReorderSubtarefas={handleReorderSubtarefas}
               />
             )}
           </div>

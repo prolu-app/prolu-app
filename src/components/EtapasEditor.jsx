@@ -1,28 +1,43 @@
-import { useState } from 'react'
-import { IconPlus, IconChevronDown, IconGrip } from './Icons.jsx'
+import { useEffect, useState } from 'react'
+import { IconPlus, IconChevronDown, IconGrip, IconTrash } from './Icons.jsx'
 import './EtapasEditor.css'
 
+const MOBILE_BREAKPOINT = 860
+
 // Editor de árvore etapa → tarefa → subtarefa, com horas somadas e
-// reordenação por drag and drop (HTML5 nativo). Controlado pelo pai: toda
-// mutação passa por uma callback (o pai grava no Supabase e devolve a
-// árvore atualizada via prop `etapas`). Usado tanto na aba "Etapas" de
-// PrecificacaoDetalhe quanto na edição de modelos em ModelosEtapas.
+// reordenação por drag and drop (HTML5 nativo, só desktop). Controlado
+// pelo pai: toda mutação passa por uma callback (o pai grava no Supabase e
+// devolve a árvore atualizada via prop `etapas`). onAddEtapa/onAddTarefa/
+// onAddSubtarefa devem retornar o id do item recém-criado (ou uma Promise
+// que resolve pra ele), pra abrir o nome já em edição com foco automático.
+// Usado na aba "Etapas" de PrecificacaoDetalhe, em ModelosEtapas e em
+// AdminModelosPrecificacao.
 export default function EtapasEditor({
   etapas,
   onAddEtapa, onRenameEtapa, onDeleteEtapa, onReorderEtapas,
   onAddTarefa, onRenameTarefa, onSetTarefaHoras, onDeleteTarefa, onReorderTarefas,
-  onAddSubtarefa, onRenameSubtarefa, onSetSubtarefaHoras, onDeleteSubtarefa,
+  onAddSubtarefa, onRenameSubtarefa, onSetSubtarefaHoras, onDeleteSubtarefa, onReorderSubtarefas,
   onImportModelo, readOnly = false,
 }) {
   const [collapsed, setCollapsed] = useState(() => new Set())
-  const [menuAberto, setMenuAberto] = useState(null) // `${tipo}:${id}`
   const [editando, setEditando] = useState(null) // `${tipo}:${id}`
+  const [confirmDeleteEtapa, setConfirmDeleteEtapa] = useState(null) // { id, nome }
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= MOBILE_BREAKPOINT)
   const [dragEtapa, setDragEtapa] = useState(null)
   const [dragOverEtapa, setDragOverEtapa] = useState(null)
   const [dragOverEtapaPos, setDragOverEtapaPos] = useState(null)
   const [dragTarefa, setDragTarefa] = useState(null)
   const [dragOverTarefa, setDragOverTarefa] = useState(null)
   const [dragOverTarefaPos, setDragOverTarefaPos] = useState(null)
+  const [dragSubtarefa, setDragSubtarefa] = useState(null)
+  const [dragOverSubtarefa, setDragOverSubtarefa] = useState(null)
+  const [dragOverSubtarefaPos, setDragOverSubtarefaPos] = useState(null)
+
+  useEffect(() => {
+    function onResize() { setIsMobile(window.innerWidth <= MOBILE_BREAKPOINT) }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   function toggleCollapse(id) {
     setCollapsed((prev) => {
@@ -41,15 +56,26 @@ export default function EtapasEditor({
 
   function resetEtapaDrag() { setDragEtapa(null); setDragOverEtapa(null); setDragOverEtapaPos(null) }
   function resetTarefaDrag() { setDragTarefa(null); setDragOverTarefa(null); setDragOverTarefaPos(null) }
+  function resetSubtarefaDrag() { setDragSubtarefa(null); setDragOverSubtarefa(null); setDragOverSubtarefaPos(null) }
+
+  async function criarEtapa() {
+    const novoId = await onAddEtapa()
+    if (novoId) setEditando(`etapa:${novoId}`)
+  }
+  async function criarTarefa(etapaId) {
+    const novoId = await onAddTarefa(etapaId)
+    if (novoId) setEditando(`tarefa:${novoId}`)
+  }
+  async function criarSubtarefa(tarefaId) {
+    const novoId = await onAddSubtarefa(tarefaId)
+    if (novoId) setEditando(`subtarefa:${novoId}`)
+  }
 
   return (
     <div className="ee-wrap">
-      {!readOnly && (
+      {!readOnly && onImportModelo && (
         <div className="ee-toolbar">
-          {onImportModelo && (
-            <button className="ee-btn-secondary" onClick={onImportModelo}>Importar modelo</button>
-          )}
-          <button className="ee-btn-secondary" onClick={onAddEtapa}><IconPlus /> Nova etapa</button>
+          <button className="ee-btn-secondary" onClick={onImportModelo}>Importar modelo</button>
         </div>
       )}
 
@@ -61,11 +87,11 @@ export default function EtapasEditor({
           return (
             <div
               key={e.id}
-              className={`ee-etapa${dragEtapa === e.id ? ' dragging' : ''}${dragOverEtapa === e.id ? ` drag-over-${dragOverEtapaPos}` : ''}`}
-              draggable={!readOnly}
+              className={`ee-etapa etapa-row${dragEtapa === e.id ? ' dragging' : ''}${dragOverEtapa === e.id ? ` drag-over-${dragOverEtapaPos}` : ''}`}
+              draggable={!readOnly && !isMobile}
               onDragStart={() => setDragEtapa(e.id)}
               onDragOver={(ev) => {
-                if (readOnly) return
+                if (readOnly || isMobile) return
                 ev.preventDefault()
                 if (e.id === dragEtapa) return
                 const rect = ev.currentTarget.getBoundingClientRect()
@@ -76,7 +102,7 @@ export default function EtapasEditor({
               onDragEnd={resetEtapaDrag}
             >
               <div className="ee-etapa-head">
-                <span className="ee-grip"><IconGrip /></span>
+                {!isMobile && <span className="ee-grip"><IconGrip /></span>}
                 <button className="ee-collapse-btn" onClick={() => toggleCollapse(e.id)}>
                   <IconChevronDown className={isCollapsed ? 'ee-chevron-collapsed' : ''} />
                 </button>
@@ -100,12 +126,14 @@ export default function EtapasEditor({
                 )}
                 <span className="ee-soma">Σ {subtotalEtapa(e)}h</span>
                 {!readOnly && (
-                  <RowMenu
-                    open={menuAberto === `etapa:${e.id}`}
-                    onToggle={() => setMenuAberto(menuAberto === `etapa:${e.id}` ? null : `etapa:${e.id}`)}
-                    onClose={() => setMenuAberto(null)}
-                    onDelete={() => { onDeleteEtapa(e.id); setMenuAberto(null) }}
-                  />
+                  <button
+                    className="ee-del-btn btn-delete"
+                    onClick={() => setConfirmDeleteEtapa({ id: e.id, nome: e.nome })}
+                    aria-label="Excluir etapa"
+                    title="Excluir etapa"
+                  >
+                    <IconTrash />
+                  </button>
                 )}
               </div>
 
@@ -114,11 +142,11 @@ export default function EtapasEditor({
                   {(e.tarefas || []).map((t) => (
                     <div
                       key={t.id}
-                      className={`ee-tarefa${dragTarefa === t.id ? ' dragging' : ''}${dragOverTarefa === t.id ? ` drag-over-${dragOverTarefaPos}` : ''}`}
-                      draggable={!readOnly}
+                      className={`ee-tarefa tarefa-row${dragTarefa === t.id ? ' dragging' : ''}${dragOverTarefa === t.id ? ` drag-over-${dragOverTarefaPos}` : ''}`}
+                      draggable={!readOnly && !isMobile}
                       onDragStart={() => setDragTarefa(t.id)}
                       onDragOver={(ev) => {
-                        if (readOnly) return
+                        if (readOnly || isMobile) return
                         ev.preventDefault()
                         if (t.id === dragTarefa) return
                         const rect = ev.currentTarget.getBoundingClientRect()
@@ -129,7 +157,7 @@ export default function EtapasEditor({
                       onDragEnd={resetTarefaDrag}
                     >
                       <div className="ee-tarefa-head">
-                        <span className="ee-grip"><IconGrip /></span>
+                        {!isMobile && <span className="ee-grip"><IconGrip /></span>}
                         <span className="ee-tarefa-label">TAREFA</span>
                         {editando === `tarefa:${t.id}` ? (
                           <input
@@ -140,8 +168,15 @@ export default function EtapasEditor({
                             onKeyDown={(ev) => { if (ev.key === 'Enter') ev.target.blur(); if (ev.key === 'Escape') setEditando(null) }}
                           />
                         ) : (
-                          <span className="ee-tarefa-nome">{t.nome}</span>
+                          <span
+                            className={`ee-tarefa-nome${readOnly ? '' : ' ee-etapa-nome-editable'}`}
+                            onClick={() => !readOnly && setEditando(`tarefa:${t.id}`)}
+                            title={readOnly ? undefined : 'Clique para editar'}
+                          >
+                            {t.nome}
+                          </span>
                         )}
+                        {!readOnly && <button className="ee-add-sub-btn" onClick={() => criarSubtarefa(t.id)}>+ subtarefa</button>}
                         <span className="ee-tarefa-horas">
                           <input
                             type="number" min="0" step="0.5"
@@ -154,22 +189,42 @@ export default function EtapasEditor({
                             <span className="ee-tarefa-sub-total"> + {(t.subtarefas || []).reduce((s, st) => s + (st.horas || 0), 0)}h sub = {subtotalTarefa(t)}h</span>
                           )}
                         </span>
-                        {!readOnly && <button className="ee-add-sub-btn" onClick={() => onAddSubtarefa(t.id)}>+ subtarefa</button>}
                         {!readOnly && (
-                          <RowMenu
-                            open={menuAberto === `tarefa:${t.id}`}
-                            onToggle={() => setMenuAberto(menuAberto === `tarefa:${t.id}` ? null : `tarefa:${t.id}`)}
-                            onClose={() => setMenuAberto(null)}
-                            onEdit={() => { setEditando(`tarefa:${t.id}`); setMenuAberto(null) }}
-                            onDelete={() => { onDeleteTarefa(t.id); setMenuAberto(null) }}
-                          />
+                          <button
+                            className="ee-del-btn btn-delete"
+                            onClick={() => onDeleteTarefa(t.id)}
+                            aria-label="Excluir tarefa"
+                            title="Excluir tarefa"
+                          >
+                            <IconTrash />
+                          </button>
                         )}
                       </div>
 
                       {(t.subtarefas || []).length > 0 && (
                         <div className="ee-subtarefas">
                           {t.subtarefas.map((st) => (
-                            <div className="ee-subtarefa" key={st.id}>
+                            <div
+                              className={`ee-subtarefa subtarefa-row${dragSubtarefa === st.id ? ' dragging' : ''}${dragOverSubtarefa === st.id ? ` drag-over-${dragOverSubtarefaPos}` : ''}`}
+                              key={st.id}
+                              draggable={!readOnly && !isMobile}
+                              onDragStart={() => setDragSubtarefa(st.id)}
+                              onDragOver={(ev) => {
+                                if (readOnly || isMobile) return
+                                ev.preventDefault()
+                                if (st.id === dragSubtarefa) return
+                                const rect = ev.currentTarget.getBoundingClientRect()
+                                setDragOverSubtarefa(st.id)
+                                setDragOverSubtarefaPos(ev.clientY < rect.top + rect.height / 2 ? 'before' : 'after')
+                              }}
+                              onDrop={(ev) => {
+                                ev.preventDefault()
+                                if (dragSubtarefa && dragSubtarefa !== st.id) onReorderSubtarefas(t.id, dragSubtarefa, st.id, dragOverSubtarefaPos || 'before')
+                                resetSubtarefaDrag()
+                              }}
+                              onDragEnd={resetSubtarefaDrag}
+                            >
+                              {!isMobile && <span className="ee-grip ee-grip-sub"><IconGrip /></span>}
                               <span className="ee-sub-branch">└──</span>
                               <span className="ee-subtarefa-label">SUBTAREFA</span>
                               {editando === `subtarefa:${st.id}` ? (
@@ -181,7 +236,13 @@ export default function EtapasEditor({
                                   onKeyDown={(ev) => { if (ev.key === 'Enter') ev.target.blur(); if (ev.key === 'Escape') setEditando(null) }}
                                 />
                               ) : (
-                                <span className="ee-subtarefa-nome">{st.nome}</span>
+                                <span
+                                  className={`ee-subtarefa-nome${readOnly ? '' : ' ee-etapa-nome-editable'}`}
+                                  onClick={() => !readOnly && setEditando(`subtarefa:${st.id}`)}
+                                  title={readOnly ? undefined : 'Clique para editar'}
+                                >
+                                  {st.nome}
+                                </span>
                               )}
                               <input
                                 type="number" min="0" step="0.5"
@@ -192,13 +253,14 @@ export default function EtapasEditor({
                               />
                               <span className="ee-h-suffix">h</span>
                               {!readOnly && (
-                                <RowMenu
-                                  open={menuAberto === `subtarefa:${st.id}`}
-                                  onToggle={() => setMenuAberto(menuAberto === `subtarefa:${st.id}` ? null : `subtarefa:${st.id}`)}
-                                  onClose={() => setMenuAberto(null)}
-                                  onEdit={() => { setEditando(`subtarefa:${st.id}`); setMenuAberto(null) }}
-                                  onDelete={() => { onDeleteSubtarefa(st.id); setMenuAberto(null) }}
-                                />
+                                <button
+                                  className="ee-del-btn btn-delete"
+                                  onClick={() => onDeleteSubtarefa(st.id)}
+                                  aria-label="Excluir subtarefa"
+                                  title="Excluir subtarefa"
+                                >
+                                  <IconTrash />
+                                </button>
                               )}
                             </div>
                           ))}
@@ -207,7 +269,7 @@ export default function EtapasEditor({
                     </div>
                   ))}
                   {!readOnly && (
-                    <button className="ee-add-tarefa-btn" onClick={() => onAddTarefa(e.id)}><IconPlus /> Nova tarefa</button>
+                    <button className="ee-add-tarefa-btn" onClick={() => criarTarefa(e.id)}><IconPlus /> Nova tarefa</button>
                   )}
                 </div>
               )}
@@ -215,22 +277,31 @@ export default function EtapasEditor({
           )
         })}
       </div>
-    </div>
-  )
-}
 
-function RowMenu({ open, onToggle, onClose, onEdit, onDelete }) {
-  return (
-    <div className="ee-menu-wrap">
-      <button className="ee-menu-btn" onClick={onToggle} aria-label="Mais opções">⋮</button>
-      {open && (
-        <>
-          <div className="ee-menu-scrim" onClick={onClose} />
-          <div className="ee-menu">
-            {onEdit && <button onClick={onEdit}>Editar nome</button>}
-            <button className="ee-menu-danger" onClick={onDelete}>Excluir</button>
+      {!readOnly && (
+        <button className="btn-add-etapa" onClick={criarEtapa}>
+          + Adicionar etapa
+        </button>
+      )}
+
+      {confirmDeleteEtapa && (
+        <div className="modal-overlay" onClick={(ev) => { if (ev.target === ev.currentTarget) setConfirmDeleteEtapa(null) }}>
+          <div className="modal">
+            <div className="modal-title">Excluir etapa</div>
+            <p className="modal-delete-warn">
+              Excluir etapa "{confirmDeleteEtapa.nome}"? Todas as tarefas e subtarefas serão removidas.
+            </p>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setConfirmDeleteEtapa(null)}>Cancelar</button>
+              <button
+                className="btn-danger"
+                onClick={() => { onDeleteEtapa(confirmDeleteEtapa.id); setConfirmDeleteEtapa(null) }}
+              >
+                Excluir
+              </button>
+            </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   )
