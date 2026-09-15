@@ -22,11 +22,6 @@
   transition: box-shadow 0.15s, opacity 0.15s;
 }
 .ee-etapa.dragging { opacity: 0.4; }
-.ee-etapa.drag-over-before { box-shadow: 0 -2px 0 var(--green), var(--shadow-rest); }
-.ee-etapa.drag-over-after { box-shadow: 0 2px 0 var(--green), var(--shadow-rest); }
-
-.ee-grip { display: flex; align-items: center; color: var(--ink-30); cursor: grab; flex-shrink: 0; }
-.ee-grip svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
 
 .ee-etapa-head { display: flex; align-items: center; gap: 8px; padding: 10px 4px; }
 .ee-collapse-btn { background: none; border: none; cursor: pointer; display: flex; padding: 2px; color: var(--ink-60); flex-shrink: 0; }
@@ -51,8 +46,6 @@
   transition: opacity 0.15s, box-shadow 0.15s;
 }
 .ee-tarefa.dragging { opacity: 0.4; }
-.ee-tarefa.drag-over-before { box-shadow: 0 -2px 0 var(--green); }
-.ee-tarefa.drag-over-after { box-shadow: 0 2px 0 var(--green); }
 
 .ee-tarefa-head { display: flex; align-items: center; gap: 8px; padding: 8px 2px; flex-wrap: wrap; }
 .ee-tarefa-label { font-family: 'Montserrat', sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: 0.7px; color: var(--ink-40); flex-shrink: 0; }
@@ -75,7 +68,8 @@
 .ee-add-sub-btn:hover { color: var(--ink); }
 
 .ee-subtarefas { display: flex; flex-direction: column; gap: 4px; padding: 0 2px 8px 22px; }
-.ee-subtarefa { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-60); }
+.ee-subtarefa { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-60); transition: opacity 0.15s; }
+.ee-subtarefa.dragging { opacity: 0.4; }
 .ee-sub-branch { color: var(--ink-30); flex-shrink: 0; }
 .ee-subtarefa-label { font-family: 'Montserrat', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.6px; color: var(--ink-30); flex-shrink: 0; }
 .ee-subtarefa-nome { flex: 1; color: var(--ink-80); }
@@ -97,6 +91,34 @@
   outline: none; font-family: inherit;
 }
 .ee-name-input:focus { box-shadow: 0 0 0 2px var(--green); }
+.ee-name-input::placeholder { color: var(--ink-30); font-weight: 400; }
+
+.ee-nome-vazio { color: var(--ink-30); font-style: italic; font-weight: 400; }
+
+/* Drag handle — 6 pontinhos, só no hover no desktop (mobile não renderiza) */
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-30);
+  cursor: grab;
+  padding: 0 6px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+.etapa-row:hover .drag-handle,
+.tarefa-row:hover .drag-handle,
+.subtarefa-row:hover .drag-handle {
+  opacity: 1;
+}
+.drag-handle:active {
+  cursor: grabbing;
+  color: var(--ink-60);
+}
+
+/* Indicador de onde o item vai cair ao soltar */
+.drag-over-top { border-top: 2px solid var(--green); border-radius: 0; }
+.drag-over-bottom { border-bottom: 2px solid var(--green); border-radius: 0; }
 
 /* Lixeira — só no hover no desktop, sempre visível (discreta) no mobile */
 .ee-del-btn {

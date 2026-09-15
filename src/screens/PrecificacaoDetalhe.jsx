@@ -410,7 +410,7 @@ export default function PrecificacaoDetalhe() {
 
   async function handleAddEtapa() {
     const { data, error } = await supabase.from('precificacao_etapas')
-      .insert({ precificacao_id: id, nome: 'Nova etapa', ordem: etapas.length })
+      .insert({ precificacao_id: id, nome: '', ordem: etapas.length })
       .select('id, nome, ordem').single()
     if (error || !data) { toast('Erro ao criar etapa'); return }
     setEtapas((prev) => [...prev, { ...data, tarefas: [] }])
@@ -444,7 +444,7 @@ export default function PrecificacaoDetalhe() {
   async function handleAddTarefa(etapaId) {
     const etapa = etapas.find((e) => e.id === etapaId)
     const { data, error } = await supabase.from('precificacao_tarefas')
-      .insert({ etapa_id: etapaId, nome: 'Nova tarefa', horas_estimadas_soltas: 0, ordem: (etapa?.tarefas || []).length })
+      .insert({ etapa_id: etapaId, nome: '', horas_estimadas_soltas: 0, ordem: (etapa?.tarefas || []).length })
       .select('id, etapa_id, nome, horas:horas_estimadas_soltas, ordem').single()
     if (error || !data) { toast('Erro ao criar tarefa'); return }
     setEtapas((prev) => addTarefaToEtapa(prev, etapaId, { ...data, subtarefas: [] }))
@@ -486,7 +486,7 @@ export default function PrecificacaoDetalhe() {
     let subCount = 0
     etapas.forEach((e) => e.tarefas.forEach((t) => { if (t.id === tarefaId) subCount = t.subtarefas.length }))
     const { data, error } = await supabase.from('precificacao_subtarefas')
-      .insert({ tarefa_id: tarefaId, nome: 'Nova subtarefa', horas_estimadas: 0, ordem: subCount })
+      .insert({ tarefa_id: tarefaId, nome: '', horas_estimadas: 0, ordem: subCount })
       .select('id, tarefa_id, nome, horas:horas_estimadas, ordem').single()
     if (error || !data) { toast('Erro ao criar subtarefa'); return }
     setEtapas((prev) => addSubtarefaToTarefa(prev, tarefaId, data))
