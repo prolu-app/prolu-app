@@ -1,5 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
@@ -392,6 +393,7 @@ function ColFilterButton({
 export default function CRM() {
   const toast = useToast()
   const { user, activeEmpresaId } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [columns, setColumns] = useState([])
   const [rows, setRows] = useState([])
   const [clientes, setClientes] = useState([])
@@ -465,6 +467,23 @@ export default function CRM() {
   }, [isMobile])
 
   useEffect(() => { carregar() }, [activeEmpresaId])
+
+  // Abre o drawer de um registro direto pela URL (?open=<id>) — usado ao
+  // voltar de /precificacao/[id] com "Concluir" pro registro do CRM que
+  // originou aquela precificação.
+  useEffect(() => {
+    if (loading) return
+    const openId = searchParams.get('open')
+    if (openId && rows.some((r) => r.id === openId)) {
+      setDrawerRowId(openId)
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('open')
+        return next
+      }, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, rows])
   useEffect(() => { if (supabaseReady && activeEmpresaId) loadClientes() }, [activeEmpresaId])
   useEffect(() => {
     const key = `crm_hidden_cols_${activeEmpresaId || 'demo'}`

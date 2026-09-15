@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
@@ -24,19 +24,13 @@ export default function Precificacao() {
   const { activeEmpresaId } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
 
   const [lista, setLista] = useState([])
   const [clientesMap, setClientesMap] = useState({})
   const [crmMap, setCrmMap] = useState({})
   const [loading, setLoading] = useState(true)
   const [criando, setCriando] = useState(false)
-  const tab = searchParams.get('tab') === 'fechado' ? 'fechado' : 'orcamento'
   const [busca, setBusca] = useState('')
-
-  function setTab(next) {
-    setSearchParams(next === 'fechado' ? { tab: 'fechado' } : {})
-  }
 
   useEffect(() => { carregar() }, [activeEmpresaId])
 
@@ -46,7 +40,7 @@ export default function Precificacao() {
 
     const [precifRes, clientesRes, colunasRes, linhasRes] = await Promise.all([
       supabase.from('precificacoes')
-        .select('id, nome, status, cliente_id, crm_linha_id, complexidade, total_horas, valor_projeto, created_at')
+        .select('id, nome, cliente_id, crm_linha_id, complexidade, total_horas, valor_projeto, created_at')
         .eq('empresa_id', activeEmpresaId)
         .order('created_at', { ascending: false }),
       supabase.from('clientes').select('id, nome').eq('empresa_id', activeEmpresaId),
@@ -79,7 +73,7 @@ export default function Precificacao() {
     setCriando(true)
     const { data, error } = await supabase
       .from('precificacoes')
-      .insert({ empresa_id: activeEmpresaId, nome: 'Nova precificação', status: tab })
+      .insert({ empresa_id: activeEmpresaId, nome: 'Nova precificação', status: 'orcamento' })
       .select('id')
       .single()
     setCriando(false)
@@ -89,42 +83,31 @@ export default function Precificacao() {
 
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase()
-    return lista
-      .filter((p) => p.status === tab)
-      .filter((p) => {
-        if (!q) return true
-        const clienteNome = (p.cliente_id && clientesMap[p.cliente_id]) || ''
-        return p.nome.toLowerCase().includes(q) || clienteNome.toLowerCase().includes(q)
-      })
-  }, [lista, tab, busca, clientesMap])
-
-  const countOrcamentos = lista.filter((p) => p.status === 'orcamento').length
-  const countFechados = lista.filter((p) => p.status === 'fechado').length
+    if (!q) return lista
+    return lista.filter((p) => {
+      const clienteNome = (p.cliente_id && clientesMap[p.cliente_id]) || ''
+      return p.nome.toLowerCase().includes(q) || clienteNome.toLowerCase().includes(q)
+    })
+  }, [lista, busca, clientesMap])
 
   return (
     <>
       <div className="page-header between">
         <div>
           <div className="page-title">Precificação</div>
-          <div className="page-sub">Orçamentos e projetos fechados</div>
+          <div className="page-sub">Orçamentos do escritório</div>
         </div>
         <div className="pz-header-actions">
-          <button className="pz-modelos-link" onClick={() => navigate('/precificacao/modelos')}>
+          <button className="pz-header-link" onClick={() => navigate('/precificacao/etiquetas')}>
+            Gerenciar etiquetas <IconArrowRight />
+          </button>
+          <button className="pz-header-link" onClick={() => navigate('/precificacao/modelos')}>
             Modelos de etapas <IconArrowRight />
           </button>
           <button className="btn-primary" onClick={novaPrecificacao} disabled={criando}>
             <IconPlus /> {criando ? 'Criando…' : 'Nova precificação'}
           </button>
         </div>
-      </div>
-
-      <div className="pz-tabs">
-        <button className={`pz-tab${tab === 'orcamento' ? ' active' : ''}`} onClick={() => setTab('orcamento')}>
-          Orçamentos <span className="pz-tab-count">{countOrcamentos}</span>
-        </button>
-        <button className={`pz-tab${tab === 'fechado' ? ' active' : ''}`} onClick={() => setTab('fechado')}>
-          Projetos fechados <span className="pz-tab-count">{countFechados}</span>
-        </button>
       </div>
 
       <div className="pz-toolbar">
@@ -148,7 +131,7 @@ export default function Precificacao() {
         <p className="pz-empty">Carregando…</p>
       ) : filtrados.length === 0 ? (
         <p className="pz-empty">
-          {busca ? 'Nenhuma precificação encontrada.' : tab === 'orcamento' ? 'Nenhum orçamento ainda.' : 'Nenhum projeto fechado ainda.'}
+          {busca ? 'Nenhuma precificação encontrada.' : 'Nenhuma precificação ainda.'}
         </p>
       ) : (
         <div className="pz-table-wrap">
@@ -157,7 +140,7 @@ export default function Precificacao() {
               <tr>
                 <th>Nome</th>
                 <th>Cliente</th>
-                <th>Registro CRM</th>
+                <th>Pedido de orçamento</th>
                 <th>Complexidade</th>
                 <th>Horas</th>
                 <th>Valor</th>

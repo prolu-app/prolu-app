@@ -1,6 +1,6 @@
 .pz-header-actions { display: flex; align-items: center; gap: 18px; }
 
-.pz-modelos-link {
+.pz-header-link {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -11,48 +11,13 @@
   font-size: 13.5px;
   font-weight: 500;
   transition: color 0.15s;
+  white-space: nowrap;
 }
-.pz-modelos-link:hover { color: var(--ink); }
-.pz-modelos-link svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
-
-/* Abas */
-.pz-tabs { display: flex; gap: 6px; margin: 22px 0 20px; border-bottom: 1px solid var(--ink-divider); }
-.pz-tab {
-  border: none;
-  background: none;
-  font-family: 'Montserrat', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-40);
-  padding: 10px 4px;
-  margin-right: 22px;
-  cursor: pointer;
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.pz-tab:hover { color: var(--ink-60); }
-.pz-tab.active { color: var(--ink); }
-.pz-tab.active::after {
-  content: '';
-  position: absolute;
-  left: 0; right: 0; bottom: -1px;
-  height: 2px;
-  background: var(--ink);
-  border-radius: 2px;
-}
-.pz-tab-count {
-  background: var(--gray-soft);
-  color: var(--ink-60);
-  border-radius: 99px;
-  padding: 1px 8px;
-  font-size: 11px;
-}
-.pz-tab.active .pz-tab-count { background: var(--ink); color: var(--white); }
+.pz-header-link:hover { color: var(--ink); }
+.pz-header-link svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
 
 /* Toolbar / busca */
-.pz-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.pz-toolbar { display: flex; align-items: center; gap: 12px; margin: 22px 0 20px; }
 .pz-search { position: relative; flex: 1; max-width: 360px; }
 .pz-search-icon {
   position: absolute; left: 13px; top: 50%; transform: translateY(-50%);

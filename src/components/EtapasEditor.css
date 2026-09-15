@@ -38,6 +38,8 @@
   letter-spacing: 0.8px; color: var(--ink-40); flex-shrink: 0;
 }
 .ee-etapa-nome { font-weight: 600; font-size: 14.5px; color: var(--ink); flex: 1; }
+.ee-etapa-nome-editable { cursor: text; border-radius: 6px; padding: 2px 4px; margin: -2px -4px; transition: background 0.15s; }
+.ee-etapa-nome-editable:hover { background: var(--cream); }
 .ee-soma { font-size: 13px; color: var(--ink-60); font-weight: 600; white-space: nowrap; }
 
 .ee-tarefas { display: flex; flex-direction: column; gap: 8px; padding: 2px 4px 10px 30px; }

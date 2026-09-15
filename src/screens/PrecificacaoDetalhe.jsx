@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
@@ -17,6 +17,16 @@ const COMPLEXIDADES = [
 function fmtMoney(v) {
   const n = Number(v) || 0
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+}
+
+function fmtDate(v) {
+  if (!v) return '—'
+  const [y, m, d] = v.split('-')
+  return `${d}/${m}/${y.slice(2)}`
+}
+
+function fmtHora(d) {
+  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
 async function carregarEtapasTree(precificacaoId) {
@@ -83,11 +93,43 @@ async function carregarModeloTree(modeloId) {
   }))
 }
 
+// ── helpers de atualização otimista da árvore de etapas ──
+function addTarefaToEtapa(list, etapaId, tarefa) {
+  return list.map((e) => e.id === etapaId ? { ...e, tarefas: [...e.tarefas, tarefa] } : e)
+}
+function updateTarefaInTree(list, tarefaId, patch) {
+  return list.map((e) => ({ ...e, tarefas: e.tarefas.map((t) => t.id === tarefaId ? { ...t, ...patch } : t) }))
+}
+function removeTarefaFromTree(list, tarefaId) {
+  return list.map((e) => ({ ...e, tarefas: e.tarefas.filter((t) => t.id !== tarefaId) }))
+}
+function addSubtarefaToTarefa(list, tarefaId, sub) {
+  return list.map((e) => ({
+    ...e,
+    tarefas: e.tarefas.map((t) => t.id === tarefaId ? { ...t, subtarefas: [...t.subtarefas, sub] } : t),
+  }))
+}
+function updateSubtarefaInTree(list, subId, patch) {
+  return list.map((e) => ({
+    ...e,
+    tarefas: e.tarefas.map((t) => ({ ...t, subtarefas: t.subtarefas.map((st) => st.id === subId ? { ...st, ...patch } : st) })),
+  }))
+}
+function removeSubtarefaFromTree(list, subId) {
+  return list.map((e) => ({
+    ...e,
+    tarefas: e.tarefas.map((t) => ({ ...t, subtarefas: t.subtarefas.filter((st) => st.id !== subId) })),
+  }))
+}
+
 export default function PrecificacaoDetalhe() {
   const { id } = useParams()
   const { activeEmpresaId } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const origem = searchParams.get('origem')
+  const linhaIdOrigem = searchParams.get('linha_id')
 
   const [loading, setLoading] = useState(true)
   const [precificacao, setPrecificacao] = useState(null)
@@ -95,8 +137,16 @@ export default function PrecificacaoDetalhe() {
   const [etapas, setEtapas] = useState([])
   const [custos, setCustos] = useState([])
   const [clientes, setClientes] = useState([])
-  const [crmLinhas, setCrmLinhas] = useState([])
   const [crmColIds, setCrmColIds] = useState({})
+  const [crmLinhaLabel, setCrmLinhaLabel] = useState(null)
+  const [crmBusca, setCrmBusca] = useState('')
+  const [crmResultados, setCrmResultados] = useState([])
+  const [crmBuscando, setCrmBuscando] = useState(false)
+  const [crmDropdownAberto, setCrmDropdownAberto] = useState(false)
+  const [etiquetasCadastro, setEtiquetasCadastro] = useState([])
+  const [etiquetaBusca, setEtiquetaBusca] = useState('')
+  const [etiquetaDropdownAberto, setEtiquetaDropdownAberto] = useState(false)
+  const [criandoEtiqueta, setCriandoEtiqueta] = useState(false)
   const [tab, setTab] = useState('geral')
   const [editandoNome, setEditandoNome] = useState(false)
   const [clienteBusca, setClienteBusca] = useState('')
@@ -109,22 +159,29 @@ export default function PrecificacaoDetalhe() {
   const [modelos, setModelos] = useState([])
   const [importando, setImportando] = useState(null)
   const [escolhaImportar, setEscolhaImportar] = useState(null) // id do modelo escolhido aguardando "substituir ou adicionar"
-  const [modalFechar, setModalFechar] = useState(false)
-  const [valorFechamento, setValorFechamento] = useState('')
-  const [fechando, setFechando] = useState(false)
+  const [concluindo, setConcluindo] = useState(false)
+  const [savedAt, setSavedAt] = useState(null)
+  const savedTimeoutRef = useRef(null)
 
   useEffect(() => { carregar() }, [id])
+  useEffect(() => () => { if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current) }, [])
+
+  function markSaved() {
+    setSavedAt(new Date())
+    if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current)
+    savedTimeoutRef.current = setTimeout(() => setSavedAt(null), 3000)
+  }
 
   async function carregar() {
     if (!supabaseReady || !id) { setLoading(false); return }
     setLoading(true)
-    const [precifRes, clientesRes, colunasRes, linhasRes, etapasTree, custosRes] = await Promise.all([
+    const [precifRes, clientesRes, colunasRes, etapasTree, custosRes, etiquetasRes] = await Promise.all([
       supabase.from('precificacoes').select('*').eq('id', id).single(),
       supabase.from('clientes').select('id, nome').eq('empresa_id', activeEmpresaId).order('nome'),
       supabase.from('crm_colunas').select('id, opcoes').eq('empresa_id', activeEmpresaId),
-      supabase.from('crm_linhas').select('id, valores').eq('empresa_id', activeEmpresaId),
       carregarEtapasTree(id),
       supabase.from('precificacao_custos_extras').select('id, nome, valor, ordem').eq('precificacao_id', id).order('ordem'),
+      supabase.from('precificacao_etiquetas_cadastro').select('id, nome').eq('empresa_id', activeEmpresaId).order('nome'),
     ])
 
     if (precifRes.error || !precifRes.data) { toast('Precificação não encontrada'); navigate('/precificacao'); return }
@@ -136,9 +193,10 @@ export default function PrecificacaoDetalhe() {
       valorHora: p.valor_hora, margemLucro: p.margem_lucro,
       nfAtivo: p.nf_ativo, nfPercentual: p.nf_percentual,
       metragem: p.metragem ?? '', complexidade: p.complexidade,
-      etiquetas: p.etiquetas || [], status: p.status,
+      etiquetas: p.etiquetas || [],
     })
     setClientes(clientesRes.data || [])
+    setEtiquetasCadastro(etiquetasRes.data || [])
 
     function colId(slug) {
       return (colunasRes.data || []).find((c) => {
@@ -146,12 +204,15 @@ export default function PrecificacaoDetalhe() {
         return opcoes && !Array.isArray(opcoes) && opcoes.slug === slug
       })?.id
     }
-    const clienteColId = colId('cliente')
-    setCrmColIds({ clienteColId, statusColId: colId('status'), valorColId: colId('valor') })
-    setCrmLinhas((linhasRes.data || []).map((l) => ({
-      id: l.id,
-      label: (clienteColId && l.valores?.[clienteColId]) || '(sem nome)',
-    })))
+    const ids = { clienteColId: colId('cliente'), dataEntradaColId: colId('data_entrada'), statusColId: colId('status') }
+    setCrmColIds(ids)
+
+    if (p.crm_linha_id) {
+      const { data: linha } = await supabase.from('crm_linhas').select('valores').eq('id', p.crm_linha_id).single()
+      setCrmLinhaLabel((linha && ids.clienteColId && linha.valores?.[ids.clienteColId]) || '(sem nome)')
+    } else {
+      setCrmLinhaLabel(null)
+    }
 
     setEtapas(etapasTree)
     setCustos(custosRes.data || [])
@@ -190,12 +251,36 @@ export default function PrecificacaoDetalhe() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calc.totalHoras, calc.valorSemMargem, calc.valorFinal, precificacao?.id])
 
+  // Busca de "Pedido de orçamento" (crm_linhas), com debounce, min. 2 caracteres.
+  useEffect(() => {
+    const q = crmBusca.trim()
+    if (q.length < 2 || !crmColIds.clienteColId || !activeEmpresaId) { setCrmResultados([]); setCrmBuscando(false); return }
+    setCrmBuscando(true)
+    const t = setTimeout(async () => {
+      const { data } = await supabase
+        .from('crm_linhas')
+        .select('id, valores')
+        .eq('empresa_id', activeEmpresaId)
+        .filter(`valores->>${crmColIds.clienteColId}`, 'ilike', `%${q}%`)
+        .limit(15)
+      setCrmResultados((data || []).map((l) => ({
+        id: l.id,
+        cliente: l.valores?.[crmColIds.clienteColId] || '(sem nome)',
+        dataEntrada: crmColIds.dataEntradaColId ? l.valores?.[crmColIds.dataEntradaColId] : null,
+        status: crmColIds.statusColId ? l.valores?.[crmColIds.statusColId] : null,
+      })))
+      setCrmBuscando(false)
+    }, 300)
+    return () => clearTimeout(t)
+  }, [crmBusca, crmColIds, activeEmpresaId])
+
   function updateForm(patch) { setForm((f) => ({ ...f, ...patch })) }
 
   async function persistField(patch) {
     setPrecificacao((p) => ({ ...p, ...patch }))
     const { error } = await supabase.from('precificacoes').update(patch).eq('id', id)
     if (error) toast('Erro ao salvar')
+    else markSaved()
   }
 
   function commitNome(valor) {
@@ -205,34 +290,23 @@ export default function PrecificacaoDetalhe() {
     setEditandoNome(false)
   }
 
-  function abrirFecharProjeto() {
-    setValorFechamento(String(Math.round(calc.valorFinal)))
-    setModalFechar(true)
-  }
-
-  async function confirmarFechamento() {
-    const valor = Number(valorFechamento) || 0
-    setFechando(true)
-
-    const { error } = await supabase.from('precificacoes')
-      .update({ status: 'fechado', valor_fechamento: valor }).eq('id', id)
-    if (error) { toast('Erro ao fechar projeto'); setFechando(false); return }
-
-    if (form.crmLinhaId && crmColIds.statusColId && crmColIds.valorColId) {
-      const { data: linha } = await supabase.from('crm_linhas').select('valores').eq('id', form.crmLinhaId).single()
-      if (linha) {
-        await supabase.from('crm_linhas').update({
-          valores: { ...linha.valores, [crmColIds.statusColId]: 'Fechado', [crmColIds.valorColId]: valor },
-        }).eq('id', form.crmLinhaId)
-      }
-    }
-
-    setFechando(false)
-    setModalFechar(false)
-    updateForm({ status: 'fechado' })
-    setPrecificacao((p) => ({ ...p, status: 'fechado', valor_fechamento: valor }))
-    toast('Projeto fechado com sucesso')
-    navigate('/precificacao?tab=fechado')
+  async function concluir() {
+    setConcluindo(true)
+    await persistField({
+      nome: form.nome.trim() || 'Sem nome',
+      cliente_id: form.clienteId,
+      crm_linha_id: form.crmLinhaId,
+      valor_hora: Number(form.valorHora) || 0,
+      margem_lucro: Number(form.margemLucro) || 0,
+      nf_ativo: form.nfAtivo,
+      nf_percentual: Number(form.nfPercentual) || 0,
+      metragem: form.metragem === '' ? null : Number(form.metragem),
+      complexidade: form.complexidade,
+      etiquetas: form.etiquetas,
+    })
+    setConcluindo(false)
+    if (origem === 'crm' && linhaIdOrigem) navigate(`/crm?open=${linhaIdOrigem}`)
+    else navigate('/precificacao')
   }
 
   function selecionarCliente(c) {
@@ -258,16 +332,49 @@ export default function PrecificacaoDetalhe() {
     persistField({ cliente_id: null })
   }
 
-  function addEtiqueta(e) {
-    if (e.key !== 'Enter' && e.key !== ',') return
-    e.preventDefault()
-    const val = e.target.value.trim().replace(',', '')
-    if (!val || form.etiquetas.includes(val)) { e.target.value = ''; return }
-    const etiquetas = [...form.etiquetas, val]
+  function selecionarCrmLinha(l) {
+    updateForm({ crmLinhaId: l.id })
+    persistField({ crm_linha_id: l.id })
+    setCrmLinhaLabel(l.cliente)
+    setCrmBusca('')
+    setCrmResultados([])
+    setCrmDropdownAberto(false)
+  }
+
+  function desvincularCrm() {
+    updateForm({ crmLinhaId: null })
+    persistField({ crm_linha_id: null })
+    setCrmLinhaLabel(null)
+  }
+
+  // ── Etiquetas ──
+  const sugestoesEtiqueta = etiquetaBusca.trim()
+    ? etiquetasCadastro.filter((et) =>
+        et.nome.toLowerCase().includes(etiquetaBusca.trim().toLowerCase()) && !form.etiquetas.includes(et.nome))
+    : []
+  const etiquetaJaExiste = etiquetasCadastro.some((et) => et.nome.toLowerCase() === etiquetaBusca.trim().toLowerCase())
+
+  function adicionarEtiquetaExistente(nome) {
+    setEtiquetaBusca('')
+    setEtiquetaDropdownAberto(false)
+    if (form.etiquetas.includes(nome)) return
+    const etiquetas = [...form.etiquetas, nome]
     updateForm({ etiquetas })
     persistField({ etiquetas })
-    e.target.value = ''
   }
+
+  async function criarEtiqueta(nome) {
+    const limpo = nome.trim()
+    if (!limpo || !activeEmpresaId) return
+    setCriandoEtiqueta(true)
+    const { data, error } = await supabase.from('precificacao_etiquetas_cadastro')
+      .insert({ empresa_id: activeEmpresaId, nome: limpo }).select('id, nome').single()
+    setCriandoEtiqueta(false)
+    if (error || !data) { toast('Erro ao criar etiqueta'); return }
+    setEtiquetasCadastro((prev) => [...prev, data].sort((a, b) => a.nome.localeCompare(b.nome)))
+    adicionarEtiquetaExistente(data.nome)
+  }
+
   function removeEtiqueta(tag) {
     const etiquetas = form.etiquetas.filter((t) => t !== tag)
     updateForm({ etiquetas })
@@ -278,16 +385,22 @@ export default function PrecificacaoDetalhe() {
   async function refetchEtapas() { setEtapas(await carregarEtapasTree(id)) }
 
   async function handleAddEtapa() {
-    await supabase.from('precificacao_etapas').insert({ precificacao_id: id, nome: 'Nova etapa', ordem: etapas.length })
-    refetchEtapas()
+    const { data, error } = await supabase.from('precificacao_etapas')
+      .insert({ precificacao_id: id, nome: 'Nova etapa', ordem: etapas.length })
+      .select('id, nome, ordem').single()
+    if (error || !data) { toast('Erro ao criar etapa'); return }
+    setEtapas((prev) => [...prev, { ...data, tarefas: [] }])
+    markSaved()
   }
   async function handleRenameEtapa(etapaId, nome) {
-    await supabase.from('precificacao_etapas').update({ nome }).eq('id', etapaId)
-    refetchEtapas()
+    setEtapas((prev) => prev.map((e) => e.id === etapaId ? { ...e, nome } : e))
+    const { error } = await supabase.from('precificacao_etapas').update({ nome }).eq('id', etapaId)
+    if (error) toast('Erro ao renomear etapa'); else markSaved()
   }
   async function handleDeleteEtapa(etapaId) {
-    await supabase.from('precificacao_etapas').delete().eq('id', etapaId)
-    refetchEtapas()
+    setEtapas((prev) => prev.filter((e) => e.id !== etapaId))
+    const { error } = await supabase.from('precificacao_etapas').delete().eq('id', etapaId)
+    if (error) toast('Erro ao excluir etapa'); else markSaved()
   }
   async function handleReorderEtapas(draggedId, targetId, position) {
     const fromIdx = etapas.findIndex((e) => e.id === draggedId)
@@ -300,24 +413,32 @@ export default function PrecificacaoDetalhe() {
     const reordered = list.map((e, i) => ({ ...e, ordem: i }))
     setEtapas(reordered)
     await Promise.all(reordered.map((e) => supabase.from('precificacao_etapas').update({ ordem: e.ordem }).eq('id', e.id)))
+    markSaved()
   }
 
   async function handleAddTarefa(etapaId) {
     const etapa = etapas.find((e) => e.id === etapaId)
-    await supabase.from('precificacao_tarefas').insert({ etapa_id: etapaId, nome: 'Nova tarefa', horas: 0, ordem: (etapa?.tarefas || []).length })
-    refetchEtapas()
+    const { data, error } = await supabase.from('precificacao_tarefas')
+      .insert({ etapa_id: etapaId, nome: 'Nova tarefa', horas: 0, ordem: (etapa?.tarefas || []).length })
+      .select('id, etapa_id, nome, horas, ordem').single()
+    if (error || !data) { toast('Erro ao criar tarefa'); return }
+    setEtapas((prev) => addTarefaToEtapa(prev, etapaId, { ...data, subtarefas: [] }))
+    markSaved()
   }
   async function handleRenameTarefa(tarefaId, nome) {
-    await supabase.from('precificacao_tarefas').update({ nome }).eq('id', tarefaId)
-    refetchEtapas()
+    setEtapas((prev) => updateTarefaInTree(prev, tarefaId, { nome }))
+    const { error } = await supabase.from('precificacao_tarefas').update({ nome }).eq('id', tarefaId)
+    if (error) toast('Erro ao renomear tarefa'); else markSaved()
   }
   async function handleSetTarefaHoras(tarefaId, horas) {
-    await supabase.from('precificacao_tarefas').update({ horas }).eq('id', tarefaId)
-    refetchEtapas()
+    setEtapas((prev) => updateTarefaInTree(prev, tarefaId, { horas }))
+    const { error } = await supabase.from('precificacao_tarefas').update({ horas }).eq('id', tarefaId)
+    if (error) toast('Erro ao salvar horas'); else markSaved()
   }
   async function handleDeleteTarefa(tarefaId) {
-    await supabase.from('precificacao_tarefas').delete().eq('id', tarefaId)
-    refetchEtapas()
+    setEtapas((prev) => removeTarefaFromTree(prev, tarefaId))
+    const { error } = await supabase.from('precificacao_tarefas').delete().eq('id', tarefaId)
+    if (error) toast('Erro ao excluir tarefa'); else markSaved()
   }
   async function handleReorderTarefas(etapaId, draggedId, targetId, position) {
     const etapa = etapas.find((e) => e.id === etapaId)
@@ -332,25 +453,33 @@ export default function PrecificacaoDetalhe() {
     const reordered = list.map((t, i) => ({ ...t, ordem: i }))
     setEtapas((prev) => prev.map((e) => e.id === etapaId ? { ...e, tarefas: reordered } : e))
     await Promise.all(reordered.map((t) => supabase.from('precificacao_tarefas').update({ ordem: t.ordem }).eq('id', t.id)))
+    markSaved()
   }
 
   async function handleAddSubtarefa(tarefaId) {
     let subCount = 0
     etapas.forEach((e) => e.tarefas.forEach((t) => { if (t.id === tarefaId) subCount = t.subtarefas.length }))
-    await supabase.from('precificacao_subtarefas').insert({ tarefa_id: tarefaId, nome: 'Nova subtarefa', horas: 0, ordem: subCount })
-    refetchEtapas()
+    const { data, error } = await supabase.from('precificacao_subtarefas')
+      .insert({ tarefa_id: tarefaId, nome: 'Nova subtarefa', horas: 0, ordem: subCount })
+      .select('id, tarefa_id, nome, horas, ordem').single()
+    if (error || !data) { toast('Erro ao criar subtarefa'); return }
+    setEtapas((prev) => addSubtarefaToTarefa(prev, tarefaId, data))
+    markSaved()
   }
   async function handleRenameSubtarefa(subId, nome) {
-    await supabase.from('precificacao_subtarefas').update({ nome }).eq('id', subId)
-    refetchEtapas()
+    setEtapas((prev) => updateSubtarefaInTree(prev, subId, { nome }))
+    const { error } = await supabase.from('precificacao_subtarefas').update({ nome }).eq('id', subId)
+    if (error) toast('Erro ao renomear subtarefa'); else markSaved()
   }
   async function handleSetSubtarefaHoras(subId, horas) {
-    await supabase.from('precificacao_subtarefas').update({ horas }).eq('id', subId)
-    refetchEtapas()
+    setEtapas((prev) => updateSubtarefaInTree(prev, subId, { horas }))
+    const { error } = await supabase.from('precificacao_subtarefas').update({ horas }).eq('id', subId)
+    if (error) toast('Erro ao salvar horas'); else markSaved()
   }
   async function handleDeleteSubtarefa(subId) {
-    await supabase.from('precificacao_subtarefas').delete().eq('id', subId)
-    refetchEtapas()
+    setEtapas((prev) => removeSubtarefaFromTree(prev, subId))
+    const { error } = await supabase.from('precificacao_subtarefas').delete().eq('id', subId)
+    if (error) toast('Erro ao excluir subtarefa'); else markSaved()
   }
 
   // ── Modelos ──
@@ -397,6 +526,7 @@ export default function PrecificacaoDetalhe() {
     setModalImportar(false)
     toast('Modelo importado')
     refetchEtapas()
+    markSaved()
   }
 
   function abrirSalvarModelo() {
@@ -435,21 +565,27 @@ export default function PrecificacaoDetalhe() {
 
   // ── Custos extras ──
   async function addCusto() {
-    const { data } = await supabase.from('precificacao_custos_extras')
-      .insert({ precificacao_id: id, nome: 'Novo custo', valor: 0, ordem: custos.length }).select('*').single()
-    if (data) setCustos((prev) => [...prev, data])
+    const { data, error } = await supabase.from('precificacao_custos_extras')
+      .insert({ precificacao_id: id, nome: 'Novo custo', valor: 0, ordem: custos.length })
+      .select('id, nome, valor, ordem').single()
+    if (error || !data) { toast('Erro ao criar custo'); return }
+    setCustos((prev) => [...prev, data])
+    markSaved()
   }
   async function renameCusto(custoId, nome) {
     setCustos((prev) => prev.map((c) => c.id === custoId ? { ...c, nome } : c))
-    await supabase.from('precificacao_custos_extras').update({ nome }).eq('id', custoId)
+    const { error } = await supabase.from('precificacao_custos_extras').update({ nome }).eq('id', custoId)
+    if (error) toast('Erro ao salvar'); else markSaved()
   }
   async function setValorCusto(custoId, valor) {
     setCustos((prev) => prev.map((c) => c.id === custoId ? { ...c, valor } : c))
-    await supabase.from('precificacao_custos_extras').update({ valor }).eq('id', custoId)
+    const { error } = await supabase.from('precificacao_custos_extras').update({ valor }).eq('id', custoId)
+    if (error) toast('Erro ao salvar'); else markSaved()
   }
   async function deleteCusto(custoId) {
     setCustos((prev) => prev.filter((c) => c.id !== custoId))
-    await supabase.from('precificacao_custos_extras').delete().eq('id', custoId)
+    const { error } = await supabase.from('precificacao_custos_extras').delete().eq('id', custoId)
+    if (error) toast('Erro ao excluir'); else markSaved()
   }
 
   if (loading || !form) return <p className="pd-loading">Carregando…</p>
@@ -480,10 +616,10 @@ export default function PrecificacaoDetalhe() {
           <h1 className="pd-nome" onClick={() => setEditandoNome(true)} title="Clique para editar">{form.nome}</h1>
         )}
         <div className="pd-header-actions">
-          {form.status === 'orcamento' && (
-            <button className="btn-cancel" onClick={abrirFecharProjeto}>Fechar projeto</button>
-          )}
           <button className="btn-cancel" onClick={abrirSalvarModelo}>Salvar como modelo</button>
+          <button className="btn-primary" onClick={concluir} disabled={concluindo}>
+            {concluindo ? 'Salvando…' : 'Concluir'}
+          </button>
         </div>
       </div>
 
@@ -497,7 +633,7 @@ export default function PrecificacaoDetalhe() {
         <div className="pd-geral">
           <div className="pd-geral-fields card">
             <div className="modal-field">
-              <label className="modal-label">Nome do projeto</label>
+              <label className="modal-label">Nome da precificação</label>
               <input
                 className="modal-input"
                 value={form.nome}
@@ -544,16 +680,38 @@ export default function PrecificacaoDetalhe() {
               )}
             </div>
 
-            <div className="modal-field">
-              <label className="modal-label">Vinculado ao CRM</label>
-              <select
-                className="modal-input pd-select"
-                value={form.crmLinhaId || ''}
-                onChange={(e) => { const v = e.target.value || null; updateForm({ crmLinhaId: v }); persistField({ crm_linha_id: v }) }}
-              >
-                <option value="">— nenhum —</option>
-                {crmLinhas.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
-              </select>
+            <div className="modal-field pd-cliente-field">
+              <label className="modal-label">Pedido de orçamento</label>
+              {form.crmLinhaId ? (
+                <div className="pd-cliente-chip">
+                  <span>{crmLinhaLabel || '(sem nome)'}</span>
+                  <button onClick={desvincularCrm} aria-label="Desvincular"><IconClose /></button>
+                </div>
+              ) : (
+                <div className="pd-cliente-wrap">
+                  <input
+                    className="modal-input"
+                    placeholder="Buscar pelo nome do cliente no CRM…"
+                    value={crmBusca}
+                    onChange={(e) => { setCrmBusca(e.target.value); setCrmDropdownAberto(true) }}
+                    onBlur={() => setTimeout(() => setCrmDropdownAberto(false), 150)}
+                    onFocus={() => setCrmDropdownAberto(crmBusca.trim().length >= 2)}
+                  />
+                  {crmDropdownAberto && crmBusca.trim().length >= 2 && (
+                    <div className="pd-cliente-dropdown">
+                      {crmBuscando && <div className="pd-dropdown-msg">Buscando…</div>}
+                      {!crmBuscando && crmResultados.length === 0 && (
+                        <div className="pd-dropdown-msg">Nenhum resultado.</div>
+                      )}
+                      {!crmBuscando && crmResultados.map((l) => (
+                        <button key={l.id} type="button" onMouseDown={(e) => { e.preventDefault(); selecionarCrmLinha(l) }}>
+                          {l.cliente} · {fmtDate(l.dataEntrada)} · {l.status || '—'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="pd-field-row">
@@ -578,26 +736,35 @@ export default function PrecificacaoDetalhe() {
             </div>
 
             <div className="modal-field">
-              <label className="modal-label">Nota fiscal</label>
+              <label className="modal-label">Nota Fiscal / Impostos</label>
               <div className="pd-nf-row">
-                <button
-                  type="button"
-                  className={`pd-switch${form.nfAtivo ? ' on' : ''}`}
-                  onClick={() => { const v = !form.nfAtivo; updateForm({ nfAtivo: v }); persistField({ nf_ativo: v }) }}
-                  aria-pressed={form.nfAtivo}
-                >
-                  <span className="pd-switch-dot" />
-                </button>
-                <span className="pd-nf-label">{form.nfAtivo ? 'Ativa' : 'Inativa'}</span>
+                <div className="pd-opt-pills">
+                  <button
+                    type="button"
+                    className={`pd-opt-pill${form.nfAtivo ? ' selected' : ''}`}
+                    onClick={() => { updateForm({ nfAtivo: true }); persistField({ nf_ativo: true }) }}
+                  >
+                    Sim
+                  </button>
+                  <button
+                    type="button"
+                    className={`pd-opt-pill${!form.nfAtivo ? ' selected' : ''}`}
+                    onClick={() => { updateForm({ nfAtivo: false }); persistField({ nf_ativo: false }) }}
+                  >
+                    Não
+                  </button>
+                </div>
                 {form.nfAtivo && (
-                  <input
-                    type="number" min="0" max="99" step="0.5" className="modal-input pd-nf-percentual"
-                    value={form.nfPercentual}
-                    onChange={(e) => updateForm({ nfPercentual: e.target.value })}
-                    onBlur={(e) => persistField({ nf_percentual: Number(e.target.value) || 0 })}
-                  />
+                  <div className="pd-nf-percentual-wrap">
+                    <input
+                      type="number" min="0" max="99" step="0.5" className="modal-input pd-nf-percentual"
+                      value={form.nfPercentual}
+                      onChange={(e) => updateForm({ nfPercentual: e.target.value })}
+                      onBlur={(e) => persistField({ nf_percentual: Number(e.target.value) || 0 })}
+                    />
+                    <span className="pd-percent-suffix">%</span>
+                  </div>
                 )}
-                {form.nfAtivo && <span className="pd-percent-suffix">%</span>}
               </div>
             </div>
 
@@ -628,14 +795,43 @@ export default function PrecificacaoDetalhe() {
               </div>
             </div>
 
-            <div className="modal-field">
+            <div className="modal-field pd-etiquetas-field">
               <label className="modal-label">Etiquetas</label>
               <div className="pd-tags-input">
                 {form.etiquetas.map((t) => (
                   <span className="pd-itag" key={t}>{t}<button onClick={() => removeEtiqueta(t)}>×</button></span>
                 ))}
-                <input className="pd-tag-inline-input" placeholder="+ etiqueta" onKeyDown={addEtiqueta} />
+                <input
+                  className="pd-tag-inline-input"
+                  placeholder="+ etiqueta"
+                  value={etiquetaBusca}
+                  onChange={(e) => { setEtiquetaBusca(e.target.value); setEtiquetaDropdownAberto(e.target.value.trim().length > 0) }}
+                  onBlur={() => setTimeout(() => setEtiquetaDropdownAberto(false), 150)}
+                  onFocus={() => setEtiquetaDropdownAberto(etiquetaBusca.trim().length > 0)}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter') return
+                    e.preventDefault()
+                    const exata = etiquetasCadastro.find((et) => et.nome.toLowerCase() === etiquetaBusca.trim().toLowerCase())
+                    if (exata) adicionarEtiquetaExistente(exata.nome)
+                    else if (etiquetaBusca.trim()) criarEtiqueta(etiquetaBusca)
+                  }}
+                />
               </div>
+              {etiquetaDropdownAberto && etiquetaBusca.trim() && (
+                <div className="pd-etiqueta-dropdown">
+                  {sugestoesEtiqueta.map((et) => (
+                    <button key={et.id} type="button" onMouseDown={(e) => { e.preventDefault(); adicionarEtiquetaExistente(et.nome) }}>
+                      {et.nome}
+                    </button>
+                  ))}
+                  {!etiquetaJaExiste && (
+                    <button type="button" className="pd-cliente-criar" disabled={criandoEtiqueta}
+                      onMouseDown={(e) => { e.preventDefault(); criarEtiqueta(etiquetaBusca) }}>
+                      {criandoEtiqueta ? 'Criando…' : `Criar: "${etiquetaBusca.trim()}"`}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -785,33 +981,9 @@ export default function PrecificacaoDetalhe() {
         </div>
       )}
 
-      {modalFechar && (
-        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setModalFechar(false) }}>
-          <div className="modal">
-            <div className="modal-title">Fechar projeto</div>
-
-            <div className="modal-field">
-              <label className="modal-label">Valor calculado</label>
-              <div className="pd-fechar-referencia">{fmtMoney(calc.valorFinal)}</div>
-            </div>
-
-            <div className="modal-field">
-              <label className="modal-label">Valor de fechamento (R$)</label>
-              <input
-                type="number" min="0" step="1" className="modal-input" autoFocus
-                value={valorFechamento}
-                onChange={(e) => setValorFechamento(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && confirmarFechamento()}
-              />
-            </div>
-
-            <div className="modal-actions">
-              <button className="btn-cancel" onClick={() => setModalFechar(false)}>Cancelar</button>
-              <button className="btn-confirm" onClick={confirmarFechamento} disabled={fechando}>
-                {fechando ? 'Fechando…' : 'Confirmar fechamento'}
-              </button>
-            </div>
-          </div>
+      {savedAt && (
+        <div className="pd-autosave-toast">
+          ✓ Atualizações salvas <span>{fmtHora(savedAt)}</span>
         </div>
       )}
     </>

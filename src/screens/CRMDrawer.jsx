@@ -266,7 +266,7 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
       .single()
     setCriandoPrecif(false)
     if (error || !data) return
-    navigate(`/precificacao/${data.id}`)
+    navigate(`/precificacao/${data.id}?origem=crm&linha_id=${row.id}`)
   }
 
   // Drawer abre sempre com o scroll no topo (não no fim, por causa dos comentários)
@@ -390,7 +390,7 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
                     <span className="dr-precif-nome">{p.nome}</span>
                     <span className="dr-precif-meta">{p.total_horas ? `${p.total_horas}h` : '—'} · {fmtMoney(p.valor_projeto)}</span>
                   </div>
-                  <button className="dr-precif-abrir" onClick={() => navigate(`/precificacao/${p.id}`)}>
+                  <button className="dr-precif-abrir" onClick={() => navigate(`/precificacao/${p.id}?origem=crm&linha_id=${row.id}`)}>
                     Abrir <IconArrowRight />
                   </button>
                 </div>

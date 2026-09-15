@@ -90,7 +90,13 @@ export default function EtapasEditor({
                     onKeyDown={(ev) => { if (ev.key === 'Enter') ev.target.blur(); if (ev.key === 'Escape') setEditando(null) }}
                   />
                 ) : (
-                  <span className="ee-etapa-nome">{e.nome}</span>
+                  <span
+                    className={`ee-etapa-nome${readOnly ? '' : ' ee-etapa-nome-editable'}`}
+                    onClick={() => !readOnly && setEditando(`etapa:${e.id}`)}
+                    title={readOnly ? undefined : 'Clique para editar'}
+                  >
+                    {e.nome}
+                  </span>
                 )}
                 <span className="ee-soma">Σ {subtotalEtapa(e)}h</span>
                 {!readOnly && (
@@ -98,7 +104,6 @@ export default function EtapasEditor({
                     open={menuAberto === `etapa:${e.id}`}
                     onToggle={() => setMenuAberto(menuAberto === `etapa:${e.id}` ? null : `etapa:${e.id}`)}
                     onClose={() => setMenuAberto(null)}
-                    onEdit={() => { setEditando(`etapa:${e.id}`); setMenuAberto(null) }}
                     onDelete={() => { onDeleteEtapa(e.id); setMenuAberto(null) }}
                   />
                 )}
@@ -222,7 +227,7 @@ function RowMenu({ open, onToggle, onClose, onEdit, onDelete }) {
         <>
           <div className="ee-menu-scrim" onClick={onClose} />
           <div className="ee-menu">
-            <button onClick={onEdit}>Editar nome</button>
+            {onEdit && <button onClick={onEdit}>Editar nome</button>}
             <button className="ee-menu-danger" onClick={onDelete}>Excluir</button>
           </div>
         </>
