@@ -16,7 +16,7 @@ async function carregarModeloTree(modeloId) {
   let tarefasRows = []
   if (etapaIds.length) {
     const { data } = await supabase
-      .from('precificacao_modelo_tarefas').select('id, etapa_id, nome, horas, ordem')
+      .from('precificacao_modelo_tarefas').select('id, etapa_id, nome, horas:horas_estimadas_soltas, ordem')
       .in('etapa_id', etapaIds).order('ordem')
     tarefasRows = data || []
   }
@@ -25,7 +25,7 @@ async function carregarModeloTree(modeloId) {
   let subRows = []
   if (tarefaIds.length) {
     const { data } = await supabase
-      .from('precificacao_modelo_subtarefas').select('id, tarefa_id, nome, horas, ordem')
+      .from('precificacao_modelo_subtarefas').select('id, tarefa_id, nome, horas:horas_estimadas, ordem')
       .in('tarefa_id', tarefaIds).order('ordem')
     subRows = data || []
   }
@@ -149,7 +149,7 @@ export default function ModelosEtapas() {
 
   async function handleAddTarefa(etapaId) {
     const etapa = etapas.find((e) => e.id === etapaId)
-    await supabase.from('precificacao_modelo_tarefas').insert({ etapa_id: etapaId, nome: 'Nova tarefa', horas: 0, ordem: (etapa?.tarefas || []).length })
+    await supabase.from('precificacao_modelo_tarefas').insert({ etapa_id: etapaId, nome: 'Nova tarefa', horas_estimadas_soltas: 0, ordem: (etapa?.tarefas || []).length })
     refetchEtapas()
   }
   async function handleRenameTarefa(tarefaId, nome) {
@@ -157,7 +157,7 @@ export default function ModelosEtapas() {
     refetchEtapas()
   }
   async function handleSetTarefaHoras(tarefaId, horas) {
-    await supabase.from('precificacao_modelo_tarefas').update({ horas }).eq('id', tarefaId)
+    await supabase.from('precificacao_modelo_tarefas').update({ horas_estimadas_soltas: horas }).eq('id', tarefaId)
     refetchEtapas()
   }
   async function handleDeleteTarefa(tarefaId) {
@@ -182,7 +182,7 @@ export default function ModelosEtapas() {
   async function handleAddSubtarefa(tarefaId) {
     let subCount = 0
     etapas.forEach((e) => e.tarefas.forEach((t) => { if (t.id === tarefaId) subCount = t.subtarefas.length }))
-    await supabase.from('precificacao_modelo_subtarefas').insert({ tarefa_id: tarefaId, nome: 'Nova subtarefa', horas: 0, ordem: subCount })
+    await supabase.from('precificacao_modelo_subtarefas').insert({ tarefa_id: tarefaId, nome: 'Nova subtarefa', horas_estimadas: 0, ordem: subCount })
     refetchEtapas()
   }
   async function handleRenameSubtarefa(subId, nome) {
@@ -190,7 +190,7 @@ export default function ModelosEtapas() {
     refetchEtapas()
   }
   async function handleSetSubtarefaHoras(subId, horas) {
-    await supabase.from('precificacao_modelo_subtarefas').update({ horas }).eq('id', subId)
+    await supabase.from('precificacao_modelo_subtarefas').update({ horas_estimadas: horas }).eq('id', subId)
     refetchEtapas()
   }
   async function handleDeleteSubtarefa(subId) {

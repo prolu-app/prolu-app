@@ -70,7 +70,7 @@ async function carregarModeloTree(modeloId) {
   let tarefasRows = []
   if (etapaIds.length) {
     const { data } = await supabase
-      .from('precificacao_modelo_tarefas').select('id, etapa_id, nome, horas, ordem')
+      .from('precificacao_modelo_tarefas').select('id, etapa_id, nome, horas:horas_estimadas_soltas, ordem')
       .in('etapa_id', etapaIds).order('ordem')
     tarefasRows = data || []
   }
@@ -79,7 +79,7 @@ async function carregarModeloTree(modeloId) {
   let subRows = []
   if (tarefaIds.length) {
     const { data } = await supabase
-      .from('precificacao_modelo_subtarefas').select('id, tarefa_id, nome, horas, ordem')
+      .from('precificacao_modelo_subtarefas').select('id, tarefa_id, nome, horas:horas_estimadas, ordem')
       .in('tarefa_id', tarefaIds).order('ordem')
     subRows = data || []
   }
@@ -545,11 +545,11 @@ export default function PrecificacaoDetalhe() {
       for (let j = 0; j < e.tarefas.length; j++) {
         const t = e.tarefas[j]
         const { data: novaTarefa } = await supabase.from('precificacao_modelo_tarefas')
-          .insert({ etapa_id: novaEtapa.id, nome: t.nome, horas: t.horas, ordem: j }).select('id').single()
+          .insert({ etapa_id: novaEtapa.id, nome: t.nome, horas_estimadas_soltas: t.horas, ordem: j }).select('id').single()
         if (!novaTarefa) continue
         if (t.subtarefas.length) {
           await supabase.from('precificacao_modelo_subtarefas').insert(
-            t.subtarefas.map((st, k) => ({ tarefa_id: novaTarefa.id, nome: st.nome, horas: st.horas, ordem: k }))
+            t.subtarefas.map((st, k) => ({ tarefa_id: novaTarefa.id, nome: st.nome, horas_estimadas: st.horas, ordem: k }))
           )
         }
       }
