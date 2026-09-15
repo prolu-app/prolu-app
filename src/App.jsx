@@ -24,6 +24,7 @@ import Configuracoes from './screens/Configuracoes.jsx'
 import Avisos from './screens/Avisos.jsx'
 import AdminInicio from './screens/admin/AdminInicio.jsx'
 import AdminEscritorios from './screens/admin/AdminEscritorios.jsx'
+import AdminModelosPrecificacao from './screens/admin/AdminModelosPrecificacao.jsx'
 
 // Bloqueia o acesso direto a uma rota por URL quando o usuário não tem
 // permissão (acesso.<tela> === false): redireciona para / com um toast
@@ -98,6 +99,7 @@ export default function App() {
         <Route path="/avisos" element={<Avisos />} />
         <Route path="/admin" element={<AdminInicio />} />
         <Route path="/admin/escritorios" element={<AdminEscritorios />} />
+        <Route path="/admin/modelos-precificacao" element={<AdminModelosPrecificacao />} />
       </Route>
     </Routes>
   )

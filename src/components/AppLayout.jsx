@@ -51,6 +51,7 @@ const ADMIN_NAV = [
   { to: '/admin', label: 'Início', Icon: IconInicio, end: true },
   { to: '/admin/escritorios', label: 'Escritórios', Icon: IconBuilding },
   { to: '/base-conhecimento', label: 'Base de Conhecimento', Icon: IconBase },
+  { to: '/admin/modelos-precificacao', label: 'Modelos de precificação', Icon: IconMoney },
   { to: '/avisos', label: 'Avisos', Icon: IconBell },
   { to: '/agente-prolu', label: 'Agente Prolu', Icon: IconAgente },
 ]

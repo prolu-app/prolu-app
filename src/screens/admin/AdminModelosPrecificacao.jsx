@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext.jsx'
-import { useToast } from '../contexts/ToastContext.jsx'
-import { supabase, supabaseReady } from '../services/supabaseClient.js'
-import { IconBack, IconPlus, IconTrash, IconEdit } from '../components/Icons.jsx'
-import EtapasEditor from '../components/EtapasEditor.jsx'
-import './ModelosEtapas.css'
+import { useEffect, useState } from 'react'
+import { supabase, supabaseReady } from '../../services/supabaseClient.js'
+import { useToast } from '../../contexts/ToastContext.jsx'
+import { IconPlus, IconTrash, IconEdit } from '../../components/Icons.jsx'
+import EtapasEditor from '../../components/EtapasEditor.jsx'
+import './AdminModelosPrecificacao.css'
 
 async function carregarModeloTree(modeloId) {
   const { data: etapasRows } = await supabase
@@ -39,10 +37,8 @@ async function carregarModeloTree(modeloId) {
   }))
 }
 
-export default function ModelosEtapas() {
-  const { activeEmpresaId, isProluAdmin } = useAuth()
+export default function AdminModelosPrecificacao() {
   const toast = useToast()
-  const navigate = useNavigate()
 
   const [modelos, setModelos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -52,16 +48,15 @@ export default function ModelosEtapas() {
   const [editandoId, setEditandoId] = useState(null)
   const [modalNovo, setModalNovo] = useState(false)
   const [nomeNovo, setNomeNovo] = useState('')
-  const [globalNovo, setGlobalNovo] = useState(false)
   const [criando, setCriando] = useState(false)
 
-  useEffect(() => { carregarModelos() }, [activeEmpresaId])
+  useEffect(() => { carregarModelos() }, [])
 
   async function carregarModelos() {
     if (!supabaseReady) { setLoading(false); return }
     setLoading(true)
     const { data, error } = await supabase
-      .from('modelos_precificacao').select('id, nome, empresa_id, is_prolu').order('nome')
+      .from('modelos_precificacao').select('id, nome').eq('is_prolu', true).order('nome')
     if (error) toast('Erro ao carregar modelos')
     const lista = data || []
     setModelos(lista)
@@ -76,30 +71,17 @@ export default function ModelosEtapas() {
     setCarregandoEtapas(false)
   }
 
-  function podeEditar(m) {
-    return m.is_prolu ? isProluAdmin : m.empresa_id === activeEmpresaId
-  }
-
-  const modeloSelecionado = modelos.find((m) => m.id === selecionadoId)
-  const editavel = modeloSelecionado ? podeEditar(modeloSelecionado) : false
-
-  const grupos = useMemo(() => ({
-    prolu: modelos.filter((m) => m.is_prolu),
-    empresa: modelos.filter((m) => !m.is_prolu),
-  }), [modelos])
-
   async function criarModelo() {
     if (!nomeNovo.trim()) return
     setCriando(true)
     const { data, error } = await supabase.from('modelos_precificacao')
-      .insert({ empresa_id: globalNovo ? null : activeEmpresaId, nome: nomeNovo.trim(), is_prolu: globalNovo })
-      .select('id, nome, empresa_id, is_prolu').single()
+      .insert({ empresa_id: null, is_prolu: true, nome: nomeNovo.trim() })
+      .select('id, nome').single()
     setCriando(false)
     if (error || !data) { toast('Erro ao criar modelo'); return }
     setModelos((prev) => [...prev, data].sort((a, b) => a.nome.localeCompare(b.nome)))
     setModalNovo(false)
     setNomeNovo('')
-    setGlobalNovo(false)
     selecionar(data.id)
   }
 
@@ -200,63 +182,36 @@ export default function ModelosEtapas() {
 
   return (
     <>
-      <div className="me-breadcrumb">
-        <button onClick={() => navigate('/precificacao')}><IconBack /> Precificação</button>
-      </div>
-
       <div className="page-header between">
         <div>
-          <div className="page-title">Modelos de etapas</div>
-          <div className="page-sub">Estruturas reutilizáveis de etapas e tarefas pra suas precificações.</div>
+          <div className="page-title">Modelos de precificação</div>
+          <div className="page-sub">Modelos Prolu — visíveis e sugeridos pra todos os escritórios.</div>
         </div>
         <button className="btn-primary" onClick={() => setModalNovo(true)}>
-          <IconPlus /> Novo modelo
+          <IconPlus /> Novo modelo Prolu
         </button>
       </div>
 
       {loading ? (
-        <p className="me-empty">Carregando…</p>
+        <p className="amp-empty">Carregando…</p>
       ) : modelos.length === 0 ? (
-        <p className="me-empty">Nenhum modelo cadastrado ainda.</p>
+        <p className="amp-empty">Nenhum modelo Prolu cadastrado ainda.</p>
       ) : (
-        <div className="me-layout">
-          <div className="me-sidebar">
-            {grupos.prolu.length > 0 && (
-              <>
-                <div className="me-group-label">Modelos Prolu</div>
-                {grupos.prolu.map((m) => (
-                  <ModeloItem key={m.id} m={m} ativo={m.id === selecionadoId} editavel={podeEditar(m)}
-                    editando={editandoId === m.id}
-                    onSelect={() => selecionar(m.id)}
-                    onEditar={() => setEditandoId(m.id)}
-                    onRenomear={(nome) => renomear(m.id, nome)}
-                    onExcluir={() => excluir(m.id)} />
-                ))}
-              </>
-            )}
-            {grupos.empresa.length > 0 && (
-              <>
-                <div className="me-group-label">Modelos da empresa</div>
-                {grupos.empresa.map((m) => (
-                  <ModeloItem key={m.id} m={m} ativo={m.id === selecionadoId} editavel={podeEditar(m)}
-                    editando={editandoId === m.id}
-                    onSelect={() => selecionar(m.id)}
-                    onEditar={() => setEditandoId(m.id)}
-                    onRenomear={(nome) => renomear(m.id, nome)}
-                    onExcluir={() => excluir(m.id)} />
-                ))}
-              </>
-            )}
+        <div className="amp-layout">
+          <div className="amp-sidebar">
+            {modelos.map((m) => (
+              <ModeloItem key={m.id} m={m} ativo={m.id === selecionadoId}
+                editando={editandoId === m.id}
+                onSelect={() => selecionar(m.id)}
+                onEditar={() => setEditandoId(m.id)}
+                onRenomear={(nome) => renomear(m.id, nome)}
+                onExcluir={() => excluir(m.id)} />
+            ))}
           </div>
 
-          <div className="me-content">
+          <div className="amp-content">
             {carregandoEtapas ? (
-              <p className="me-empty">Carregando…</p>
-            ) : !editavel ? (
-              <>
-                <p className="me-readonly-note">Modelo Prolu — somente leitura.</p>
-                <EtapasEditor etapas={etapas} readOnly />
-              </>
+              <p className="amp-empty">Carregando…</p>
             ) : (
               <EtapasEditor
                 etapas={etapas}
@@ -282,7 +237,7 @@ export default function ModelosEtapas() {
       {modalNovo && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setModalNovo(false) }}>
           <div className="modal">
-            <div className="modal-title">Novo modelo</div>
+            <div className="modal-title">Novo modelo Prolu</div>
             <div className="modal-field">
               <label className="modal-label">Nome do modelo</label>
               <input
@@ -293,12 +248,6 @@ export default function ModelosEtapas() {
                 placeholder="Ex.: Projeto residencial padrão"
               />
             </div>
-            {isProluAdmin && (
-              <label className="me-global-check">
-                <input type="checkbox" checked={globalNovo} onChange={(e) => setGlobalNovo(e.target.checked)} />
-                Modelo Prolu (visível para todas as empresas)
-              </label>
-            )}
             <div className="modal-actions">
               <button className="btn-cancel" onClick={() => setModalNovo(false)}>Cancelar</button>
               <button className="btn-confirm" onClick={criarModelo} disabled={criando}>
@@ -312,11 +261,11 @@ export default function ModelosEtapas() {
   )
 }
 
-function ModeloItem({ m, ativo, editavel, editando, onSelect, onEditar, onRenomear, onExcluir }) {
+function ModeloItem({ m, ativo, editando, onSelect, onEditar, onRenomear, onExcluir }) {
   if (editando) {
     return (
       <input
-        className="me-item-input"
+        className="amp-item-input"
         autoFocus
         defaultValue={m.nome}
         onBlur={(e) => onRenomear(e.target.value.trim() || m.nome)}
@@ -325,14 +274,12 @@ function ModeloItem({ m, ativo, editavel, editando, onSelect, onEditar, onRenome
     )
   }
   return (
-    <div className={`me-item${ativo ? ' active' : ''}`}>
-      <button className="me-item-select" onClick={onSelect}>{m.nome}</button>
-      {editavel && (
-        <div className="me-item-actions">
-          <button onClick={onEditar} aria-label="Renomear"><IconEdit /></button>
-          <button onClick={onExcluir} aria-label="Excluir"><IconTrash /></button>
-        </div>
-      )}
+    <div className={`amp-item${ativo ? ' active' : ''}`}>
+      <button className="amp-item-select" onClick={onSelect}>{m.nome}</button>
+      <div className="amp-item-actions">
+        <button onClick={onEditar} aria-label="Renomear"><IconEdit /></button>
+        <button onClick={onExcluir} aria-label="Excluir"><IconTrash /></button>
+      </div>
     </div>
   )
 }

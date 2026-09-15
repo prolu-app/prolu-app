@@ -481,7 +481,7 @@ export default function PrecificacaoDetalhe() {
 
   // ── Modelos ──
   async function abrirImportarModelo() {
-    const { data, error } = await supabase.from('precificacao_modelos').select('id, nome, empresa_id').order('nome')
+    const { data, error } = await supabase.from('modelos_precificacao').select('id, nome, empresa_id, is_prolu').order('nome')
     if (error) { toast('Erro ao carregar modelos'); return }
     setModelos(data || [])
     setEscolhaImportar(null)
@@ -534,8 +534,8 @@ export default function PrecificacaoDetalhe() {
   async function salvarComoModelo() {
     if (!nomeModelo.trim() || !activeEmpresaId) return
     setSalvandoModelo(true)
-    const { data: modelo, error } = await supabase.from('precificacao_modelos')
-      .insert({ empresa_id: activeEmpresaId, nome: nomeModelo.trim() }).select('id').single()
+    const { data: modelo, error } = await supabase.from('modelos_precificacao')
+      .insert({ empresa_id: activeEmpresaId, nome: nomeModelo.trim(), is_prolu: false }).select('id').single()
     if (error || !modelo) { toast('Erro ao salvar modelo'); setSalvandoModelo(false); return }
     for (let i = 0; i < etapas.length; i++) {
       const e = etapas[i]
@@ -980,7 +980,7 @@ export default function PrecificacaoDetalhe() {
                         onClick={() => escolherModelo(m.id)}
                       >
                         <span>{m.nome}</span>
-                        <span className="pd-modelo-tag">{m.empresa_id ? 'Empresa' : 'Prolu'}</span>
+                        <span className="pd-modelo-tag">{m.is_prolu ? 'Prolu' : 'Empresa'}</span>
                       </button>
                     ))}
                   </div>
