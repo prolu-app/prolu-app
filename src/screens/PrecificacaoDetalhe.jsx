@@ -38,7 +38,7 @@ async function carregarEtapasTree(precificacaoId) {
   let tarefasRows = []
   if (etapaIds.length) {
     const { data } = await supabase
-      .from('precificacao_tarefas').select('id, etapa_id, nome, horas, ordem')
+      .from('precificacao_tarefas').select('id, etapa_id, nome, horas:horas_estimadas_soltas, ordem')
       .in('etapa_id', etapaIds).order('ordem')
     tarefasRows = data || []
   }
@@ -47,7 +47,7 @@ async function carregarEtapasTree(precificacaoId) {
   let subRows = []
   if (tarefaIds.length) {
     const { data } = await supabase
-      .from('precificacao_subtarefas').select('id, tarefa_id, nome, horas, ordem')
+      .from('precificacao_subtarefas').select('id, tarefa_id, nome, horas:horas_estimadas, ordem')
       .in('tarefa_id', tarefaIds).order('ordem')
     subRows = data || []
   }
@@ -180,7 +180,7 @@ export default function PrecificacaoDetalhe() {
       supabase.from('clientes').select('id, nome').eq('empresa_id', activeEmpresaId).order('nome'),
       supabase.from('crm_colunas').select('id, opcoes').eq('empresa_id', activeEmpresaId),
       carregarEtapasTree(id),
-      supabase.from('precificacao_custos_extras').select('id, nome, valor, ordem').eq('precificacao_id', id).order('ordem'),
+      supabase.from('precificacao_custos_extras').select('id, nome, valor:valor_estimado, ordem').eq('precificacao_id', id).order('ordem'),
       supabase.from('precificacao_etiquetas_cadastro').select('id, nome').eq('empresa_id', activeEmpresaId).order('nome'),
     ])
 
@@ -190,8 +190,8 @@ export default function PrecificacaoDetalhe() {
     setPrecificacao(p)
     setForm({
       nome: p.nome, clienteId: p.cliente_id, crmLinhaId: p.crm_linha_id,
-      valorHora: p.valor_hora, margemLucro: p.margem_lucro,
-      nfAtivo: p.nf_ativo, nfPercentual: p.nf_percentual,
+      valorHora: p.valor_hora, margemLucro: p.margem_pct,
+      nfAtivo: p.nf_ativo, nfPercentual: p.nf_pct,
       metragem: p.metragem ?? '', complexidade: p.complexidade,
       etiquetas: p.etiquetas || [],
     })
@@ -239,17 +239,11 @@ export default function PrecificacaoDetalhe() {
 
   const totalCustosExtras = useMemo(() => custos.reduce((s, c) => s + (Number(c.valor) || 0), 0), [custos])
 
-  // Persiste o cache de cálculo (usado na listagem) sempre que ele muda.
-  useEffect(() => {
-    if (!precificacao) return
-    const t = setTimeout(() => {
-      supabase.from('precificacoes').update({
-        total_horas: calc.totalHoras, valor_sem_margem: calc.valorSemMargem, valor_projeto: calc.valorFinal,
-      }).eq('id', precificacao.id)
-    }, 500)
-    return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [calc.totalHoras, calc.valorSemMargem, calc.valorFinal, precificacao?.id])
+  // NOTA: cache de total_horas/valor_sem_margem/valor_projeto removido —
+  // essas colunas não existem em `precificacoes` (ver colunas válidas no
+  // PATCH). A lista em Precificacao.jsx e a seção de precificações do
+  // CRMDrawer não têm mais de onde ler esses valores; combinar com o time
+  // se isso deve virar colunas reais ou um cálculo sob demanda.
 
   // Busca de "Pedido de orçamento" (crm_linhas), com debounce, min. 2 caracteres.
   useEffect(() => {
@@ -297,12 +291,11 @@ export default function PrecificacaoDetalhe() {
       cliente_id: form.clienteId,
       crm_linha_id: form.crmLinhaId,
       valor_hora: Number(form.valorHora) || 0,
-      margem_lucro: Number(form.margemLucro) || 0,
+      margem_pct: Number(form.margemLucro) || 0,
       nf_ativo: form.nfAtivo,
-      nf_percentual: Number(form.nfPercentual) || 0,
+      nf_pct: Number(form.nfPercentual) || 0,
       metragem: form.metragem === '' ? null : Number(form.metragem),
       complexidade: form.complexidade,
-      etiquetas: form.etiquetas,
     })
     setConcluindo(false)
     if (origem === 'crm' && linhaIdOrigem) navigate(`/crm?open=${linhaIdOrigem}`)
@@ -354,13 +347,14 @@ export default function PrecificacaoDetalhe() {
     : []
   const etiquetaJaExiste = etiquetasCadastro.some((et) => et.nome.toLowerCase() === etiquetaBusca.trim().toLowerCase())
 
+  // NOTA: `etiquetas` não está na lista de colunas válidas de `precificacoes`
+  // (ver PATCH), então por enquanto isso só atualiza o estado local — não
+  // persiste no Supabase. Falta decidir onde isso deveria ser gravado.
   function adicionarEtiquetaExistente(nome) {
     setEtiquetaBusca('')
     setEtiquetaDropdownAberto(false)
     if (form.etiquetas.includes(nome)) return
-    const etiquetas = [...form.etiquetas, nome]
-    updateForm({ etiquetas })
-    persistField({ etiquetas })
+    updateForm({ etiquetas: [...form.etiquetas, nome] })
   }
 
   async function criarEtiqueta(nome) {
@@ -376,9 +370,7 @@ export default function PrecificacaoDetalhe() {
   }
 
   function removeEtiqueta(tag) {
-    const etiquetas = form.etiquetas.filter((t) => t !== tag)
-    updateForm({ etiquetas })
-    persistField({ etiquetas })
+    updateForm({ etiquetas: form.etiquetas.filter((t) => t !== tag) })
   }
 
   // ── Etapas ──
@@ -419,8 +411,8 @@ export default function PrecificacaoDetalhe() {
   async function handleAddTarefa(etapaId) {
     const etapa = etapas.find((e) => e.id === etapaId)
     const { data, error } = await supabase.from('precificacao_tarefas')
-      .insert({ etapa_id: etapaId, nome: 'Nova tarefa', horas: 0, ordem: (etapa?.tarefas || []).length })
-      .select('id, etapa_id, nome, horas, ordem').single()
+      .insert({ etapa_id: etapaId, nome: 'Nova tarefa', horas_estimadas_soltas: 0, ordem: (etapa?.tarefas || []).length })
+      .select('id, etapa_id, nome, horas:horas_estimadas_soltas, ordem').single()
     if (error || !data) { toast('Erro ao criar tarefa'); return }
     setEtapas((prev) => addTarefaToEtapa(prev, etapaId, { ...data, subtarefas: [] }))
     markSaved()
@@ -432,7 +424,7 @@ export default function PrecificacaoDetalhe() {
   }
   async function handleSetTarefaHoras(tarefaId, horas) {
     setEtapas((prev) => updateTarefaInTree(prev, tarefaId, { horas }))
-    const { error } = await supabase.from('precificacao_tarefas').update({ horas }).eq('id', tarefaId)
+    const { error } = await supabase.from('precificacao_tarefas').update({ horas_estimadas_soltas: horas }).eq('id', tarefaId)
     if (error) toast('Erro ao salvar horas'); else markSaved()
   }
   async function handleDeleteTarefa(tarefaId) {
@@ -460,8 +452,8 @@ export default function PrecificacaoDetalhe() {
     let subCount = 0
     etapas.forEach((e) => e.tarefas.forEach((t) => { if (t.id === tarefaId) subCount = t.subtarefas.length }))
     const { data, error } = await supabase.from('precificacao_subtarefas')
-      .insert({ tarefa_id: tarefaId, nome: 'Nova subtarefa', horas: 0, ordem: subCount })
-      .select('id, tarefa_id, nome, horas, ordem').single()
+      .insert({ tarefa_id: tarefaId, nome: 'Nova subtarefa', horas_estimadas: 0, ordem: subCount })
+      .select('id, tarefa_id, nome, horas:horas_estimadas, ordem').single()
     if (error || !data) { toast('Erro ao criar subtarefa'); return }
     setEtapas((prev) => addSubtarefaToTarefa(prev, tarefaId, data))
     markSaved()
@@ -473,7 +465,7 @@ export default function PrecificacaoDetalhe() {
   }
   async function handleSetSubtarefaHoras(subId, horas) {
     setEtapas((prev) => updateSubtarefaInTree(prev, subId, { horas }))
-    const { error } = await supabase.from('precificacao_subtarefas').update({ horas }).eq('id', subId)
+    const { error } = await supabase.from('precificacao_subtarefas').update({ horas_estimadas: horas }).eq('id', subId)
     if (error) toast('Erro ao salvar horas'); else markSaved()
   }
   async function handleDeleteSubtarefa(subId) {
@@ -512,11 +504,11 @@ export default function PrecificacaoDetalhe() {
       for (let j = 0; j < e.tarefas.length; j++) {
         const t = e.tarefas[j]
         const { data: novaTarefa } = await supabase.from('precificacao_tarefas')
-          .insert({ etapa_id: novaEtapa.id, nome: t.nome, horas: t.horas, ordem: j }).select('id').single()
+          .insert({ etapa_id: novaEtapa.id, nome: t.nome, horas_estimadas_soltas: t.horas, ordem: j }).select('id').single()
         if (!novaTarefa) continue
         if (t.subtarefas.length) {
           await supabase.from('precificacao_subtarefas').insert(
-            t.subtarefas.map((st, k) => ({ tarefa_id: novaTarefa.id, nome: st.nome, horas: st.horas, ordem: k }))
+            t.subtarefas.map((st, k) => ({ tarefa_id: novaTarefa.id, nome: st.nome, horas_estimadas: st.horas, ordem: k }))
           )
         }
       }
@@ -566,8 +558,8 @@ export default function PrecificacaoDetalhe() {
   // ── Custos extras ──
   async function addCusto() {
     const { data, error } = await supabase.from('precificacao_custos_extras')
-      .insert({ precificacao_id: id, nome: 'Novo custo', valor: 0, ordem: custos.length })
-      .select('id, nome, valor, ordem').single()
+      .insert({ precificacao_id: id, nome: 'Novo custo', valor_estimado: 0, ordem: custos.length })
+      .select('id, nome, valor:valor_estimado, ordem').single()
     if (error || !data) { toast('Erro ao criar custo'); return }
     setCustos((prev) => [...prev, data])
     markSaved()
@@ -579,7 +571,7 @@ export default function PrecificacaoDetalhe() {
   }
   async function setValorCusto(custoId, valor) {
     setCustos((prev) => prev.map((c) => c.id === custoId ? { ...c, valor } : c))
-    const { error } = await supabase.from('precificacao_custos_extras').update({ valor }).eq('id', custoId)
+    const { error } = await supabase.from('precificacao_custos_extras').update({ valor_estimado: valor }).eq('id', custoId)
     if (error) toast('Erro ao salvar'); else markSaved()
   }
   async function deleteCusto(custoId) {
@@ -730,7 +722,7 @@ export default function PrecificacaoDetalhe() {
                   type="number" min="0" max="99" step="1" className="modal-input"
                   value={form.margemLucro}
                   onChange={(e) => updateForm({ margemLucro: e.target.value })}
-                  onBlur={(e) => persistField({ margem_lucro: Number(e.target.value) || 0 })}
+                  onBlur={(e) => persistField({ margem_pct: Number(e.target.value) || 0 })}
                 />
               </div>
             </div>
@@ -760,7 +752,7 @@ export default function PrecificacaoDetalhe() {
                       type="number" min="0" max="99" step="0.5" className="modal-input pd-nf-percentual"
                       value={form.nfPercentual}
                       onChange={(e) => updateForm({ nfPercentual: e.target.value })}
-                      onBlur={(e) => persistField({ nf_percentual: Number(e.target.value) || 0 })}
+                      onBlur={(e) => persistField({ nf_pct: Number(e.target.value) || 0 })}
                     />
                     <span className="pd-percent-suffix">%</span>
                   </div>

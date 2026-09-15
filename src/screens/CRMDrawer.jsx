@@ -13,11 +13,6 @@ function fmtDateTime(iso) {
   return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
-function fmtMoney(v) {
-  const n = Number(v) || 0
-  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
-}
-
 function ClientField({ col, value, onChange, clientes, activeEmpresaId, onClientCreate, autoFocus }) {
   const [inputVal, setInputVal] = useState(value || '')
   const [open, setOpen] = useState(false)
@@ -250,7 +245,7 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
     setPrecifLoading(true)
     supabase
       .from('precificacoes')
-      .select('id, nome, total_horas, valor_projeto')
+      .select('id, nome')
       .eq('crm_linha_id', row.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => { setPrecificacoes(data || []); setPrecifLoading(false) })
@@ -388,7 +383,6 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
                 <div className="dr-precif-item" key={p.id}>
                   <div className="dr-precif-info">
                     <span className="dr-precif-nome">{p.nome}</span>
-                    <span className="dr-precif-meta">{p.total_horas ? `${p.total_horas}h` : '—'} · {fmtMoney(p.valor_projeto)}</span>
                   </div>
                   <button className="dr-precif-abrir" onClick={() => navigate(`/precificacao/${p.id}?origem=crm&linha_id=${row.id}`)}>
                     Abrir <IconArrowRight />

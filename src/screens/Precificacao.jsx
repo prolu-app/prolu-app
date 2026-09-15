@@ -9,12 +9,6 @@ import './Precificacao.css'
 const COMPLEXIDADE_LABEL = { baixa: 'Baixa', normal: 'Normal', alta: 'Alta' }
 const COMPLEXIDADE_PILL = { baixa: 'pill-green', normal: 'pill-blue', alta: 'pill-orange' }
 
-function fmtMoney(v) {
-  const n = Number(v)
-  if (!n) return 'R$ 0'
-  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
-}
-
 function fmtDate(iso) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('pt-BR')
@@ -39,8 +33,10 @@ export default function Precificacao() {
     setLoading(true)
 
     const [precifRes, clientesRes, colunasRes, linhasRes] = await Promise.all([
+      // total_horas/valor_projeto não existem em `precificacoes` — removidos
+      // do select até decidir se viram colunas reais ou um cálculo à parte.
       supabase.from('precificacoes')
-        .select('id, nome, cliente_id, crm_linha_id, complexidade, total_horas, valor_projeto, created_at')
+        .select('id, nome, cliente_id, crm_linha_id, complexidade, created_at')
         .eq('empresa_id', activeEmpresaId)
         .order('created_at', { ascending: false }),
       supabase.from('clientes').select('id, nome').eq('empresa_id', activeEmpresaId),
@@ -159,8 +155,8 @@ export default function Precificacao() {
                       <span className="dot" />{COMPLEXIDADE_LABEL[p.complexidade] || p.complexidade}
                     </span>
                   </td>
-                  <td className="pz-td-meta">{p.total_horas ? `${p.total_horas}h` : '—'}</td>
-                  <td className="pz-td-meta">{fmtMoney(p.valor_projeto)}</td>
+                  <td className="pz-td-meta">—</td>
+                  <td className="pz-td-meta">—</td>
                   <td className="pz-td-meta">{fmtDate(p.created_at)}</td>
                   <td className="pz-td-actions">
                     <button className="pz-abrir-btn" onClick={() => navigate(`/precificacao/${p.id}`)}>
