@@ -1068,7 +1068,10 @@ function PainelEquipe({ activeEmpresaId, currentUserId }) {
       setLoading(true)
 
       const [{ data: usuarios }, { data: aulas }] = await Promise.all([
-        supabase.from('usuarios').select('id, nome, email, role').eq('empresa_id', activeEmpresaId).eq('ativo', true),
+        // TODO: adicionar filtro .eq('ativo', true) após migration_ativo_usuarios
+        // (coluna ainda não existe em `usuarios` — ver Configuracoes.jsx, que
+        // busca a equipe sem esse filtro pelo mesmo motivo).
+        supabase.from('usuarios').select('id, nome, email, role').eq('empresa_id', activeEmpresaId),
         // Pastas Prolu (empresa_id null) + pastas de qualquer empresa — filtra
         // pra esta empresa em JS logo abaixo, já respeitando nivel_acesso.
         supabase.from('kb_aulas').select('id, titulo, modulo_id, kb_modulos(id, titulo, ordem, pasta_id, kb_pastas(id, nivel_acesso, empresa_id, ordem))'),
