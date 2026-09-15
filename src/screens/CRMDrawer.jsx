@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
-import { IconClose } from '../components/Icons.jsx'
+import { IconClose, IconArrowRight, IconPlus } from '../components/Icons.jsx'
 import { SelectDropdown } from '../components/SelectDropdown.jsx'
 import { DatePicker } from '../components/DatePicker.jsx'
 import './CRMDrawer.css'
@@ -10,6 +11,11 @@ function fmtDateTime(iso) {
   if (!iso) return ''
   const d = new Date(iso)
   return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
+
+function fmtMoney(v) {
+  const n = Number(v) || 0
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 }
 
 function ClientField({ col, value, onChange, clientes, activeEmpresaId, onClientCreate, autoFocus }) {
@@ -205,11 +211,15 @@ function DrawerField({ col, value, onChange, onAddOption, clientes, activeEmpres
 }
 
 export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell, onAddOption, onDelete, clientes, user, activeEmpresaId, onClientCreate, isNew }) {
+  const navigate = useNavigate()
   const [comments, setComments] = useState([])
   const [commentLoading, setCommentLoading] = useState(false)
   const [newComment, setNewComment] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [precificacoes, setPrecificacoes] = useState([])
+  const [precifLoading, setPrecifLoading] = useState(false)
+  const [criandoPrecif, setCriandoPrecif] = useState(false)
   const listRef = useRef(null)
 
   const clienteCol = columns.find(c => c.slug === 'cliente')
@@ -233,6 +243,31 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
       .order('created_at', { ascending: true })
       .then(({ data }) => { setComments(data || []); setCommentLoading(false) })
   }, [row?.id])
+
+  // Busca precificações vinculadas a esse registro do CRM
+  useEffect(() => {
+    if (!supabaseReady || !row?.id || isNew || row.id.startsWith('r')) { setPrecificacoes([]); return }
+    setPrecifLoading(true)
+    supabase
+      .from('precificacoes')
+      .select('id, nome, total_horas, valor_projeto')
+      .eq('crm_linha_id', row.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { setPrecificacoes(data || []); setPrecifLoading(false) })
+  }, [row?.id])
+
+  async function novaPrecificacao() {
+    if (!supabaseReady || !activeEmpresaId) return
+    setCriandoPrecif(true)
+    const { data, error } = await supabase
+      .from('precificacoes')
+      .insert({ empresa_id: activeEmpresaId, crm_linha_id: row.id, nome: 'Nova precificação', status: 'orcamento' })
+      .select('id')
+      .single()
+    setCriandoPrecif(false)
+    if (error || !data) return
+    navigate(`/precificacao/${data.id}`)
+  }
 
   // Drawer abre sempre com o scroll no topo (não no fim, por causa dos comentários)
   useEffect(() => {
@@ -338,6 +373,31 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
                   <div className="dr-comment-text">{c.texto}</div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Precificações — vinculadas a esse registro do CRM */}
+          {!isNew && (
+            <div className="dr-precif-section">
+              <div className="dr-section-title">Precificações</div>
+              {precifLoading && <div className="dr-comment-empty">Carregando…</div>}
+              {!precifLoading && precificacoes.length === 0 && (
+                <div className="dr-comment-empty">Nenhuma precificação ainda.</div>
+              )}
+              {!precifLoading && precificacoes.map((p) => (
+                <div className="dr-precif-item" key={p.id}>
+                  <div className="dr-precif-info">
+                    <span className="dr-precif-nome">{p.nome}</span>
+                    <span className="dr-precif-meta">{p.total_horas ? `${p.total_horas}h` : '—'} · {fmtMoney(p.valor_projeto)}</span>
+                  </div>
+                  <button className="dr-precif-abrir" onClick={() => navigate(`/precificacao/${p.id}`)}>
+                    Abrir <IconArrowRight />
+                  </button>
+                </div>
+              ))}
+              <button className="dr-precif-nova" onClick={novaPrecificacao} disabled={criandoPrecif}>
+                <IconPlus /> {criandoPrecif ? 'Criando…' : 'Nova precificação'}
+              </button>
             </div>
           )}
 

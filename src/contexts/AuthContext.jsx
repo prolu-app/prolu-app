@@ -238,6 +238,7 @@ export function AuthProvider({ children }) {
   // Helpers de acesso por tela
   const acesso = {
     crm:              isEmpresaMaster,
+    precificacao:     isEmpresaMaster,
     dashboard:        isEmpresaMaster,
     indicadores:      isEmpresaMaster,
     planoPratico:     true, // todos

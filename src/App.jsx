@@ -10,6 +10,9 @@ import AceitarConvite from './screens/AceitarConvite.jsx'
 import Inicio from './screens/Inicio.jsx'
 import BaseConhecimento from './screens/BaseConhecimento.jsx'
 import CRM from './screens/CRM.jsx'
+import Precificacao from './screens/Precificacao.jsx'
+import PrecificacaoDetalhe from './screens/PrecificacaoDetalhe.jsx'
+import ModelosEtapas from './screens/ModelosEtapas.jsx'
 import Clientes from './screens/Clientes.jsx'
 import Dashboard from './screens/Dashboard.jsx'
 import PlanoPratico from './screens/PlanoPratico.jsx'
@@ -78,6 +81,9 @@ export default function App() {
         <Route index element={isAdminMode ? <Navigate to="/admin" replace /> : <Inicio />} />
         <Route path="/base-conhecimento" element={<RotaProtegida temAcesso={acesso.baseConhecimento}><BaseConhecimento /></RotaProtegida>} />
         <Route path="/crm" element={<RotaProtegida temAcesso={acesso.crm}><CRM /></RotaProtegida>} />
+        <Route path="/precificacao" element={<RotaProtegida temAcesso={acesso.precificacao}><Precificacao /></RotaProtegida>} />
+        <Route path="/precificacao/modelos" element={<RotaProtegida temAcesso={acesso.precificacao}><ModelosEtapas /></RotaProtegida>} />
+        <Route path="/precificacao/:id" element={<RotaProtegida temAcesso={acesso.precificacao}><PrecificacaoDetalhe /></RotaProtegida>} />
         <Route path="/clientes" element={<RotaProtegida temAcesso={acesso.contatos}><Clientes /></RotaProtegida>} />
         <Route path="/dashboard" element={<RotaProtegida temAcesso={acesso.dashboard}><Dashboard /></RotaProtegida>} />
         <Route path="/plano-pratico" element={<RotaProtegida temAcesso={acesso.planoPratico}><PlanoPratico /></RotaProtegida>} />

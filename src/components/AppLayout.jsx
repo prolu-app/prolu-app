@@ -19,7 +19,7 @@ const NAV_SECTIONS = [
       { to: '/crm', label: 'CRM', Icon: IconCRM, access: 'crm' },
       { to: '/dashboard', label: 'Painel Comercial', Icon: IconDashboard, access: 'dashboard' },
       { to: '/indicadores', label: 'Indicadores', Icon: IconIndicadores, access: 'indicadores' },
-      { label: 'Precificação', Icon: IconMoney, soon: true, access: 'crm' },
+      { to: '/precificacao', label: 'Precificação', Icon: IconMoney, access: 'precificacao' },
     ],
   },
   {
