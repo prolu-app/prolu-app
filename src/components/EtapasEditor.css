@@ -21,7 +21,7 @@
   padding: 4px 10px;
   transition: box-shadow 0.15s, opacity 0.15s;
 }
-.ee-etapa.dragging { opacity: 0.4; }
+.dragging { opacity: 0.6; background: var(--white); position: relative; z-index: 1; }
 
 .ee-etapa-head { display: flex; align-items: center; gap: 8px; padding: 10px 4px; }
 .ee-collapse-btn { background: none; border: none; cursor: pointer; display: flex; padding: 2px; color: var(--ink-60); flex-shrink: 0; }
@@ -45,8 +45,6 @@
   padding: 2px 8px;
   transition: opacity 0.15s, box-shadow 0.15s;
 }
-.ee-tarefa.dragging { opacity: 0.4; }
-
 .ee-tarefa-head { display: flex; align-items: center; gap: 8px; padding: 8px 2px; flex-wrap: wrap; }
 .ee-tarefa-label { font-family: 'Montserrat', sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: 0.7px; color: var(--ink-40); flex-shrink: 0; }
 .ee-tarefa-nome { font-size: 13.5px; color: var(--ink); flex: 1; min-width: 100px; }
@@ -60,16 +58,8 @@
 }
 .ee-horas-input:focus { box-shadow: 0 0 0 2px var(--green); }
 
-.ee-add-sub-btn {
-  background: none; border: none; cursor: pointer; color: var(--ink-40);
-  font-size: 12px; font-weight: 600; padding: 4px 6px; white-space: nowrap;
-  transition: color 0.15s;
-}
-.ee-add-sub-btn:hover { color: var(--ink); }
-
 .ee-subtarefas { display: flex; flex-direction: column; gap: 4px; padding: 0 2px 8px 22px; }
 .ee-subtarefa { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-60); transition: opacity 0.15s; }
-.ee-subtarefa.dragging { opacity: 0.4; }
 .ee-sub-branch { color: var(--ink-30); flex-shrink: 0; }
 .ee-subtarefa-label { font-family: 'Montserrat', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.6px; color: var(--ink-30); flex-shrink: 0; }
 .ee-subtarefa-nome { flex: 1; color: var(--ink-80); }
@@ -84,6 +74,25 @@
 }
 .ee-add-tarefa-btn:hover { border-color: var(--ink-40); color: var(--ink); }
 .ee-add-tarefa-btn svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 2.4; fill: none; }
+
+.btn-add-subtarefa {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-40);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: var(--r-sm);
+  margin: 4px 0 0 22px;
+  transition: color 0.15s, background 0.15s;
+}
+.btn-add-subtarefa:hover {
+  color: var(--ink);
+  background: rgba(18, 18, 16, 0.05);
+}
 
 .ee-name-input {
   flex: 1; min-width: 80px; border: none; border-radius: 6px; background: var(--white);
@@ -106,8 +115,11 @@
   transition: opacity 0.15s;
   flex-shrink: 0;
 }
-.etapa-row:hover .drag-handle,
-.tarefa-row:hover .drag-handle,
+/* Escopado ao cabeçalho imediato de cada item — sem o `>` acima, hover
+   no card da etapa (que contém as tarefas dentro) acendia o handle de
+   TODAS as tarefas/subtarefas junto, não só do item embaixo do mouse. */
+.etapa-row:hover > .ee-etapa-head .drag-handle,
+.tarefa-row:hover > .ee-tarefa-head .drag-handle,
 .subtarefa-row:hover .drag-handle {
   opacity: 1;
 }
@@ -116,7 +128,9 @@
   color: var(--ink-60);
 }
 
-/* Indicador de onde o item vai cair ao soltar */
+/* Indicador de onde o item vai cair ao soltar — acima do item sendo
+   arrastado (que também ganha position:relative via .dragging) */
+.drag-over-top, .drag-over-bottom { position: relative; z-index: 2; }
 .drag-over-top { border-top: 2px solid var(--green); border-radius: 0; }
 .drag-over-bottom { border-bottom: 2px solid var(--green); border-radius: 0; }
 
@@ -135,8 +149,8 @@
   opacity: 0;
   transition: opacity 0.15s;
 }
-.etapa-row:hover .btn-delete,
-.tarefa-row:hover .btn-delete,
+.etapa-row:hover > .ee-etapa-head .btn-delete,
+.tarefa-row:hover > .ee-tarefa-head .btn-delete,
 .subtarefa-row:hover .btn-delete {
   opacity: 1;
 }

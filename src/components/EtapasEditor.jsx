@@ -207,7 +207,6 @@ export default function EtapasEditor({
                             {t.nome || <span className="ee-nome-vazio">Sem nome</span>}
                           </span>
                         )}
-                        {!readOnly && <button className="ee-add-sub-btn" onClick={() => criarSubtarefa(t.id)}>+ subtarefa</button>}
                         <span className="ee-tarefa-horas">
                           <input
                             type="number" min="0" step="0.5"
@@ -298,6 +297,11 @@ export default function EtapasEditor({
                             </div>
                           )})}
                         </div>
+                      )}
+                      {!readOnly && (
+                        <button className="btn-add-subtarefa" onClick={() => criarSubtarefa(t.id)}>
+                          + Adicionar subtarefa
+                        </button>
                       )}
                     </div>
                   )})}
