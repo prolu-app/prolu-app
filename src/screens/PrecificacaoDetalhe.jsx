@@ -175,13 +175,14 @@ export default function PrecificacaoDetalhe() {
   async function carregar() {
     if (!supabaseReady || !id) { setLoading(false); return }
     setLoading(true)
-    const [precifRes, clientesRes, colunasRes, etapasTree, custosRes, etiquetasRes] = await Promise.all([
+    const [precifRes, clientesRes, colunasRes, etapasTree, custosRes, etiquetasRes, etiquetasLinkRes] = await Promise.all([
       supabase.from('precificacoes').select('*').eq('id', id).single(),
       supabase.from('clientes').select('id, nome').eq('empresa_id', activeEmpresaId).order('nome'),
       supabase.from('crm_colunas').select('id, opcoes').eq('empresa_id', activeEmpresaId),
       carregarEtapasTree(id),
       supabase.from('precificacao_custos_extras').select('id, nome, valor:valor_estimado, ordem').eq('precificacao_id', id).order('ordem'),
       supabase.from('precificacao_etiquetas_cadastro').select('id, nome').eq('empresa_id', activeEmpresaId).order('nome'),
+      supabase.from('precificacao_etiquetas').select('nome').eq('precificacao_id', id),
     ])
 
     if (precifRes.error || !precifRes.data) { toast('Precificação não encontrada'); navigate('/precificacao'); return }
@@ -193,7 +194,7 @@ export default function PrecificacaoDetalhe() {
       valorHora: p.valor_hora, margemLucro: p.margem_pct,
       nfAtivo: p.nf_ativo, nfPercentual: p.nf_pct,
       metragem: p.metragem ?? '', complexidade: p.complexidade,
-      etiquetas: p.etiquetas || [],
+      etiquetas: (etiquetasLinkRes.data || []).map((r) => r.nome),
     })
     setClientes(clientesRes.data || [])
     setEtiquetasCadastro(etiquetasRes.data || [])
@@ -347,14 +348,16 @@ export default function PrecificacaoDetalhe() {
     : []
   const etiquetaJaExiste = etiquetasCadastro.some((et) => et.nome.toLowerCase() === etiquetaBusca.trim().toLowerCase())
 
-  // NOTA: `etiquetas` não está na lista de colunas válidas de `precificacoes`
-  // (ver PATCH), então por enquanto isso só atualiza o estado local — não
-  // persiste no Supabase. Falta decidir onde isso deveria ser gravado.
-  function adicionarEtiquetaExistente(nome) {
+  // Etiquetas aplicadas à precificação ficam em `precificacao_etiquetas`
+  // (precificacao_id, nome) — uma linha por etiqueta vinculada. O catálogo
+  // (`precificacao_etiquetas_cadastro`) é só a fonte do autocomplete.
+  async function adicionarEtiquetaExistente(nome) {
     setEtiquetaBusca('')
     setEtiquetaDropdownAberto(false)
     if (form.etiquetas.includes(nome)) return
     updateForm({ etiquetas: [...form.etiquetas, nome] })
+    const { error } = await supabase.from('precificacao_etiquetas').insert({ precificacao_id: id, nome })
+    if (error) toast('Erro ao salvar etiqueta'); else markSaved()
   }
 
   async function criarEtiqueta(nome) {
@@ -369,8 +372,10 @@ export default function PrecificacaoDetalhe() {
     adicionarEtiquetaExistente(data.nome)
   }
 
-  function removeEtiqueta(tag) {
+  async function removeEtiqueta(tag) {
     updateForm({ etiquetas: form.etiquetas.filter((t) => t !== tag) })
+    const { error } = await supabase.from('precificacao_etiquetas').delete().eq('precificacao_id', id).eq('nome', tag)
+    if (error) toast('Erro ao remover etiqueta'); else markSaved()
   }
 
   // ── Etapas ──

@@ -5,12 +5,58 @@ import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { IconClose, IconArrowRight, IconPlus } from '../components/Icons.jsx'
 import { SelectDropdown } from '../components/SelectDropdown.jsx'
 import { DatePicker } from '../components/DatePicker.jsx'
+import { calcularPrecificacao } from '../hooks/usePrecificacaoCalculo.js'
 import './CRMDrawer.css'
 
 function fmtDateTime(iso) {
   if (!iso) return ''
   const d = new Date(iso)
   return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
+
+function fmtMoney(v) {
+  const n = Number(v) || 0
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+}
+
+// Total de horas e valor final não são colunas — são sempre calculados na
+// hora a partir de etapas/tarefas/subtarefas + custos extras (mesma lógica
+// de src/hooks/usePrecificacaoCalculo.js). Aqui é uma lista pequena (só as
+// precificações vinculadas a este registro do CRM), então buscar a árvore
+// de cada uma por request é aceitável.
+async function carregarCalculoPrecificacao(precificacaoId, cabecalho) {
+  const [etapasRes, custosRes] = await Promise.all([
+    supabase.from('precificacao_etapas').select('id').eq('precificacao_id', precificacaoId),
+    supabase.from('precificacao_custos_extras').select('valor_estimado').eq('precificacao_id', precificacaoId),
+  ])
+  const etapaIds = (etapasRes.data || []).map((e) => e.id)
+
+  let tarefas = []
+  if (etapaIds.length) {
+    const { data } = await supabase.from('precificacao_tarefas').select('id, horas_estimadas_soltas').in('etapa_id', etapaIds)
+    tarefas = data || []
+  }
+  const tarefaIds = tarefas.map((t) => t.id)
+
+  let subtarefas = []
+  if (tarefaIds.length) {
+    const { data } = await supabase.from('precificacao_subtarefas').select('tarefa_id, horas_estimadas').in('tarefa_id', tarefaIds)
+    subtarefas = data || []
+  }
+
+  return calcularPrecificacao({
+    etapas: [{
+      tarefas: tarefas.map((t) => ({
+        horas_estimadas_soltas: t.horas_estimadas_soltas || 0,
+        subtarefas: subtarefas.filter((s) => s.tarefa_id === t.id).map((s) => ({ horas_estimadas: s.horas_estimadas || 0 })),
+      })),
+    }],
+    custos_extras: (custosRes.data || []).map((c) => ({ valor_estimado: c.valor_estimado || 0 })),
+    valor_hora: cabecalho.valor_hora || 0,
+    margem_pct: cabecalho.margem_pct || 0,
+    nf_pct: cabecalho.nf_pct || 0,
+    nf_ativo: cabecalho.nf_ativo || false,
+  })
 }
 
 function ClientField({ col, value, onChange, clientes, activeEmpresaId, onClientCreate, autoFocus }) {
@@ -239,16 +285,25 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
       .then(({ data }) => { setComments(data || []); setCommentLoading(false) })
   }, [row?.id])
 
-  // Busca precificações vinculadas a esse registro do CRM
+  // Busca precificações vinculadas a esse registro do CRM (com o cálculo
+  // de cada uma, já que total de horas e valor não são persistidos)
   useEffect(() => {
     if (!supabaseReady || !row?.id || isNew || row.id.startsWith('r')) { setPrecificacoes([]); return }
     setPrecifLoading(true)
     supabase
       .from('precificacoes')
-      .select('id, nome')
+      .select('id, nome, valor_hora, margem_pct, nf_pct, nf_ativo')
       .eq('crm_linha_id', row.id)
       .order('created_at', { ascending: false })
-      .then(({ data }) => { setPrecificacoes(data || []); setPrecifLoading(false) })
+      .then(async ({ data }) => {
+        const lista = data || []
+        const comCalculo = await Promise.all(lista.map(async (p) => {
+          const calc = await carregarCalculoPrecificacao(p.id, p)
+          return { id: p.id, nome: p.nome, totalHoras: calc.totalHoras, valorFinal: calc.valorFinal }
+        }))
+        setPrecificacoes(comCalculo)
+        setPrecifLoading(false)
+      })
   }, [row?.id])
 
   async function novaPrecificacao() {
@@ -383,6 +438,7 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
                 <div className="dr-precif-item" key={p.id}>
                   <div className="dr-precif-info">
                     <span className="dr-precif-nome">{p.nome}</span>
+                    <span className="dr-precif-meta">{p.totalHoras ? `${p.totalHoras}h` : '—'} · {fmtMoney(p.valorFinal)}</span>
                   </div>
                   <button className="dr-precif-abrir" onClick={() => navigate(`/precificacao/${p.id}?origem=crm&linha_id=${row.id}`)}>
                     Abrir <IconArrowRight />
