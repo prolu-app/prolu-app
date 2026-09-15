@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
+import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
-import { IconClose, IconArrowRight, IconPlus } from '../components/Icons.jsx'
+import { IconClose, IconArrowRight, IconPlus, IconTrash } from '../components/Icons.jsx'
 import { SelectDropdown } from '../components/SelectDropdown.jsx'
 import { DatePicker } from '../components/DatePicker.jsx'
-import { calcularPrecificacao } from '../hooks/usePrecificacaoCalculo.js'
+import { carregarCalculoPrecificacao } from '../hooks/usePrecificacaoCalculo.js'
 import './CRMDrawer.css'
 
 function fmtDateTime(iso) {
@@ -17,46 +18,6 @@ function fmtDateTime(iso) {
 function fmtMoney(v) {
   const n = Number(v) || 0
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
-}
-
-// Total de horas e valor final não são colunas — são sempre calculados na
-// hora a partir de etapas/tarefas/subtarefas + custos extras (mesma lógica
-// de src/hooks/usePrecificacaoCalculo.js). Aqui é uma lista pequena (só as
-// precificações vinculadas a este registro do CRM), então buscar a árvore
-// de cada uma por request é aceitável.
-async function carregarCalculoPrecificacao(precificacaoId, cabecalho) {
-  const [etapasRes, custosRes] = await Promise.all([
-    supabase.from('precificacao_etapas').select('id').eq('precificacao_id', precificacaoId),
-    supabase.from('precificacao_custos_extras').select('valor_estimado').eq('precificacao_id', precificacaoId),
-  ])
-  const etapaIds = (etapasRes.data || []).map((e) => e.id)
-
-  let tarefas = []
-  if (etapaIds.length) {
-    const { data } = await supabase.from('precificacao_tarefas').select('id, horas_estimadas_soltas').in('etapa_id', etapaIds)
-    tarefas = data || []
-  }
-  const tarefaIds = tarefas.map((t) => t.id)
-
-  let subtarefas = []
-  if (tarefaIds.length) {
-    const { data } = await supabase.from('precificacao_subtarefas').select('tarefa_id, horas_estimadas').in('tarefa_id', tarefaIds)
-    subtarefas = data || []
-  }
-
-  return calcularPrecificacao({
-    etapas: [{
-      tarefas: tarefas.map((t) => ({
-        horas_estimadas_soltas: t.horas_estimadas_soltas || 0,
-        subtarefas: subtarefas.filter((s) => s.tarefa_id === t.id).map((s) => ({ horas_estimadas: s.horas_estimadas || 0 })),
-      })),
-    }],
-    custos_extras: (custosRes.data || []).map((c) => ({ valor_estimado: c.valor_estimado || 0 })),
-    valor_hora: cabecalho.valor_hora || 0,
-    margem_pct: cabecalho.margem_pct || 0,
-    nf_pct: cabecalho.nf_pct || 0,
-    nf_ativo: cabecalho.nf_ativo || false,
-  })
 }
 
 function ClientField({ col, value, onChange, clientes, activeEmpresaId, onClientCreate, autoFocus }) {
@@ -253,6 +214,7 @@ function DrawerField({ col, value, onChange, onAddOption, clientes, activeEmpres
 
 export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell, onAddOption, onDelete, clientes, user, activeEmpresaId, onClientCreate, isNew }) {
   const navigate = useNavigate()
+  const toast = useToast()
   const [comments, setComments] = useState([])
   const [commentLoading, setCommentLoading] = useState(false)
   const [newComment, setNewComment] = useState('')
@@ -261,6 +223,8 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
   const [precificacoes, setPrecificacoes] = useState([])
   const [precifLoading, setPrecifLoading] = useState(false)
   const [criandoPrecif, setCriandoPrecif] = useState(false)
+  const [confirmDeletePrecif, setConfirmDeletePrecif] = useState(null) // id da precificação a excluir
+  const [excluindoPrecif, setExcluindoPrecif] = useState(false)
   const listRef = useRef(null)
 
   const clienteCol = columns.find(c => c.slug === 'cliente')
@@ -299,7 +263,7 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
         const lista = data || []
         const comCalculo = await Promise.all(lista.map(async (p) => {
           const calc = await carregarCalculoPrecificacao(p.id, p)
-          return { id: p.id, nome: p.nome, totalHoras: calc.totalHoras, valorFinal: calc.valorFinal }
+          return { id: p.id, nome: p.nome, totalHoras: calc?.totalHoras ?? null, valorFinal: calc?.valorFinal ?? null }
         }))
         setPrecificacoes(comCalculo)
         setPrecifLoading(false)
@@ -317,6 +281,16 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
     setCriandoPrecif(false)
     if (error || !data) return
     navigate(`/precificacao/${data.id}?origem=crm&linha_id=${row.id}`)
+  }
+
+  async function excluirPrecificacao() {
+    const precifId = confirmDeletePrecif
+    setExcluindoPrecif(true)
+    const { error } = await supabase.from('precificacoes').delete().eq('id', precifId)
+    setExcluindoPrecif(false)
+    if (error) { toast('Erro ao excluir precificação'); return }
+    setPrecificacoes((prev) => prev.filter((p) => p.id !== precifId))
+    setConfirmDeletePrecif(null)
   }
 
   // Drawer abre sempre com o scroll no topo (não no fim, por causa dos comentários)
@@ -368,6 +342,20 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
             <div className="modal-actions">
               <button className="btn-cancel" onClick={() => setConfirmDelete(false)}>Cancelar</button>
               <button className="btn-danger" onClick={() => { onDelete(); setConfirmDelete(false) }}>Excluir</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmDeletePrecif && (
+        <div className="modal-overlay" style={{ zIndex: 100 }} onClick={e => { if (e.target === e.currentTarget) setConfirmDeletePrecif(null) }}>
+          <div className="modal">
+            <div className="modal-title">Excluir precificação</div>
+            <p className="modal-delete-warn">Excluir esta precificação? Essa ação não pode ser desfeita.</p>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setConfirmDeletePrecif(null)}>Cancelar</button>
+              <button className="btn-danger" onClick={excluirPrecificacao} disabled={excluindoPrecif}>
+                {excluindoPrecif ? 'Excluindo…' : 'Excluir'}
+              </button>
             </div>
           </div>
         </div>
@@ -438,10 +426,13 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
                 <div className="dr-precif-item" key={p.id}>
                   <div className="dr-precif-info">
                     <span className="dr-precif-nome">{p.nome}</span>
-                    <span className="dr-precif-meta">{p.totalHoras ? `${p.totalHoras}h` : '—'} · {fmtMoney(p.valorFinal)}</span>
+                    <span className="dr-precif-meta">{p.totalHoras == null ? '—' : `${p.totalHoras}h · ${fmtMoney(p.valorFinal)}`}</span>
                   </div>
                   <button className="dr-precif-abrir" onClick={() => navigate(`/precificacao/${p.id}?origem=crm&linha_id=${row.id}`)}>
                     Abrir <IconArrowRight />
+                  </button>
+                  <button className="dr-precif-del" onClick={() => setConfirmDeletePrecif(p.id)} aria-label="Excluir precificação" title="Excluir precificação">
+                    <IconTrash />
                   </button>
                 </div>
               ))}

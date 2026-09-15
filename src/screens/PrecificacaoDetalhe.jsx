@@ -718,7 +718,11 @@ export default function PrecificacaoDetalhe() {
                   type="number" min="0" step="1" className="modal-input"
                   value={form.valorHora}
                   onChange={(e) => updateForm({ valorHora: e.target.value })}
-                  onBlur={(e) => persistField({ valor_hora: Number(e.target.value) || 0 })}
+                  onFocus={(e) => { if (parseFloat(e.target.value) === 0) e.target.value = '' }}
+                  onBlur={(e) => {
+                    if (e.target.value === '') e.target.value = '0'
+                    persistField({ valor_hora: Number(e.target.value) || 0 })
+                  }}
                 />
               </div>
               <div className="modal-field">
@@ -727,7 +731,11 @@ export default function PrecificacaoDetalhe() {
                   type="number" min="0" max="99" step="1" className="modal-input"
                   value={form.margemLucro}
                   onChange={(e) => updateForm({ margemLucro: e.target.value })}
-                  onBlur={(e) => persistField({ margem_pct: Number(e.target.value) || 0 })}
+                  onFocus={(e) => { if (parseFloat(e.target.value) === 0) e.target.value = '' }}
+                  onBlur={(e) => {
+                    if (e.target.value === '') e.target.value = '0'
+                    persistField({ margem_pct: Number(e.target.value) || 0 })
+                  }}
                 />
               </div>
             </div>
@@ -757,7 +765,11 @@ export default function PrecificacaoDetalhe() {
                       type="number" min="0" max="99" step="0.5" className="modal-input pd-nf-percentual"
                       value={form.nfPercentual}
                       onChange={(e) => updateForm({ nfPercentual: e.target.value })}
-                      onBlur={(e) => persistField({ nf_pct: Number(e.target.value) || 0 })}
+                      onFocus={(e) => { if (parseFloat(e.target.value) === 0) e.target.value = '' }}
+                      onBlur={(e) => {
+                        if (e.target.value === '') e.target.value = '0'
+                        persistField({ nf_pct: Number(e.target.value) || 0 })
+                      }}
                     />
                     <span className="pd-percent-suffix">%</span>
                   </div>
@@ -772,7 +784,11 @@ export default function PrecificacaoDetalhe() {
                   type="number" min="0" step="1" className="modal-input"
                   value={form.metragem}
                   onChange={(e) => updateForm({ metragem: e.target.value })}
-                  onBlur={(e) => persistField({ metragem: e.target.value === '' ? null : Number(e.target.value) })}
+                  onFocus={(e) => { if (parseFloat(e.target.value) === 0) e.target.value = '' }}
+                  onBlur={(e) => {
+                    if (e.target.value === '') e.target.value = '0'
+                    persistField({ metragem: Number(e.target.value) || 0 })
+                  }}
                 />
               </div>
               <div className="modal-field">

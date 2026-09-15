@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { supabase } from '../services/supabaseClient.js'
 
 // Cálculo puro (sem estado) — usado pelo hook abaixo e por quem precisar
 // rodar a conta fora de um componente React (ex.: script de migração).
@@ -40,4 +41,43 @@ export function usePrecificacaoCalculo({ etapas, custos_extras, valor_hora, marg
     () => calcularPrecificacao({ etapas, custos_extras, valor_hora, margem_pct, nf_pct, nf_ativo }),
     [etapas, custos_extras, valor_hora, margem_pct, nf_pct, nf_ativo]
   )
+}
+
+// Total de horas e valor final não são colunas — são sempre calculados na
+// hora a partir de etapas/tarefas/subtarefas + custos extras. Usado fora de
+// PrecificacaoDetalhe.jsx (listagem, drawer do CRM) pra exibir esses
+// valores sem precisar cachear nada no banco. Retorna null quando a
+// precificação não tem etapa nenhuma, pro chamador poder mostrar "—".
+export async function carregarCalculoPrecificacao(precificacaoId, cabecalho) {
+  const [etapasRes, custosRes] = await Promise.all([
+    supabase.from('precificacao_etapas').select('id').eq('precificacao_id', precificacaoId),
+    supabase.from('precificacao_custos_extras').select('valor_estimado').eq('precificacao_id', precificacaoId),
+  ])
+  const etapaIds = (etapasRes.data || []).map((e) => e.id)
+  if (etapaIds.length === 0) return null
+
+  const { data: tarefas } = await supabase
+    .from('precificacao_tarefas').select('id, horas_estimadas_soltas').in('etapa_id', etapaIds)
+  const tarefaIds = (tarefas || []).map((t) => t.id)
+
+  let subtarefas = []
+  if (tarefaIds.length) {
+    const { data } = await supabase
+      .from('precificacao_subtarefas').select('tarefa_id, horas_estimadas').in('tarefa_id', tarefaIds)
+    subtarefas = data || []
+  }
+
+  return calcularPrecificacao({
+    etapas: [{
+      tarefas: (tarefas || []).map((t) => ({
+        horas_estimadas_soltas: t.horas_estimadas_soltas || 0,
+        subtarefas: subtarefas.filter((s) => s.tarefa_id === t.id).map((s) => ({ horas_estimadas: s.horas_estimadas || 0 })),
+      })),
+    }],
+    custos_extras: (custosRes.data || []).map((c) => ({ valor_estimado: c.valor_estimado || 0 })),
+    valor_hora: cabecalho.valor_hora || 0,
+    margem_pct: cabecalho.margem_pct || 0,
+    nf_pct: cabecalho.nf_pct || 0,
+    nf_ativo: cabecalho.nf_ativo || false,
+  })
 }

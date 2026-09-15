@@ -262,6 +262,19 @@
 }
 .dr-precif-abrir:hover { background: var(--green); }
 .dr-precif-abrir svg { width: 11px; height: 11px; stroke: currentColor; stroke-width: 2.4; fill: none; }
+.dr-precif-del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-40);
+  display: flex;
+  padding: 7px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.dr-precif-del:hover { background: rgba(224, 84, 84, 0.1); color: var(--red); }
+.dr-precif-del svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2; fill: none; }
 .dr-precif-nova {
   display: inline-flex;
   align-items: center;
