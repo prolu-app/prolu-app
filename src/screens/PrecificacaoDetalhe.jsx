@@ -355,32 +355,36 @@ export default function PrecificacaoDetalhe() {
   // form.etiquetas guarda [{ id, nome }] — precisa do id de volta do
   // insert pra poder deletar por id depois, não por texto.
   async function adicionarEtiquetaExistente(nome) {
+    console.log('[etiquetas] adicionarEtiquetaExistente chamado, nome:', nome)
     setEtiquetaBusca('')
     setEtiquetaDropdownAberto(false)
-    if (form.etiquetas.some((e) => e.nome === nome)) return
-    if (!id) {
-      console.error('[etiquetas] precificacao_id ausente ao tentar vincular etiqueta', { id, nome })
-      toast('Erro ao salvar etiqueta')
+    if (form.etiquetas.some((e) => e.nome === nome)) {
+      console.log('[etiquetas] já está na lista local, não vai inserir:', nome)
       return
     }
-    const { data, error } = await supabase.from('precificacao_etiquetas')
+
+    console.log('Tentando inserir etiqueta...')
+    console.log('precificacao_id:', id)
+    console.log('nome:', nome)
+
+    const { data, error } = await supabase
+      .from('precificacao_etiquetas')
       .insert({ precificacao_id: id, nome })
-      .select('id, nome')
-      .single()
+      .select()
+
+    console.log('Resultado insert:', { data, error })
 
     if (error) {
-      console.error('Erro ao salvar etiqueta:', JSON.stringify(error, null, 2))
-      console.error('precificacao_id usado:', id)
-      console.error('nome usado:', nome)
+      console.error('Erro completo:', error.code, error.message, error.details, error.hint)
       toast('Erro ao salvar etiqueta')
       return
     }
-    if (!data) {
-      console.error('[etiquetas] insert em precificacao_etiquetas não retornou erro nem dado', { precificacao_id: id, nome })
+    if (!data || !data[0]) {
+      console.error('[etiquetas] insert não retornou erro nem dado', { precificacao_id: id, nome })
       toast('Erro ao salvar etiqueta')
       return
     }
-    updateForm({ etiquetas: [...form.etiquetas, data] })
+    updateForm({ etiquetas: [...form.etiquetas, data[0]] })
     markSaved()
   }
 
