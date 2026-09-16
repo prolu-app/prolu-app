@@ -384,7 +384,12 @@ export default function PrecificacaoDetalhe() {
       toast('Erro ao salvar etiqueta')
       return
     }
-    updateForm({ etiquetas: [...form.etiquetas, data[0]] })
+    // Usa o form da própria atualização (não o `form` capturado no closure
+    // antes do await) — se outra edição tiver mudado o estado nesse meio
+    // tempo, essa era a causa da etiqueta "sumir": o patch sobrescrevia
+    // etiquetas com um array antigo, perdendo o que tinha sido adicionado.
+    const nova = data[0]
+    setForm((f) => f.etiquetas.some((e) => e.id === nova.id) ? f : { ...f, etiquetas: [...f.etiquetas, nova] })
     markSaved()
   }
 
@@ -405,13 +410,18 @@ export default function PrecificacaoDetalhe() {
   }
 
   async function removeEtiqueta(etiquetaId) {
-    const anterior = form.etiquetas
-    updateForm({ etiquetas: form.etiquetas.filter((e) => e.id !== etiquetaId) })
+    let removida = null
+    setForm((f) => {
+      removida = f.etiquetas.find((e) => e.id === etiquetaId) || null
+      return { ...f, etiquetas: f.etiquetas.filter((e) => e.id !== etiquetaId) }
+    })
     const { error } = await supabase.from('precificacao_etiquetas').delete().eq('id', etiquetaId)
     if (error) {
       console.error('[etiquetas] erro ao remover de precificacao_etiquetas:', error, { id: etiquetaId })
       toast('Erro ao remover etiqueta')
-      updateForm({ etiquetas: anterior })
+      if (removida) {
+        setForm((f) => f.etiquetas.some((e) => e.id === etiquetaId) ? f : { ...f, etiquetas: [...f.etiquetas, removida] })
+      }
       return
     }
     markSaved()
