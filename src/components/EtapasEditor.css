@@ -28,10 +28,6 @@
 .ee-collapse-btn svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 2; fill: none; transition: transform 0.15s; }
 .ee-collapse-btn svg.ee-chevron-collapsed { transform: rotate(-90deg); }
 
-.ee-etapa-label {
-  font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 700;
-  letter-spacing: 0.8px; color: var(--ink-40); flex-shrink: 0;
-}
 .ee-etapa-nome { font-weight: 600; font-size: 14.5px; color: var(--ink); flex: 1; }
 .ee-etapa-nome-editable { cursor: text; border-radius: 6px; padding: 2px 4px; margin: -2px -4px; transition: background 0.15s; }
 .ee-etapa-nome-editable:hover { background: var(--cream); }
@@ -46,7 +42,6 @@
   transition: opacity 0.15s, box-shadow 0.15s;
 }
 .ee-tarefa-head { display: flex; align-items: center; gap: 8px; padding: 8px 2px; flex-wrap: wrap; }
-.ee-tarefa-label { font-family: 'Montserrat', sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: 0.7px; color: var(--ink-40); flex-shrink: 0; }
 .ee-tarefa-nome { font-size: 13.5px; color: var(--ink); flex: 1; min-width: 100px; }
 .ee-tarefa-horas { font-size: 12.5px; color: var(--ink-60); white-space: nowrap; display: flex; align-items: center; }
 .ee-tarefa-sub-total { color: var(--ink-40); margin-left: 2px; }
@@ -61,7 +56,6 @@
 .ee-subtarefas { display: flex; flex-direction: column; gap: 4px; padding: 0 2px 8px 22px; }
 .ee-subtarefa { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-60); transition: opacity 0.15s; }
 .ee-sub-branch { color: var(--ink-30); flex-shrink: 0; }
-.ee-subtarefa-label { font-family: 'Montserrat', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.6px; color: var(--ink-30); flex-shrink: 0; }
 .ee-subtarefa-nome { flex: 1; color: var(--ink-80); }
 .ee-h-suffix { color: var(--ink-40); margin-right: 4px; }
 

@@ -4,6 +4,16 @@ import './EtapasEditor.css'
 
 const MOBILE_BREAKPOINT = 860
 
+// Texto padrão que um item recém-criado assume se o usuário clicar fora
+// sem digitar nada — funciona como indicador visual de "precisa renomear"
+// (ver criarEtapa/criarTarefa/criarSubtarefa e os onBlur dos inputs de nome).
+const NOME_VAZIO = { etapa: '(etapa sem nome)', tarefa: '(tarefa sem nome)', subtarefa: '(subtarefa sem nome)' }
+
+// Se o nome ainda é o placeholder (ou está vazio, caso de item recém-criado
+// antes do primeiro blur), o clique pra editar deve selecionar tudo — dá
+// pra digitar direto por cima sem apagar manualmente.
+function ehNomePlaceholder(nome, tipo) { return !nome || nome === NOME_VAZIO[tipo] }
+
 function IconGripDots() {
   return (
     <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
@@ -130,14 +140,14 @@ export default function EtapasEditor({
                 <button className="ee-collapse-btn" onClick={() => toggleCollapse(e.id)}>
                   <IconChevronDown className={isCollapsed ? 'ee-chevron-collapsed' : ''} />
                 </button>
-                <span className="ee-etapa-label">ETAPA</span>
                 {editando === `etapa:${e.id}` ? (
                   <input
                     className="ee-name-input"
                     autoFocus
                     placeholder="Nome da etapa"
                     defaultValue={e.nome}
-                    onBlur={(ev) => { onRenameEtapa(e.id, ev.target.value.trim()); setEditando(null) }}
+                    onFocus={(ev) => { if (ehNomePlaceholder(e.nome, 'etapa')) ev.target.select() }}
+                    onBlur={(ev) => { const v = ev.target.value.trim(); onRenameEtapa(e.id, v || NOME_VAZIO.etapa); setEditando(null) }}
                     onKeyDown={(ev) => { if (ev.key === 'Enter') ev.target.blur(); if (ev.key === 'Escape') setEditando(null) }}
                   />
                 ) : (
@@ -146,7 +156,9 @@ export default function EtapasEditor({
                     onClick={() => !readOnly && setEditando(`etapa:${e.id}`)}
                     title={readOnly ? undefined : 'Clique para editar'}
                   >
-                    {e.nome || <span className="ee-nome-vazio">Sem nome</span>}
+                    {e.nome
+                      ? (e.nome === NOME_VAZIO.etapa ? <span className="ee-nome-vazio">{e.nome}</span> : e.nome)
+                      : <span className="ee-nome-vazio">Sem nome</span>}
                   </span>
                 )}
                 <span className="ee-soma">Σ {subtotalEtapa(e)}h</span>
@@ -188,14 +200,14 @@ export default function EtapasEditor({
                     >
                       <div className="ee-tarefa-head">
                         {!isMobile && <span className="drag-handle"><IconGripDots /></span>}
-                        <span className="ee-tarefa-label">TAREFA</span>
                         {editando === `tarefa:${t.id}` ? (
                           <input
                             className="ee-name-input"
                             autoFocus
                             placeholder="Nome da tarefa"
                             defaultValue={t.nome}
-                            onBlur={(ev) => { onRenameTarefa(t.id, ev.target.value.trim()); setEditando(null) }}
+                            onFocus={(ev) => { if (ehNomePlaceholder(t.nome, 'tarefa')) ev.target.select() }}
+                            onBlur={(ev) => { const v = ev.target.value.trim(); onRenameTarefa(t.id, v || NOME_VAZIO.tarefa); setEditando(null) }}
                             onKeyDown={(ev) => { if (ev.key === 'Enter') ev.target.blur(); if (ev.key === 'Escape') setEditando(null) }}
                           />
                         ) : (
@@ -204,7 +216,9 @@ export default function EtapasEditor({
                             onClick={() => !readOnly && setEditando(`tarefa:${t.id}`)}
                             title={readOnly ? undefined : 'Clique para editar'}
                           >
-                            {t.nome || <span className="ee-nome-vazio">Sem nome</span>}
+                            {t.nome
+                              ? (t.nome === NOME_VAZIO.tarefa ? <span className="ee-nome-vazio">{t.nome}</span> : t.nome)
+                              : <span className="ee-nome-vazio">Sem nome</span>}
                           </span>
                         )}
                         <span className="ee-tarefa-horas">
@@ -213,6 +227,7 @@ export default function EtapasEditor({
                             className="ee-horas-input"
                             defaultValue={t.horas || 0}
                             disabled={readOnly}
+                            onFocus={(ev) => { if (!t.horas) ev.target.select() }}
                             onBlur={(ev) => onSetTarefaHoras(t.id, Number(ev.target.value) || 0)}
                           />h
                           {(t.subtarefas || []).length > 0 && (
@@ -257,14 +272,14 @@ export default function EtapasEditor({
                             >
                               {!isMobile && <span className="drag-handle drag-handle-sub"><IconGripDots /></span>}
                               <span className="ee-sub-branch">└──</span>
-                              <span className="ee-subtarefa-label">SUBTAREFA</span>
                               {editando === `subtarefa:${st.id}` ? (
                                 <input
                                   className="ee-name-input"
                                   autoFocus
                                   placeholder="Nome da subtarefa"
                                   defaultValue={st.nome}
-                                  onBlur={(ev) => { onRenameSubtarefa(st.id, ev.target.value.trim()); setEditando(null) }}
+                                  onFocus={(ev) => { if (ehNomePlaceholder(st.nome, 'subtarefa')) ev.target.select() }}
+                                  onBlur={(ev) => { const v = ev.target.value.trim(); onRenameSubtarefa(st.id, v || NOME_VAZIO.subtarefa); setEditando(null) }}
                                   onKeyDown={(ev) => { if (ev.key === 'Enter') ev.target.blur(); if (ev.key === 'Escape') setEditando(null) }}
                                 />
                               ) : (
@@ -273,7 +288,9 @@ export default function EtapasEditor({
                                   onClick={() => !readOnly && setEditando(`subtarefa:${st.id}`)}
                                   title={readOnly ? undefined : 'Clique para editar'}
                                 >
-                                  {st.nome || <span className="ee-nome-vazio">Sem nome</span>}
+                                  {st.nome
+                                    ? (st.nome === NOME_VAZIO.subtarefa ? <span className="ee-nome-vazio">{st.nome}</span> : st.nome)
+                                    : <span className="ee-nome-vazio">Sem nome</span>}
                                 </span>
                               )}
                               <input
@@ -281,6 +298,7 @@ export default function EtapasEditor({
                                 className="ee-horas-input"
                                 defaultValue={st.horas || 0}
                                 disabled={readOnly}
+                                onFocus={(ev) => { if (!st.horas) ev.target.select() }}
                                 onBlur={(ev) => onSetSubtarefaHoras(st.id, Number(ev.target.value) || 0)}
                               />
                               <span className="ee-h-suffix">h</span>
