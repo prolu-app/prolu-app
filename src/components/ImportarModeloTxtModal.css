@@ -1,5 +1,14 @@
 .imt-modal { width: 520px; max-height: 86vh; overflow-y: auto; }
 
+/* .btn-confirm/.btn-cancel (index.css) nunca são usados com ícone dentro
+   em nenhum outro modal do app, então não existe regra global de tamanho
+   pro svg — sem isso aqui, o <IconChevronRight/> do botão "Continuar"
+   renderiza no tamanho intrínseco do SVG (sem width/height, o browser
+   cai pro padrão de elemento substituído, ~300x150px), estica a altura
+   de toda a .modal-actions (flex stretch) e os botões viram um
+   círculo/pílula gigantes. */
+.imt-modal .modal-actions button svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2.4; fill: none; vertical-align: -2px; }
+
 .imt-header { display: flex; align-items: flex-start; justify-content: space-between; }
 .imt-header .modal-title { margin-bottom: 18px; }
 .imt-close { background: none; border: none; cursor: pointer; color: var(--ink-40); padding: 4px; border-radius: 6px; display: flex; }
