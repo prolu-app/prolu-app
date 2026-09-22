@@ -1,41 +1,11 @@
 import { useEffect, useState } from 'react'
 import { supabase, supabaseReady } from '../../services/supabaseClient.js'
 import { useToast } from '../../contexts/ToastContext.jsx'
-import { IconPlus, IconTrash, IconEdit } from '../../components/Icons.jsx'
+import { IconPlus, IconTrash, IconEdit, IconFile } from '../../components/Icons.jsx'
 import EtapasEditor from '../../components/EtapasEditor.jsx'
+import ImportarModeloTxtModal from '../../components/ImportarModeloTxtModal.jsx'
+import { carregarModeloTree } from '../../utils/modeloPrecificacaoTree.js'
 import './AdminModelosPrecificacao.css'
-
-async function carregarModeloTree(modeloId) {
-  const { data: etapasRows } = await supabase
-    .from('precificacao_modelo_etapas').select('id, nome, ordem')
-    .eq('modelo_id', modeloId).order('ordem')
-  const etapaIds = (etapasRows || []).map((e) => e.id)
-
-  let tarefasRows = []
-  if (etapaIds.length) {
-    const { data } = await supabase
-      .from('precificacao_modelo_tarefas').select('id, etapa_id, nome, horas:horas_estimadas_soltas, ordem')
-      .in('etapa_id', etapaIds).order('ordem')
-    tarefasRows = data || []
-  }
-  const tarefaIds = tarefasRows.map((t) => t.id)
-
-  let subRows = []
-  if (tarefaIds.length) {
-    const { data } = await supabase
-      .from('precificacao_modelo_subtarefas').select('id, tarefa_id, nome, horas:horas_estimadas, ordem')
-      .in('tarefa_id', tarefaIds).order('ordem')
-    subRows = data || []
-  }
-
-  return (etapasRows || []).map((e) => ({
-    ...e,
-    tarefas: tarefasRows.filter((t) => t.etapa_id === e.id).map((t) => ({
-      ...t,
-      subtarefas: subRows.filter((st) => st.tarefa_id === t.id),
-    })),
-  }))
-}
 
 export default function AdminModelosPrecificacao() {
   const toast = useToast()
@@ -49,6 +19,7 @@ export default function AdminModelosPrecificacao() {
   const [modalNovo, setModalNovo] = useState(false)
   const [nomeNovo, setNomeNovo] = useState('')
   const [criando, setCriando] = useState(false)
+  const [modalImportar, setModalImportar] = useState(false)
 
   useEffect(() => { carregarModelos() }, [])
 
@@ -99,6 +70,20 @@ export default function AdminModelosPrecificacao() {
       if (restantes.length) selecionar(restantes[0].id)
       else { setSelecionadoId(null); setEtapas([]) }
     }
+  }
+
+  // Importação via .txt: só reflete nesta tela quando o destino foi
+  // "Modelo Prolu" (essa lista só mostra is_prolu = true). Quando o
+  // destino foi um escritório específico, o modelo criado/atualizado não
+  // aparece aqui — quem gerencia daí em diante é o próprio escritório em
+  // /precificacao/modelos.
+  function handleModeloImportado({ destino, modelo }) {
+    if (destino !== 'prolu') return
+    setModelos((prev) => {
+      const semEle = prev.filter((m) => m.id !== modelo.id)
+      return [...semEle, modelo].sort((a, b) => a.nome.localeCompare(b.nome))
+    })
+    selecionar(modelo.id)
   }
 
   // ── Etapas do modelo selecionado ──
@@ -214,9 +199,14 @@ export default function AdminModelosPrecificacao() {
           <div className="page-title">Modelos de precificação</div>
           <div className="page-sub">Modelos Prolu — visíveis e sugeridos pra todos os escritórios.</div>
         </div>
-        <button className="btn-primary" onClick={() => setModalNovo(true)}>
-          <IconPlus /> Novo modelo Prolu
-        </button>
+        <div className="amp-header-actions">
+          <button className="btn-secondary" onClick={() => setModalImportar(true)}>
+            <IconFile /> Importar de arquivo (.txt)
+          </button>
+          <button className="btn-primary" onClick={() => setModalNovo(true)}>
+            <IconPlus /> Novo modelo Prolu
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -285,6 +275,13 @@ export default function AdminModelosPrecificacao() {
           </div>
         </div>
       )}
+
+      <ImportarModeloTxtModal
+        open={modalImportar}
+        onClose={() => setModalImportar(false)}
+        modelosProlu={modelos}
+        onImported={handleModeloImportado}
+      />
     </>
   )
 }

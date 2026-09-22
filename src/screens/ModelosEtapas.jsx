@@ -5,39 +5,8 @@ import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { IconBack, IconPlus, IconTrash, IconEdit } from '../components/Icons.jsx'
 import EtapasEditor from '../components/EtapasEditor.jsx'
+import { carregarModeloTree } from '../utils/modeloPrecificacaoTree.js'
 import './ModelosEtapas.css'
-
-async function carregarModeloTree(modeloId) {
-  const { data: etapasRows } = await supabase
-    .from('precificacao_modelo_etapas').select('id, nome, ordem')
-    .eq('modelo_id', modeloId).order('ordem')
-  const etapaIds = (etapasRows || []).map((e) => e.id)
-
-  let tarefasRows = []
-  if (etapaIds.length) {
-    const { data } = await supabase
-      .from('precificacao_modelo_tarefas').select('id, etapa_id, nome, horas:horas_estimadas_soltas, ordem')
-      .in('etapa_id', etapaIds).order('ordem')
-    tarefasRows = data || []
-  }
-  const tarefaIds = tarefasRows.map((t) => t.id)
-
-  let subRows = []
-  if (tarefaIds.length) {
-    const { data } = await supabase
-      .from('precificacao_modelo_subtarefas').select('id, tarefa_id, nome, horas:horas_estimadas, ordem')
-      .in('tarefa_id', tarefaIds).order('ordem')
-    subRows = data || []
-  }
-
-  return (etapasRows || []).map((e) => ({
-    ...e,
-    tarefas: tarefasRows.filter((t) => t.etapa_id === e.id).map((t) => ({
-      ...t,
-      subtarefas: subRows.filter((st) => st.tarefa_id === t.id),
-    })),
-  }))
-}
 
 export default function ModelosEtapas() {
   const { activeEmpresaId, isProluAdmin } = useAuth()
@@ -83,10 +52,16 @@ export default function ModelosEtapas() {
   const modeloSelecionado = modelos.find((m) => m.id === selecionadoId)
   const editavel = modeloSelecionado ? podeEditar(modeloSelecionado) : false
 
+  // Reforço no front do que a RLS já garante no banco (mesmo padrão da
+  // Base de Conhecimento): empresa_id null → modelo Padrão Prolu, visível
+  // a todos; empresa_id preenchido → só aparece pra dona dele. Um
+  // escritório nunca vê modelo de outro (a RLS de modelos_precificacao já
+  // só devolve linhas is_prolu=false com empresa_id = auth_empresa_id()
+  // pra quem não é prolu_admin — isto aqui é só defesa em profundidade).
   const grupos = useMemo(() => ({
-    prolu: modelos.filter((m) => m.is_prolu),
-    empresa: modelos.filter((m) => !m.is_prolu),
-  }), [modelos])
+    prolu: modelos.filter((m) => m.empresa_id == null),
+    empresa: modelos.filter((m) => m.empresa_id != null && m.empresa_id === activeEmpresaId),
+  }), [modelos, activeEmpresaId])
 
   async function criarModelo() {
     if (!nomeNovo.trim()) return
@@ -250,7 +225,7 @@ export default function ModelosEtapas() {
           <div className="me-sidebar">
             {grupos.prolu.length > 0 && (
               <>
-                <div className="me-group-label">Modelos Prolu</div>
+                <div className="me-group-label">Modelos Padrão Prolu</div>
                 {grupos.prolu.map((m) => (
                   <ModeloItem key={m.id} m={m} ativo={m.id === selecionadoId} editavel={podeEditar(m)}
                     editando={editandoId === m.id}
@@ -263,7 +238,7 @@ export default function ModelosEtapas() {
             )}
             {grupos.empresa.length > 0 && (
               <>
-                <div className="me-group-label">Modelos da empresa</div>
+                <div className="me-group-label">Meus modelos</div>
                 {grupos.empresa.map((m) => (
                   <ModeloItem key={m.id} m={m} ativo={m.id === selecionadoId} editavel={podeEditar(m)}
                     editando={editandoId === m.id}

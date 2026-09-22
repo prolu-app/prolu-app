@@ -90,7 +90,11 @@ create table precificacao_etiquetas (
 -- as empresas e só editável por prolu_admin (ver
 -- src/screens/admin/AdminModelosPrecificacao.jsx). is_prolu = false e
 -- empresa_id preenchido → modelo próprio da empresa, só ela vê/edita
--- (ver src/screens/ModelosEtapas.jsx).
+-- (ver src/screens/ModelosEtapas.jsx). Desde a migration_019, o
+-- prolu_admin também pode criar/substituir um modelo is_prolu = false de
+-- QUALQUER empresa (via importação por arquivo .txt — ver
+-- src/components/ImportarModeloTxtModal.jsx) — a policy de escrita logo
+-- abaixo é a de antes da migration_019; a vigente está lá.
 create table modelos_precificacao (
   id uuid primary key default uuid_generate_v4(),
   empresa_id uuid references empresas(id) on delete cascade,

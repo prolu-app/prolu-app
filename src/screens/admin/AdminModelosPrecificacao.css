@@ -1,5 +1,15 @@
 .amp-empty { margin-top: 40px; text-align: center; color: var(--ink-40); font-size: 14px; }
 
+.amp-header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.amp-header-actions .btn-secondary {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--gray-soft); color: var(--ink-60); border: none; border-radius: 99px;
+  padding: 11px 20px; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+  white-space: nowrap;
+}
+.amp-header-actions .btn-secondary:hover { background: #e0e0dc; }
+.amp-header-actions .btn-secondary svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2.2; fill: none; }
+
 .amp-layout { display: grid; grid-template-columns: 240px 1fr; gap: 22px; align-items: start; }
 
 .amp-sidebar { display: flex; flex-direction: column; gap: 2px; background: var(--white); border-radius: var(--r-lg); box-shadow: var(--shadow-rest); padding: 10px; }

@@ -1,0 +1,79 @@
+.imt-modal { width: 520px; max-height: 86vh; overflow-y: auto; }
+
+.imt-header { display: flex; align-items: flex-start; justify-content: space-between; }
+.imt-header .modal-title { margin-bottom: 18px; }
+.imt-close { background: none; border: none; cursor: pointer; color: var(--ink-40); padding: 4px; border-radius: 6px; display: flex; }
+.imt-close:hover { background: var(--gray-soft); color: var(--ink); }
+.imt-close svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 2; fill: none; }
+
+.imt-step { display: flex; flex-direction: column; }
+.imt-field { margin-top: 16px; }
+
+.imt-destino-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.imt-destino-card {
+  text-align: left; border: 1.5px solid var(--gray-soft); border-radius: var(--r-sm);
+  background: var(--white); padding: 14px; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+}
+.imt-destino-card:hover { border-color: var(--green); }
+.imt-destino-card.active { border-color: var(--green); background: var(--green-soft); }
+.imt-destino-title { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.imt-destino-sub { font-size: 12px; color: var(--ink-40); margin-top: 2px; }
+
+.imt-search { position: relative; }
+.imt-search-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; stroke: var(--ink-40); stroke-width: 2; fill: none; }
+.imt-search-input { padding-left: 36px; }
+
+.imt-hint { font-size: 12.5px; color: var(--ink-40); margin: 8px 0; }
+
+.imt-empresa-list {
+  margin-top: 6px; max-height: 180px; overflow-y: auto; border-radius: var(--r-sm);
+  background: var(--cream); display: flex; flex-direction: column;
+}
+.imt-empresa-item {
+  display: flex; align-items: center; gap: 8px; text-align: left; background: none; border: none;
+  cursor: pointer; padding: 9px 12px; font-size: 13px; color: var(--ink); font-family: inherit;
+}
+.imt-empresa-item:hover { background: var(--gray-soft); }
+.imt-empresa-item svg { width: 13px; height: 13px; stroke: var(--ink-40); stroke-width: 2; fill: none; flex-shrink: 0; }
+
+.imt-empresa-picked {
+  display: flex; align-items: center; justify-content: space-between; background: var(--cream);
+  border-radius: var(--r-sm); padding: 10px 12px; font-size: 13.5px; color: var(--ink);
+}
+.imt-empresa-picked span { display: flex; align-items: center; gap: 8px; }
+.imt-empresa-picked svg { width: 13px; height: 13px; stroke: var(--ink-40); stroke-width: 2; fill: none; }
+.imt-empresa-picked button { background: none; border: none; color: var(--green-ink, var(--ink-60)); font-size: 12.5px; cursor: pointer; text-decoration: underline; }
+
+.imt-modo-opts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.imt-radio { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-60); cursor: pointer; }
+.imt-radio input:disabled { cursor: not-allowed; }
+.imt-select { cursor: pointer; }
+
+.imt-file-drop {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 6px;
+  border: 1.5px dashed var(--gray-soft); border-radius: var(--r-sm); padding: 30px 16px;
+  cursor: pointer; color: var(--ink-40); font-size: 13px; transition: border-color 0.15s, color 0.15s;
+}
+.imt-file-drop:hover { border-color: var(--green); color: var(--ink); }
+.imt-file-drop svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.6; fill: none; }
+
+.imt-error, .imt-warn {
+  display: flex; align-items: flex-start; gap: 9px; border-radius: var(--r-sm);
+  padding: 11px 13px; font-size: 12.5px; margin-top: 14px; line-height: 1.5;
+}
+.imt-error { background: var(--red-soft, #fbe8e8); color: var(--red, #c0392b); }
+.imt-warn { background: var(--orange-soft, #fdf0dd); color: var(--orange-ink, #9a5b12); }
+.imt-error svg, .imt-warn svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 2; fill: none; flex-shrink: 0; margin-top: 1px; }
+
+.imt-preview-tree {
+  margin-top: 14px; max-height: 320px; overflow-y: auto; background: var(--cream);
+  border-radius: var(--r-sm); padding: 12px 14px; display: flex; flex-direction: column; gap: 12px;
+}
+.imt-preview-etapa-nome { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.imt-preview-tarefa { margin-top: 6px; padding-left: 16px; border-left: 2px solid var(--gray-soft); }
+.imt-preview-tarefa-nome { font-size: 13px; font-weight: 600; color: var(--ink-60); }
+.imt-preview-sub { font-size: 12.5px; color: var(--ink-40); padding: 3px 0 0 14px; }
+
+@media (max-width: 560px) {
+  .imt-destino-opts { grid-template-columns: 1fr; }
+}
