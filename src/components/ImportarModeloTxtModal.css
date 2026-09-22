@@ -29,8 +29,20 @@
 .imt-destino-sub { font-size: 12px; color: var(--ink-40); margin-top: 2px; }
 
 .imt-search { position: relative; }
-.imt-search-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; stroke: var(--ink-40); stroke-width: 2; fill: none; }
-.imt-search-input { padding-left: 36px; }
+.imt-search-icon {
+  position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+  width: 14px; height: 14px; stroke: var(--ink-40); stroke-width: 2; fill: none;
+  pointer-events: none;
+}
+/* .imt-search-input soma a classe global .modal-input (index.css), que já
+   define padding: 11px 14px — mesma especificidade (uma classe), então a
+   ordem de import no bundle decide quem "ganha", e o shorthand de
+   .modal-input vinha depois, resetando o padding-left de volta pra 14px e
+   escondendo o texto atrás do ícone. Escopar com .imt-search na frente
+   sobe a especificidade (0-2-0 > 0-1-0) e garante a vitória independente
+   da ordem — mesmo padrão de .esc-search-input em AdminEscritorios.css,
+   que evita esse problema definindo o padding inteiro de uma vez. */
+.imt-search .imt-search-input { padding: 11px 14px 11px 36px; }
 
 .imt-hint { font-size: 12.5px; color: var(--ink-40); margin: 8px 0; }
 
