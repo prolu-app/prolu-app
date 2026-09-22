@@ -1,19 +1,21 @@
 import { supabase } from '../services/supabaseClient.js'
 
 // Monta a árvore etapa → tarefa → subtarefa de um modelo de precificação
-// (tabelas precificacao_modelo_*). Usado em AdminModelosPrecificacao,
+// (tabelas modelo_etapas / modelo_tarefas / modelo_subtarefas — sem
+// prefixo "precificacao_", diferente do documentado na migration_015;
+// ver nota na migration_020). Usado em AdminModelosPrecificacao,
 // ModelosEtapas, PrecificacaoDetalhe (importar/salvar modelo) e no fluxo
 // de importação via arquivo .txt (ImportarModeloTxtModal).
 export async function carregarModeloTree(modeloId) {
   const { data: etapasRows } = await supabase
-    .from('precificacao_modelo_etapas').select('id, nome, ordem')
+    .from('modelo_etapas').select('id, nome, ordem')
     .eq('modelo_id', modeloId).order('ordem')
   const etapaIds = (etapasRows || []).map((e) => e.id)
 
   let tarefasRows = []
   if (etapaIds.length) {
     const { data } = await supabase
-      .from('precificacao_modelo_tarefas').select('id, etapa_id, nome, horas:horas_estimadas_soltas, ordem')
+      .from('modelo_tarefas').select('id, etapa_id, nome, horas:horas_estimadas_soltas, ordem')
       .in('etapa_id', etapaIds).order('ordem')
     tarefasRows = data || []
   }
@@ -22,7 +24,7 @@ export async function carregarModeloTree(modeloId) {
   let subRows = []
   if (tarefaIds.length) {
     const { data } = await supabase
-      .from('precificacao_modelo_subtarefas').select('id, tarefa_id, nome, horas:horas_estimadas, ordem')
+      .from('modelo_subtarefas').select('id, tarefa_id, nome, horas:horas_estimadas, ordem')
       .in('tarefa_id', tarefaIds).order('ordem')
     subRows = data || []
   }

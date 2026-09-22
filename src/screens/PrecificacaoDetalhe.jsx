@@ -580,16 +580,16 @@ export default function PrecificacaoDetalhe() {
     if (error || !modelo) { toast('Erro ao salvar modelo'); setSalvandoModelo(false); return }
     for (let i = 0; i < etapas.length; i++) {
       const e = etapas[i]
-      const { data: novaEtapa } = await supabase.from('precificacao_modelo_etapas')
+      const { data: novaEtapa } = await supabase.from('modelo_etapas')
         .insert({ modelo_id: modelo.id, nome: e.nome, ordem: i }).select('id').single()
       if (!novaEtapa) continue
       for (let j = 0; j < e.tarefas.length; j++) {
         const t = e.tarefas[j]
-        const { data: novaTarefa } = await supabase.from('precificacao_modelo_tarefas')
+        const { data: novaTarefa } = await supabase.from('modelo_tarefas')
           .insert({ etapa_id: novaEtapa.id, nome: t.nome, horas_estimadas_soltas: t.horas, ordem: j }).select('id').single()
         if (!novaTarefa) continue
         if (t.subtarefas.length) {
-          await supabase.from('precificacao_modelo_subtarefas').insert(
+          await supabase.from('modelo_subtarefas').insert(
             t.subtarefas.map((st, k) => ({ tarefa_id: novaTarefa.id, nome: st.nome, horas_estimadas: st.horas, ordem: k }))
           )
         }

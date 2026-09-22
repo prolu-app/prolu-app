@@ -15,7 +15,7 @@ import './ImportarModeloTxtModal.css'
 async function salvarEstruturaNoModelo(modeloId, etapasParseadas) {
   const etapasPayload = etapasParseadas.map((e, i) => ({ modelo_id: modeloId, nome: e.nome, ordem: i }))
   const { data: etapasIns, error: errEtapas } = await supabase
-    .from('precificacao_modelo_etapas').insert(etapasPayload).select('id, ordem')
+    .from('modelo_etapas').insert(etapasPayload).select('id, ordem')
   if (errEtapas) throw errEtapas
   const etapaIdPorOrdem = Object.fromEntries(etapasIns.map((e) => [e.ordem, e.id]))
 
@@ -29,7 +29,7 @@ async function salvarEstruturaNoModelo(modeloId, etapasParseadas) {
   let tarefaIdPorChave = {}
   if (tarefasPayload.length) {
     const { data: tarefasIns, error: errTarefas } = await supabase
-      .from('precificacao_modelo_tarefas').insert(tarefasPayload).select('id, etapa_id, ordem')
+      .from('modelo_tarefas').insert(tarefasPayload).select('id, etapa_id, ordem')
     if (errTarefas) throw errTarefas
     tarefaIdPorChave = Object.fromEntries(tarefasIns.map((t) => [`${t.etapa_id}:${t.ordem}`, t.id]))
   }
@@ -45,7 +45,7 @@ async function salvarEstruturaNoModelo(modeloId, etapasParseadas) {
     })
   })
   if (subtarefasPayload.length) {
-    const { error: errSub } = await supabase.from('precificacao_modelo_subtarefas').insert(subtarefasPayload)
+    const { error: errSub } = await supabase.from('modelo_subtarefas').insert(subtarefasPayload)
     if (errSub) throw errSub
   }
 }
@@ -170,7 +170,7 @@ export default function ImportarModeloTxtModal({ open, onClose, modelosProlu, on
       let modeloNome = modelosAlvo.find((m) => m.id === modeloExistenteId)?.nome
 
       if (modoAlvo === 'existente') {
-        const { error: errDelete } = await supabase.from('precificacao_modelo_etapas').delete().eq('modelo_id', modeloId)
+        const { error: errDelete } = await supabase.from('modelo_etapas').delete().eq('modelo_id', modeloId)
         if (errDelete) throw errDelete
       } else {
         const empresa_id = destino === 'empresa' ? empresaSelecionada.id : null

@@ -98,18 +98,18 @@ export default function ModelosEtapas() {
   async function refetchEtapas() { setEtapas(await carregarModeloTree(selecionadoId)) }
 
   async function handleAddEtapa() {
-    const { data } = await supabase.from('precificacao_modelo_etapas')
+    const { data } = await supabase.from('modelo_etapas')
       .insert({ modelo_id: selecionadoId, nome: '', ordem: etapas.length })
       .select('id').single()
     await refetchEtapas()
     return data?.id
   }
   async function handleRenameEtapa(etapaId, nome) {
-    await supabase.from('precificacao_modelo_etapas').update({ nome }).eq('id', etapaId)
+    await supabase.from('modelo_etapas').update({ nome }).eq('id', etapaId)
     refetchEtapas()
   }
   async function handleDeleteEtapa(etapaId) {
-    await supabase.from('precificacao_modelo_etapas').delete().eq('id', etapaId)
+    await supabase.from('modelo_etapas').delete().eq('id', etapaId)
     refetchEtapas()
   }
   async function handleReorderEtapas(draggedId, targetId, position) {
@@ -122,27 +122,27 @@ export default function ModelosEtapas() {
     list.splice(insertIdx, 0, moved)
     const reordered = list.map((e, i) => ({ ...e, ordem: i }))
     setEtapas(reordered)
-    await Promise.all(reordered.map((e) => supabase.from('precificacao_modelo_etapas').update({ ordem: e.ordem }).eq('id', e.id)))
+    await Promise.all(reordered.map((e) => supabase.from('modelo_etapas').update({ ordem: e.ordem }).eq('id', e.id)))
   }
 
   async function handleAddTarefa(etapaId) {
     const etapa = etapas.find((e) => e.id === etapaId)
-    const { data } = await supabase.from('precificacao_modelo_tarefas')
+    const { data } = await supabase.from('modelo_tarefas')
       .insert({ etapa_id: etapaId, nome: '', horas_estimadas_soltas: 0, ordem: (etapa?.tarefas || []).length })
       .select('id').single()
     await refetchEtapas()
     return data?.id
   }
   async function handleRenameTarefa(tarefaId, nome) {
-    await supabase.from('precificacao_modelo_tarefas').update({ nome }).eq('id', tarefaId)
+    await supabase.from('modelo_tarefas').update({ nome }).eq('id', tarefaId)
     refetchEtapas()
   }
   async function handleSetTarefaHoras(tarefaId, horas) {
-    await supabase.from('precificacao_modelo_tarefas').update({ horas_estimadas_soltas: horas }).eq('id', tarefaId)
+    await supabase.from('modelo_tarefas').update({ horas_estimadas_soltas: horas }).eq('id', tarefaId)
     refetchEtapas()
   }
   async function handleDeleteTarefa(tarefaId) {
-    await supabase.from('precificacao_modelo_tarefas').delete().eq('id', tarefaId)
+    await supabase.from('modelo_tarefas').delete().eq('id', tarefaId)
     refetchEtapas()
   }
   async function handleReorderTarefas(etapaId, draggedId, targetId, position) {
@@ -157,13 +157,13 @@ export default function ModelosEtapas() {
     list.splice(insertIdx, 0, moved)
     const reordered = list.map((t, i) => ({ ...t, ordem: i }))
     setEtapas((prev) => prev.map((e) => e.id === etapaId ? { ...e, tarefas: reordered } : e))
-    await Promise.all(reordered.map((t) => supabase.from('precificacao_modelo_tarefas').update({ ordem: t.ordem }).eq('id', t.id)))
+    await Promise.all(reordered.map((t) => supabase.from('modelo_tarefas').update({ ordem: t.ordem }).eq('id', t.id)))
   }
 
   async function handleAddSubtarefa(tarefaId) {
     let subCount = 0
     etapas.forEach((e) => e.tarefas.forEach((t) => { if (t.id === tarefaId) subCount = t.subtarefas.length }))
-    const { data } = await supabase.from('precificacao_modelo_subtarefas')
+    const { data } = await supabase.from('modelo_subtarefas')
       .insert({ tarefa_id: tarefaId, nome: '', horas_estimadas: 0, ordem: subCount })
       .select('id').single()
     await refetchEtapas()
@@ -185,18 +185,18 @@ export default function ModelosEtapas() {
       ...e,
       tarefas: e.tarefas.map((t) => t.id === tarefaId ? { ...t, subtarefas: reordered } : t),
     })))
-    await Promise.all(reordered.map((st) => supabase.from('precificacao_modelo_subtarefas').update({ ordem: st.ordem }).eq('id', st.id)))
+    await Promise.all(reordered.map((st) => supabase.from('modelo_subtarefas').update({ ordem: st.ordem }).eq('id', st.id)))
   }
   async function handleRenameSubtarefa(subId, nome) {
-    await supabase.from('precificacao_modelo_subtarefas').update({ nome }).eq('id', subId)
+    await supabase.from('modelo_subtarefas').update({ nome }).eq('id', subId)
     refetchEtapas()
   }
   async function handleSetSubtarefaHoras(subId, horas) {
-    await supabase.from('precificacao_modelo_subtarefas').update({ horas_estimadas: horas }).eq('id', subId)
+    await supabase.from('modelo_subtarefas').update({ horas_estimadas: horas }).eq('id', subId)
     refetchEtapas()
   }
   async function handleDeleteSubtarefa(subId) {
-    await supabase.from('precificacao_modelo_subtarefas').delete().eq('id', subId)
+    await supabase.from('modelo_subtarefas').delete().eq('id', subId)
     refetchEtapas()
   }
 
