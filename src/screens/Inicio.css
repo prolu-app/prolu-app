@@ -59,6 +59,9 @@
 
 /* ── Ferramentas (tiles) ── */
 .modules-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 38px; }
+/* gestor/comum não veem a tile "Gestão Comercial" — 2 tiles restantes
+   dividem o espaço igualmente em vez de sobrar uma 3ª coluna vazia. */
+.modules-grid-2 { grid-template-columns: repeat(2, 1fr); }
 .module-tile {
   border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-rest);
   cursor: pointer; transition: box-shadow 0.2s, transform 0.15s;
@@ -95,6 +98,10 @@
   padding: 22px 26px; margin-bottom: 16px; box-shadow: var(--shadow-rest);
   display: grid; grid-template-columns: 1fr 1px 1fr 1px 1fr; gap: 0;
 }
+/* gestor/comum não veem Faturamento YTD — só 2 métricas (Plano Prático +
+   Base de Conhecimento) sobram, divididas igualmente em vez de deixar
+   espaço vazio onde o Faturamento estaria. */
+.pulse-card-2 { grid-template-columns: 1fr 1px 1fr; }
 .pulse-divider { background: var(--ink-divider); }
 .pulse-metric { padding: 0 22px; }
 .pulse-metric:first-child { padding-left: 0; }

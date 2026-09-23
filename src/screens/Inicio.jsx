@@ -56,7 +56,7 @@ function saudacao() {
 }
 
 export default function Inicio() {
-  const { user, activeEmpresaId } = useAuth()
+  const { user, activeEmpresaId, isEmpresaMaster } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const [avisos, setAvisos] = useState([])
@@ -133,8 +133,11 @@ export default function Inicio() {
 
   const [crmStats, setCrmStats] = useState(null)
 
+  // Dado comercial (alimenta o teaser da tile "Gestão Comercial") — só
+  // master/prolu_admin veem essa tile, então nem faz a query pros demais
+  // roles (gestor/comum).
   useEffect(() => {
-    if (!supabaseReady || !activeEmpresaId) return
+    if (!supabaseReady || !activeEmpresaId || !isEmpresaMaster) return
     const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
     supabase
       .from('crm_linhas')
@@ -144,7 +147,7 @@ export default function Inicio() {
       .then(({ count }) => {
         setCrmStats({ leads: count ?? 0 })
       })
-  }, [activeEmpresaId])
+  }, [activeEmpresaId, isEmpresaMaster])
 
   const crmLabel = !crmStats
     ? null
@@ -171,15 +174,28 @@ export default function Inicio() {
       : melhorCanal(CRM_ROWS.map((r) => ({ origem: r.__origem, fechado: r.__status === 'Fechado' })))
   )
 
+  // Plano Prático continua visível pra todo mundo (gestor/comum inclusos)
+  // — essa parte roda sempre, independente de role.
   useEffect(() => {
     if (!supabaseReady || !activeEmpresaId) return
+    Promise.all([
+      supabase.from('plano_acoes').select('*', { count: 'exact', head: true }).eq('empresa_id', activeEmpresaId),
+      supabase.from('plano_acoes').select('*', { count: 'exact', head: true }).eq('empresa_id', activeEmpresaId).eq('status', 'done'),
+    ]).then(([{ count: planoTotal }, { count: planoDone }]) => {
+      setResumo((prev) => ({ ...prev, planoDone: planoDone ?? 0, planoTotal: planoTotal ?? 0 }))
+    })
+  }, [activeEmpresaId])
+
+  // Faturamento e insight de canal são dados comerciais (derivados do CRM)
+  // — só master/prolu_admin veem esses blocos, então nem busca pros
+  // demais roles (gestor/comum).
+  useEffect(() => {
+    if (!supabaseReady || !activeEmpresaId || !isEmpresaMaster) return
     const anoAtual = new Date().getFullYear().toString()
     Promise.all([
       supabase.from('crm_colunas').select('id, nome, tipo').eq('empresa_id', activeEmpresaId),
       supabase.from('crm_linhas').select('valores').eq('empresa_id', activeEmpresaId),
-      supabase.from('plano_acoes').select('*', { count: 'exact', head: true }).eq('empresa_id', activeEmpresaId),
-      supabase.from('plano_acoes').select('*', { count: 'exact', head: true }).eq('empresa_id', activeEmpresaId).eq('status', 'done'),
-    ]).then(([{ data: colunas }, { data: linhas }, { count: planoTotal }, { count: planoDone }]) => {
+    ]).then(([{ data: colunas }, { data: linhas }]) => {
       const statusColId = colunas?.find((c) => c.nome === 'Status')?.id
       const valorColId = colunas?.find((c) => c.tipo === 'money')?.id
       const origemColId = colunas?.find((c) => c.nome === 'Origem')?.id
@@ -192,13 +208,13 @@ export default function Inicio() {
             return sum + (Number(l.valores?.[valorColId]) || 0)
           }, 0)
         : 0
-      setResumo({ faturamento, planoDone: planoDone ?? 0, planoTotal: planoTotal ?? 0 })
+      setResumo((prev) => ({ ...prev, faturamento }))
       setInsightCanal(melhorCanal((linhas || []).map((l) => ({
         origem: l.valores?.[origemColId],
         fechado: l.valores?.[statusColId] === 'Fechado',
       }))))
     })
-  }, [activeEmpresaId])
+  }, [activeEmpresaId, isEmpresaMaster])
 
   const quote = useMemo(() => QUOTES[Math.floor(Math.random() * QUOTES.length)], [])
   const primeiroNome = (user?.nome || 'André').split(' ')[0]
@@ -266,19 +282,26 @@ export default function Inicio() {
         </div>
       </div>
 
-      {/* resumo */}
+      {/* resumo — Faturamento YTD é dado comercial: só master/prolu_admin.
+          gestor/comum veem só Plano Prático + Base de Conhecimento (sem
+          nada no lugar do Faturamento por enquanto — ver Gestão de
+          Projetos, futuro). */}
       <div className="section-title">Resumo do escritório</div>
-      <div className="pulse-card">
-        <div className="pulse-metric">
-          <div className="pulse-label">Faturamento YTD</div>
-          <div className={`pulse-val${resumo.faturamento > 0 ? ' highlight' : ''}`}>
-            {fmtFat(resumo.faturamento)}
-          </div>
-          <div className="pulse-trend">
-            {resumo.faturamento > 0 ? 'em projetos fechados este ano' : 'Nenhum projeto fechado ainda'}
-          </div>
-        </div>
-        <div className="pulse-divider" />
+      <div className={`pulse-card${isEmpresaMaster ? '' : ' pulse-card-2'}`}>
+        {isEmpresaMaster && (
+          <>
+            <div className="pulse-metric">
+              <div className="pulse-label">Faturamento YTD</div>
+              <div className={`pulse-val${resumo.faturamento > 0 ? ' highlight' : ''}`}>
+                {fmtFat(resumo.faturamento)}
+              </div>
+              <div className="pulse-trend">
+                {resumo.faturamento > 0 ? 'em projetos fechados este ano' : 'Nenhum projeto fechado ainda'}
+              </div>
+            </div>
+            <div className="pulse-divider" />
+          </>
+        )}
         <div className="pulse-metric">
           <div className="pulse-label">Plano Prático</div>
           <div className="pulse-val">
@@ -304,7 +327,8 @@ export default function Inicio() {
         </div>
       </div>
 
-      {insightCanal && (
+      {/* insight de canal (CRM) — dado comercial, só master/prolu_admin */}
+      {isEmpresaMaster && insightCanal && (
         <div className="insight-card">
           <div className="insight-icon"><IconBolt /></div>
           <div className="insight-text">
@@ -314,21 +338,26 @@ export default function Inicio() {
         </div>
       )}
 
-      {/* ferramentas */}
+      {/* ferramentas — "Gestão Comercial" é a porta de entrada pro CRM/
+          dashboard/indicadores, já restritos a master/prolu_admin em
+          acesso.crm/dashboard/indicadores (AuthContext); escondida aqui
+          pelo mesmo motivo pros demais roles. */}
       <div className="section-title">Suas ferramentas</div>
-      <div className="modules-grid">
-        <button className="module-tile tile-comercial" onClick={() => navigate('/crm')}>
-          <div className="tile-top">
-            <div className="tile-icon"><IconCRM /></div>
-          </div>
-          <div className="tile-body">
-            <div className="tile-title">Gestão Comercial</div>
-            <div className="tile-sub">CRM, dashboard, plano prático, cliente ideal e indicadores num só lugar.</div>
-            <div className="tile-meta-row">
-              <span className="tile-progress-pct">{crmLabel ?? '—'}</span>
+      <div className={`modules-grid${isEmpresaMaster ? '' : ' modules-grid-2'}`}>
+        {isEmpresaMaster && (
+          <button className="module-tile tile-comercial" onClick={() => navigate('/crm')}>
+            <div className="tile-top">
+              <div className="tile-icon"><IconCRM /></div>
             </div>
-          </div>
-        </button>
+            <div className="tile-body">
+              <div className="tile-title">Gestão Comercial</div>
+              <div className="tile-sub">CRM, dashboard, plano prático, cliente ideal e indicadores num só lugar.</div>
+              <div className="tile-meta-row">
+                <span className="tile-progress-pct">{crmLabel ?? '—'}</span>
+              </div>
+            </div>
+          </button>
+        )}
 
         <button className="module-tile tile-conhecimento" onClick={() => navigate('/base-conhecimento')}>
           <div className="tile-top">
