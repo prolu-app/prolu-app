@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext.jsx'
-import { supabase, supabaseReady } from '../../services/supabaseClient.js'
+import { supabase, supabaseReady, fetchAllRows } from '../../services/supabaseClient.js'
+import { resumoFechamentos, fechamentosLocais, isoLocal, FECHAMENTOS_VAZIO } from '../../services/fechamentos.js'
 import { CRM_COLUMNS, CRM_ROWS } from '../../data/seed.js'
 import { IconArrowRight } from '../../components/Icons.jsx'
 import './AdminInicio.css'
@@ -28,7 +29,7 @@ function getPeriodRange(period) {
   const day = now.getDate()
   const eod = (yr, mo, d) => new Date(yr, mo, d, 23, 59, 59, 999)
   if (period === '30d') return [new Date(y, m, day - 29), eod(y, m, day)]
-  return [new Date(y, 0, 1), eod(y, 11, 31)]
+  return [new Date(y, 0, 1), eod(y, m, day)] // ano vigente: 01/01 até hoje
 }
 
 function inPeriod(dateStr, [start, end]) {
@@ -66,8 +67,10 @@ export default function AdminInicio() {
       // linhas reais do Supabase que guardam o slug dentro de `opcoes`.
       const map = buildColMap(CRM_COLUMNS)
       setRows(CRM_ROWS.map(r => ({
+        id: r.id,
         empresaId: 'demo',
         dataEntrada: r[map['data_entrada']],
+        dataFechamento: r[map['data_fechamento']],
         status: r[map['status']],
         valor: Number(r[map['valor']]) || 0,
         proposta: r[map['proposta']],
@@ -81,16 +84,21 @@ export default function AdminInicio() {
     // A empresa "casa" do prolu_admin nunca deve aparecer nas métricas admin.
     const proluEmpresaId = user?.empresaId || null
     let empresasQuery = supabase.from('empresas').select('id, nome').order('nome')
-    let colunasQuery = supabase.from('crm_colunas').select('id, empresa_id, opcoes')
-    let linhasQuery = supabase.from('crm_linhas').select('id, empresa_id, valores')
-    if (proluEmpresaId) {
-      empresasQuery = empresasQuery.neq('id', proluEmpresaId)
-      colunasQuery = colunasQuery.neq('empresa_id', proluEmpresaId)
-      linhasQuery = linhasQuery.neq('empresa_id', proluEmpresaId)
+    // Colunas e linhas de TODOS os escritórios passam fácil do limite de 1000
+    // linhas por requisição do Supabase — sem paginar, o excedente era cortado em
+    // silêncio e alguns escritórios apareciam com números menores.
+    const colunasQuery = () => {
+      const q = supabase.from('crm_colunas').select('id, empresa_id, opcoes').order('id')
+      return proluEmpresaId ? q.neq('empresa_id', proluEmpresaId) : q
     }
+    const linhasQuery = () => {
+      const q = supabase.from('crm_linhas').select('id, empresa_id, valores').order('id')
+      return proluEmpresaId ? q.neq('empresa_id', proluEmpresaId) : q
+    }
+    if (proluEmpresaId) empresasQuery = empresasQuery.neq('id', proluEmpresaId)
 
     const [{ data: emp }, { data: cols }, { data: linhas }] = await Promise.all([
-      empresasQuery, colunasQuery, linhasQuery,
+      empresasQuery, fetchAllRows(colunasQuery), fetchAllRows(linhasQuery),
     ])
 
     const colsByEmpresa = {}
@@ -119,39 +127,65 @@ export default function AdminInicio() {
   const range = useMemo(() => getPeriodRange(period), [period])
   const rowsPeriodo = useMemo(() => rows.filter(r => inPeriod(r.dataEntrada, range)), [rows, range])
 
+  // Fechamentos por escritório: fonte única (fn_fechamentos_periodo), filtrada por data de fechamento.
+  // Antes eram contados pela data de ENTRADA — projeto que entrou no ano anterior e fechou
+  // neste ano ficava de fora.
+  const [fechRemoto, setFechRemoto] = useState({})
+  useEffect(() => {
+    if (!supabaseReady) return
+    let vivo = true
+    resumoFechamentos({ inicio: isoLocal(range[0]), fim: isoLocal(range[1]) })
+      .then(({ data }) => { if (vivo) setFechRemoto(data) })
+    return () => { vivo = false }
+  }, [range])
+
+  const fechPorEmpresa = useMemo(() => {
+    if (supabaseReady) return fechRemoto
+    const map = {}
+    for (const f of fechamentosLocais(rows, { status: 'status', dataFechamento: 'dataFechamento', valor: 'valor' }, isoLocal(range[0]), isoLocal(range[1]))) {
+      if (!map[f.empresaId]) map[f.empresaId] = { qtd: 0, valor: 0 }
+      map[f.empresaId].qtd++
+      map[f.empresaId].valor += f.valor
+    }
+    return map
+  }, [fechRemoto, rows, range])
+
   const metrics = useMemo(() => {
-    const fechados = rowsPeriodo.filter(r => r.status === 'Fechado')
     const comProposta = rowsPeriodo.filter(r => r.proposta === 'Sim')
+    // soma só os escritórios listados (exclui a empresa "casa" do prolu_admin)
+    const fech = empresas.map(e => fechPorEmpresa[e.id] || FECHAMENTOS_VAZIO)
     return {
       totalPedidos: rowsPeriodo.length,
-      totalFechados: fechados.length,
-      valorFechado: fechados.reduce((s, r) => s + r.valor, 0),
+      totalFechados: fech.reduce((s, f) => s + f.qtd, 0),
+      valorFechado: fech.reduce((s, f) => s + f.valor, 0),
       valorPropostas: comProposta.reduce((s, r) => s + r.valor, 0),
     }
-  }, [rowsPeriodo])
+  }, [rowsPeriodo, empresas, fechPorEmpresa])
 
   const ranking = useMemo(() => {
+    // taxa de conversão mantém a definição anterior (fechados por data de entrada) — fora do escopo da fonte única
     const map = {}
     for (const r of rowsPeriodo) {
-      if (!map[r.empresaId]) map[r.empresaId] = { fechados: 0, valorFechado: 0, comProposta: 0 }
+      if (!map[r.empresaId]) map[r.empresaId] = { fechadosPorEntrada: 0, comProposta: 0 }
       if (r.proposta === 'Sim') map[r.empresaId].comProposta++
-      if (r.status === 'Fechado') { map[r.empresaId].fechados++; map[r.empresaId].valorFechado += r.valor }
+      if (r.status === 'Fechado') map[r.empresaId].fechadosPorEntrada++
     }
     return empresas
       .map(e => {
-        const s = map[e.id] || { fechados: 0, valorFechado: 0, comProposta: 0 }
+        const s = map[e.id] || { fechadosPorEntrada: 0, comProposta: 0 }
+        const f = fechPorEmpresa[e.id] || FECHAMENTOS_VAZIO
         return {
           id: e.id,
           nome: e.nome,
-          valorFechado: s.valorFechado,
-          fechados: s.fechados,
-          taxa: s.comProposta > 0 ? Math.round((s.fechados / s.comProposta) * 100) : null,
+          valorFechado: f.valor,
+          fechados: f.qtd,
+          taxa: s.comProposta > 0 ? Math.round((s.fechadosPorEntrada / s.comProposta) * 100) : null,
         }
       })
       .filter(e => e.fechados > 0)
       .sort((a, b) => b.valorFechado - a.valorFechado)
       .slice(0, 5)
-  }, [rowsPeriodo, empresas])
+  }, [rowsPeriodo, empresas, fechPorEmpresa])
 
   function verEmpresa(e) {
     enterAsEmpresa(e.id, e.nome)

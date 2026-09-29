@@ -22,3 +22,16 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
 
 // Flag útil para telas decidirem entre dados reais e dados de demonstração.
 export const supabaseReady = Boolean(supabaseUrl && supabaseAnonKey)
+
+// O Supabase devolve no máximo 1000 linhas por requisição (max_rows do
+// PostgREST) e corta o resto em silêncio. Pagina até trazer tudo.
+// `buildQuery` precisa ter ordenação estável (ex: .order('id')).
+export async function fetchAllRows(buildQuery, pageSize = 1000) {
+  const all = []
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await buildQuery().range(from, from + pageSize - 1)
+    if (error) return { data: null, error }
+    all.push(...(data || []))
+    if (!data || data.length < pageSize) return { data: all, error: null }
+  }
+}

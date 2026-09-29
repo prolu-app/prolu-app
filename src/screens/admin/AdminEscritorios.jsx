@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext.jsx'
 import { useToast } from '../../contexts/ToastContext.jsx'
-import { supabase, supabaseReady } from '../../services/supabaseClient.js'
+import { supabase, supabaseReady, fetchAllRows } from '../../services/supabaseClient.js'
+import { resumoFechamentos, isoLocal, FECHAMENTOS_VAZIO } from '../../services/fechamentos.js'
 import { IconSearch } from '../../components/Icons.jsx'
 import './AdminEscritorios.css'
 
@@ -33,7 +34,7 @@ function getPeriodRange(period) {
   const day = now.getDate()
   const eod = (yr, mo, d) => new Date(yr, mo, d, 23, 59, 59, 999)
   if (period === '30d') return [new Date(y, m, day - 29), eod(y, m, day)]
-  return [new Date(y, 0, 1), eod(y, 11, 31)]
+  return [new Date(y, 0, 1), eod(y, m, day)] // ano vigente: 01/01 até hoje
 }
 
 function inPeriod(dateStr, [start, end]) {
@@ -72,18 +73,17 @@ export default function AdminEscritorios() {
     // A empresa "casa" do prolu_admin nunca deve aparecer nas métricas admin.
     const proluEmpresaId = user?.empresaId || null
     let empresasQuery = supabase.from('empresas').select('id, nome').order('nome')
-    let usuariosQuery = supabase.from('usuarios').select('id, nome, email, role, empresa_id')
-    let colunasQuery = supabase.from('crm_colunas').select('id, empresa_id, opcoes')
-    let linhasQuery = supabase.from('crm_linhas').select('id, empresa_id, valores, created_at')
-    if (proluEmpresaId) {
-      empresasQuery = empresasQuery.neq('id', proluEmpresaId)
-      usuariosQuery = usuariosQuery.neq('empresa_id', proluEmpresaId)
-      colunasQuery = colunasQuery.neq('empresa_id', proluEmpresaId)
-      linhasQuery = linhasQuery.neq('empresa_id', proluEmpresaId)
-    }
+    // usuários, colunas e linhas de TODOS os escritórios passam fácil do limite de
+    // 1000 linhas por requisição do Supabase — sem paginar, o excedente era cortado
+    // em silêncio e alguns escritórios apareciam com números menores.
+    const semCasa = q => proluEmpresaId ? q.neq('empresa_id', proluEmpresaId) : q
+    const usuariosQuery = () => semCasa(supabase.from('usuarios').select('id, nome, email, role, empresa_id').order('id'))
+    const colunasQuery = () => semCasa(supabase.from('crm_colunas').select('id, empresa_id, opcoes').order('id'))
+    const linhasQuery = () => semCasa(supabase.from('crm_linhas').select('id, empresa_id, valores, created_at').order('id'))
+    if (proluEmpresaId) empresasQuery = empresasQuery.neq('id', proluEmpresaId)
 
     const [{ data: emp, error: empErr }, { data: usu }, { data: cols }, { data: linhas }] = await Promise.all([
-      empresasQuery, usuariosQuery, colunasQuery, linhasQuery,
+      empresasQuery, fetchAllRows(usuariosQuery), fetchAllRows(colunasQuery), fetchAllRows(linhasQuery),
     ])
     if (empErr) { toast('Erro ao carregar escritórios'); setLoading(false); return }
 
@@ -128,20 +128,38 @@ export default function AdminEscritorios() {
 
   const range = useMemo(() => getPeriodRange(period), [period])
 
+  // Fechamentos por escritório: fonte única (fn_fechamentos_periodo), filtrada por data de fechamento.
+  // Antes eram contados pela data de ENTRADA — projeto que entrou no ano anterior e fechou
+  // neste ano ficava de fora.
+  const [fechPorEmpresa, setFechPorEmpresa] = useState({})
+  useEffect(() => {
+    if (!supabaseReady) return
+    let vivo = true
+    resumoFechamentos({ inicio: isoLocal(range[0]), fim: isoLocal(range[1]) })
+      .then(({ data, error }) => {
+        if (!vivo) return
+        if (error) toast('Erro ao carregar fechamentos')
+        setFechPorEmpresa(data)
+      })
+    return () => { vivo = false }
+  }, [range]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const escritorios = useMemo(() => {
     return empresas.map(e => {
       const linhasPeriodo = e.linhas.filter(r => inPeriod(r.dataEntrada, range))
-      const fechados = linhasPeriodo.filter(r => r.status === 'Fechado')
       const comProposta = linhasPeriodo.filter(r => r.proposta === 'Sim')
+      // taxa de conversão mantém a definição anterior (fechados por data de entrada) — fora do escopo da fonte única
+      const fechadosPorEntrada = linhasPeriodo.filter(r => r.status === 'Fechado')
+      const f = fechPorEmpresa[e.id] || FECHAMENTOS_VAZIO
       return {
         ...e,
         pedidosPeriodo: linhasPeriodo.length,
-        qtdFechamentos: fechados.length,
-        valorFechamentos: fechados.reduce((s, r) => s + r.valor, 0),
-        taxaConversao: comProposta.length > 0 ? Math.round((fechados.length / comProposta.length) * 100) : null,
+        qtdFechamentos: f.qtd,
+        valorFechamentos: f.valor,
+        taxaConversao: comProposta.length > 0 ? Math.round((fechadosPorEntrada.length / comProposta.length) * 100) : null,
       }
     })
-  }, [empresas, range])
+  }, [empresas, range, fechPorEmpresa])
 
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase()

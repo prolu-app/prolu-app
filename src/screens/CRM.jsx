@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { useAuth } from '../contexts/AuthContext.jsx'
-import { supabase, supabaseReady } from '../services/supabaseClient.js'
+import { supabase, supabaseReady, fetchAllRows } from '../services/supabaseClient.js'
+import { resumoFechamentos, fechamentosLocais, somarFechamentos, isoLocal, FECHAMENTOS_VAZIO } from '../services/fechamentos.js'
 import { CRM_COLUMNS, CRM_ROWS } from '../data/seed.js'
 import { IconPlus, IconSearch, IconEdit, IconClose, IconGrip, IconEye, IconEyeOff, IconFilter, IconDensityCompact, IconDensityDefault } from '../components/Icons.jsx'
 import { SelectDropdown } from '../components/SelectDropdown.jsx'
@@ -62,7 +63,8 @@ const FIXED_COLS_DEF = [
   { nome: 'Data de fechamento', tipo: 'date',  slug: 'data_fechamento', ordem: 10 },
 ]
 
-function todayISO() { return new Date().toISOString().split('T')[0] }
+// data local (toISOString é UTC: depois das 21h no Brasil gravaria o dia seguinte)
+function todayISO() { return isoLocal(new Date()) }
 
 function fmtMoney(v) {
   if (v === null || v === undefined || v === '') return ''
@@ -396,6 +398,8 @@ export default function CRM() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [columns, setColumns] = useState([])
   const [rows, setRows] = useState([])
+  const [fechYtd, setFechYtd] = useState(null) // { qtd, valor } da fonte única (fn_fechamentos_periodo)
+  const [fechVersao, setFechVersao] = useState(0) // incrementa após cada gravação → recarrega fechYtd
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -505,7 +509,7 @@ export default function CRM() {
     setLoading(true)
     const [{ data: cols, error: colErr }, { data: lin, error: linErr }] = await Promise.all([
       supabase.from('crm_colunas').select('*').eq('empresa_id', activeEmpresaId).order('ordem', { ascending: true }),
-      supabase.from('crm_linhas').select('*').eq('empresa_id', activeEmpresaId).order('created_at', { ascending: true }),
+      fetchAllRows(() => supabase.from('crm_linhas').select('*').eq('empresa_id', activeEmpresaId).order('created_at', { ascending: true }).order('id')),
     ])
     if (colErr || linErr) { toast('Não foi possível carregar o CRM'); setLoading(false); return }
 
@@ -514,7 +518,7 @@ export default function CRM() {
     )
     if (!cols || cols.length === 0 || !hasFixed) {
       await seedColunasPadrao(cols || [])
-      const { data: lin2 } = await supabase.from('crm_linhas').select('*').eq('empresa_id', activeEmpresaId).order('created_at', { ascending: true })
+      const { data: lin2 } = await fetchAllRows(() => supabase.from('crm_linhas').select('*').eq('empresa_id', activeEmpresaId).order('created_at', { ascending: true }).order('id'))
       setRows((lin2 || []).map(flattenRow))
       return
     }
@@ -575,7 +579,7 @@ export default function CRM() {
       .update({ valores: novosValores, updated_at: new Date().toISOString() })
       .eq('id', rowId)
     if (error) toast('Não foi possível salvar')
-    else toast('Salvo automaticamente')
+    else { toast('Salvo automaticamente'); setFechVersao(v => v + 1) }
   }
 
   async function addRow() {
@@ -627,6 +631,7 @@ export default function CRM() {
     if (error) { toast('Não foi possível criar a linha'); return }
     setRows(prev => [...prev, flattenRow(data)])
     toast('Linha criada')
+    setFechVersao(v => v + 1)
     setDrawerRowId(null)
     setDraftValues({})
   }
@@ -646,7 +651,7 @@ export default function CRM() {
     if (!supabaseReady || !activeEmpresaId) return
     const { error } = await supabase.from('crm_linhas').delete().eq('id', id)
     if (error) { toast('Não foi possível remover'); carregar() }
-    else toast('Linha removida')
+    else { toast('Linha removida'); setFechVersao(v => v + 1) }
   }
 
   function openOptionsModal(col) {
@@ -826,10 +831,20 @@ export default function CRM() {
     return true
   }), [sorted, search, colSelectFilters, colDateFilters])
 
+  // Fechamentos YTD (01/01 até hoje) vêm da fonte única no banco; recarrega após cada gravação.
+  useEffect(() => {
+    if (!supabaseReady || !activeEmpresaId) return
+    let vivo = true
+    resumoFechamentos({ empresaId: activeEmpresaId }).then(({ data, error }) => {
+      if (!vivo) return
+      if (error) { toast('Não foi possível carregar os fechamentos'); return }
+      setFechYtd(data[activeEmpresaId] || FECHAMENTOS_VAZIO)
+    })
+    return () => { vivo = false }
+  }, [activeEmpresaId, fechVersao]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Resumo YTD: sempre todos os registros da empresa no ano atual, ignora filtros da tabela.
-  // `rows` já contém o dataset completo da empresa (carregado sem filtro de data), então não é
-  // preciso uma segunda consulta ao Supabase — basta filtrar em memória.
-  // Pedidos usa data_entrada; Fechamentos/Ticket médio usam status "Fechado" + data_fechamento.
+  // Pedidos usa data_entrada (em memória); Fechamentos/Ticket médio vêm de fn_fechamentos_periodo.
   const currentYear = new Date().getFullYear()
   const ytdSummary = useMemo(() => {
     const yearPrefix = String(currentYear)
@@ -838,24 +853,15 @@ export default function CRM() {
       ? rows.filter(r => typeof r[dataEntradaCol.id] === 'string' && r[dataEntradaCol.id].startsWith(yearPrefix)).length
       : 0
 
-    const fechamentosYtd = (dataFechCol && statusCol)
-      ? rows.filter(r => r[statusCol.id] === 'Fechado' && typeof r[dataFechCol.id] === 'string' && r[dataFechCol.id].startsWith(yearPrefix))
-      : []
+    const fech = (supabaseReady && activeEmpresaId)
+      ? fechYtd
+      : somarFechamentos(fechamentosLocais(rows, { status: statusCol?.id, dataFechamento: dataFechCol?.id, valor: valorCol?.id }))
 
-    let total = null
-    if (valorCol) {
-      let sum = 0, has = false
-      fechamentosYtd.forEach(r => {
-        const n = Number(r[valorCol.id])
-        if (!isNaN(n)) { sum += n; has = true }
-      })
-      total = has ? sum : null
-    }
-
-    const avg = (total !== null && fechamentosYtd.length > 0) ? total / fechamentosYtd.length : null
+    const total = fech && fech.qtd > 0 ? fech.valor : null
+    const avg = fech && fech.qtd > 0 ? fech.valor / fech.qtd : null
 
     return { count, total, avg }
-  }, [rows, dataEntradaCol, dataFechCol, valorCol, statusCol, currentYear])
+  }, [rows, fechYtd, activeEmpresaId, dataEntradaCol, dataFechCol, valorCol, statusCol, currentYear])
 
   // Scroll infinito (mobile): janeia a lista já carregada em memória, sem nova consulta ao banco.
   useEffect(() => { setMobileVisibleCount(20) }, [filtered])

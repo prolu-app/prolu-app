@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { useAuth } from '../contexts/AuthContext.jsx'
-import { supabase, supabaseReady } from '../services/supabaseClient.js'
+import { supabase, supabaseReady, fetchAllRows } from '../services/supabaseClient.js'
+import { listarFechamentos, fechamentosLocais } from '../services/fechamentos.js'
 import { CRM_COLUMNS, CRM_ROWS } from '../data/seed.js'
 import {
   IconPlus, IconMoney, IconCRM, IconPercent, IconEdit,
@@ -110,23 +111,26 @@ function filterRowsByRange(rows, deId, range) {
   if (!deId) return []
   return rows.filter(r => inRange(r[deId], range))
 }
-function filterFechamentosByRange(rows, sid, dfId, range) {
-  if (!sid || !dfId) return []
-  return rows.filter(r => r[sid] === 'Fechado' && inRange(r[dfId], range))
+// `fechamentos` já é a lista canônica do ano (fn_fechamentos); aqui só recorta por trimestre/YTD
+function filterFechamentosByRange(fechamentos, range) {
+  return fechamentos.filter(f => inRange(f.dataFechamento, range))
 }
 
 /* ── cálculo dos indicadores automáticos, derivados do CRM ──
    registros: linhas do período filtradas por data_entrada (pedidos, propostas, taxa de conversão)
-   fechamentos: linhas com status "Fechado" filtradas por data_fechamento (faturamento, projetos fechados) */
+   fechamentos: fonte única (fn_fechamentos) — { dataFechamento, valor } no período
+                (faturamento, projetos fechados, ticket médio) */
 function computeAutoValue(key, registros, fechamentos, colMap) {
   const sid = colMap['status']
-  const vid = colMap['valor']
   const pid = colMap['proposta']
   if (!sid) return null
+  // período sem nenhum movimento (ex: trimestre futuro) mostra "—"; com movimento, mostra o número (inclusive 0)
+  const semMovimento = !registros.length && !fechamentos.length
+  const valorFechado = fechamentos.reduce((s, f) => s + f.valor, 0)
   const fechadosPorEntrada = registros.filter(r => r[sid] === 'Fechado')
-  if (key === 'faturamento') return registros.length ? fechamentos.reduce((s, r) => s + (Number(r[vid]) || 0), 0) : null
-  if (key === 'ticket_medio') return fechadosPorEntrada.length ? Math.round(fechadosPorEntrada.reduce((s, r) => s + (Number(r[vid]) || 0), 0) / fechadosPorEntrada.length) : null
-  if (key === 'projetos_fechados') return registros.length ? fechamentos.length : null
+  if (key === 'faturamento') return semMovimento ? null : valorFechado
+  if (key === 'ticket_medio') return fechamentos.length ? Math.round(valorFechado / fechamentos.length) : null
+  if (key === 'projetos_fechados') return semMovimento ? null : fechamentos.length
   if (key === 'pedidos_orcamento') return registros.length ? registros.length : null
   if (key === 'taxa_conversao') {
     const comProposta = registros.filter(r => r[pid] === 'Sim')
@@ -228,7 +232,7 @@ export default function Indicadores() {
     setLoading(true)
     const [{ data: dbCols }, { data: linhas }, { data: indData, error: indErr }] = await Promise.all([
       supabase.from('crm_colunas').select('*').eq('empresa_id', activeEmpresaId).order('ordem'),
-      supabase.from('crm_linhas').select('id, valores').eq('empresa_id', activeEmpresaId),
+      fetchAllRows(() => supabase.from('crm_linhas').select('id, valores').eq('empresa_id', activeEmpresaId).order('id')),
       supabase.from('indicadores').select('*').eq('empresa_id', activeEmpresaId).order('created_at', { ascending: true }),
     ])
     setCols((dbCols || []).map(parseColForDash))
@@ -251,10 +255,27 @@ export default function Indicadores() {
 
   const colMap = useMemo(() => buildColMap(cols), [cols])
 
+  // Fechamentos do ano selecionado, da fonte única (fn_fechamentos); trimestres/YTD são recortes dessa lista
+  const [fechRemoto, setFechRemoto] = useState([])
+  useEffect(() => {
+    if (!supabaseReady || !activeEmpresaId) return
+    let vivo = true
+    listarFechamentos({ empresaId: activeEmpresaId, inicio: `${year}-01-01`, fim: `${year}-12-31` })
+      .then(({ data, error }) => {
+        if (!vivo) return
+        if (error) toast('Não foi possível carregar os fechamentos')
+        setFechRemoto(data)
+      })
+    return () => { vivo = false }
+  }, [activeEmpresaId, year]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fechAno = useMemo(() => (supabaseReady && activeEmpresaId)
+    ? fechRemoto
+    : fechamentosLocais(allRows, { status: colMap['status'], dataFechamento: colMap['data_fechamento'], valor: colMap['valor'] }, `${year}-01-01`, `${year}-12-31`),
+  [fechRemoto, allRows, colMap, year, activeEmpresaId])
+
   const kpis = useMemo(() => {
     const deId = colMap['data_entrada']
-    const dfId = colMap['data_fechamento']
-    const sid = colMap['status']
     return indicadores.map(ind => {
       const metaRow = metas.find(m => m.indicador_id === ind.id)
       const meta = metaRow ? Number(metaRow.meta) : null
@@ -265,7 +286,7 @@ export default function Indicadores() {
           return computeAutoValue(
             ind.fonte_coluna,
             filterRowsByRange(allRows, deId, qRange),
-            filterFechamentosByRange(allRows, sid, dfId, qRange),
+            filterFechamentosByRange(fechAno, qRange),
             colMap,
           )
         })
@@ -273,7 +294,7 @@ export default function Indicadores() {
         const acumulado = computeAutoValue(
           ind.fonte_coluna,
           filterRowsByRange(allRows, deId, ytdR),
-          filterFechamentosByRange(allRows, sid, dfId, ytdR),
+          filterFechamentosByRange(fechAno, ytdR),
           colMap,
         )
         return { id: ind.id, name: ind.nome, unit: ind.unidade, group: ind.grupo || 'Geral', tipo: 'automatico', fonteColuna: ind.fonte_coluna, meta, quarters, acumulado }
@@ -287,7 +308,7 @@ export default function Indicadores() {
       const acumulado = filled.length ? filled.reduce((s, v) => s + v, 0) : null
       return { id: ind.id, name: ind.nome, unit: ind.unidade, group: ind.grupo || 'Geral', tipo: 'manual', meta, quarters, acumulado }
     })
-  }, [indicadores, metas, resultados, allRows, colMap, year])
+  }, [indicadores, metas, resultados, allRows, fechAno, colMap, year])
 
   const fatKpi = kpis.find((k) => k.tipo === 'automatico' && k.fonteColuna === 'faturamento')
   const proj = fatKpi && fatKpi.acumulado !== null ? Math.round((fatKpi.acumulado / ytdQuarterCount(year)) * 4) : null

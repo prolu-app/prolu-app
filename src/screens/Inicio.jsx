@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { QUOTES, ANNOUNCEMENTS, FOLDERS, CRM_ROWS, PLANO_ACOES } from '../data/seed.js'
-import { supabase, supabaseReady } from '../services/supabaseClient.js'
+import { supabase, supabaseReady, fetchAllRows } from '../services/supabaseClient.js'
+import { resumoFechamentos, fechamentosLocais, somarFechamentos } from '../services/fechamentos.js'
 import {
   IconBolt, IconAgente, IconArrowRight, IconCRM, IconBase, IconMoney, IconLock, IconClose,
 } from '../components/Icons.jsx'
@@ -157,10 +158,9 @@ export default function Inicio() {
 
   const [resumo, setResumo] = useState(() => {
     if (supabaseReady) return { faturamento: 0, planoDone: 0, planoTotal: 0 }
-    const anoAtual = new Date().getFullYear().toString()
-    const faturamento = CRM_ROWS
-      .filter((r) => r.__status === 'Fechado' && r.__date?.startsWith(anoAtual))
-      .reduce((sum, r) => sum + (r.__valor || 0), 0)
+    const { valor: faturamento } = somarFechamentos(fechamentosLocais(CRM_ROWS, {
+      status: '__status', dataFechamento: '__date_close', valor: '__valor',
+    }))
     return {
       faturamento,
       planoDone: PLANO_ACOES.filter((a) => a.status === 'done').length,
@@ -191,24 +191,16 @@ export default function Inicio() {
   // demais roles (gestor/comum).
   useEffect(() => {
     if (!supabaseReady || !activeEmpresaId || !isEmpresaMaster) return
-    const anoAtual = new Date().getFullYear().toString()
+    // Faturamento YTD = valor fechado de 01/01 até hoje, da fonte única (fn_fechamentos_periodo)
+    resumoFechamentos({ empresaId: activeEmpresaId }).then(({ data }) => {
+      setResumo((prev) => ({ ...prev, faturamento: data[activeEmpresaId]?.valor ?? 0 }))
+    })
     Promise.all([
       supabase.from('crm_colunas').select('id, nome, tipo').eq('empresa_id', activeEmpresaId),
-      supabase.from('crm_linhas').select('valores').eq('empresa_id', activeEmpresaId),
+      fetchAllRows(() => supabase.from('crm_linhas').select('id, valores').eq('empresa_id', activeEmpresaId).order('id')),
     ]).then(([{ data: colunas }, { data: linhas }]) => {
       const statusColId = colunas?.find((c) => c.nome === 'Status')?.id
-      const valorColId = colunas?.find((c) => c.tipo === 'money')?.id
       const origemColId = colunas?.find((c) => c.nome === 'Origem')?.id
-      const dataColId = colunas?.find((c) => c.nome === 'Data de entrada')?.id
-                     ?? colunas?.find((c) => c.tipo === 'date')?.id
-      const faturamento = statusColId && valorColId
-        ? (linhas || []).reduce((sum, l) => {
-            if (l.valores?.[statusColId] !== 'Fechado') return sum
-            if (dataColId && !l.valores?.[dataColId]?.startsWith(anoAtual)) return sum
-            return sum + (Number(l.valores?.[valorColId]) || 0)
-          }, 0)
-        : 0
-      setResumo((prev) => ({ ...prev, faturamento }))
       setInsightCanal(melhorCanal((linhas || []).map((l) => ({
         origem: l.valores?.[origemColId],
         fechado: l.valores?.[statusColId] === 'Fechado',

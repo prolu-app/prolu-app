@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext.jsx'
-import { supabase, supabaseReady } from '../services/supabaseClient.js'
+import { supabase, supabaseReady, fetchAllRows } from '../services/supabaseClient.js'
+import { listarFechamentos, fechamentosLocais, isoLocal } from '../services/fechamentos.js'
 import { CRM_COLUMNS, CRM_ROWS } from '../data/seed.js'
 import { DatePicker } from '../components/DatePicker.jsx'
 import './Dashboard.css'
@@ -37,7 +38,8 @@ function getPeriodRange(period) {
     const q = Math.floor(m / 3)
     return [new Date(y, q * 3, 1), eod(y, q * 3 + 3, 0)]
   }
-  return [new Date(y, 0, 1), eod(y, 11, 31)]
+  // "Este ano" = 01/01 até hoje (mesmo recorte YTD do CRM, Indicadores e Painel Admin)
+  return [new Date(y, 0, 1), eod(y, m, day)]
 }
 
 function inPeriod(dateStr, [start, end]) {
@@ -145,7 +147,7 @@ export default function Dashboard() {
     setLoading(true)
     const [{ data: dbCols }, { data: linhas }] = await Promise.all([
       supabase.from('crm_colunas').select('*').eq('empresa_id', activeEmpresaId).order('ordem'),
-      supabase.from('crm_linhas').select('id, valores').eq('empresa_id', activeEmpresaId),
+      fetchAllRows(() => supabase.from('crm_linhas').select('id, valores').eq('empresa_id', activeEmpresaId).order('id')),
     ])
     setCols((dbCols || []).map(parseColForDash))
     setAllRows((linhas || []).map(l => ({ id: l.id, ...l.valores })))
@@ -183,20 +185,32 @@ export default function Dashboard() {
     })
   }, [allRows, colMap, range, icpFilter])
 
-  // fechamentos_periodo: usado para fechamentos, valor fechado e ticket médio (filtro por data_fechamento)
+  // fechamentos do período: vêm da fonte única no banco (fn_fechamentos), não recalculados aqui
+  const [fechLista, setFechLista] = useState([])
+  useEffect(() => {
+    if (!supabaseReady || !activeEmpresaId) return
+    if (!range) { setFechLista([]); return }
+    let vivo = true
+    listarFechamentos({ empresaId: activeEmpresaId, inicio: isoLocal(range[0]), fim: isoLocal(range[1]) })
+      .then(({ data }) => { if (vivo) setFechLista(data) })
+    return () => { vivo = false }
+  }, [activeEmpresaId, range])
+
+  // fechamentos_periodo: usado para fechamentos, valor fechado e ticket médio.
+  // Junta as linhas canônicas com os demais campos da linha (origem, segmento, ICP…) para
+  // agrupar/filtrar; o valor é sobrescrito pelo valor canônico da função.
   const fechamentosPeriodo = useMemo(() => {
-    const dfId = colMap['data_fechamento']
-    const sid = colMap['status']
+    const vid = colMap['valor']
     const icpId = colMap['icp']
-    if (!dfId || !sid) return []
     if (!range) return []
-    return allRows.filter(r => {
-      if (r[sid] !== 'Fechado') return false
-      if (!inPeriod(r[dfId], range)) return false
-      if (icpFilter && r[icpId] !== 'Sim') return false
-      return true
-    })
-  }, [allRows, colMap, range, icpFilter])
+    const lista = (supabaseReady && activeEmpresaId)
+      ? fechLista
+      : fechamentosLocais(allRows, { status: colMap['status'], dataFechamento: colMap['data_fechamento'], valor: vid }, isoLocal(range[0]), isoLocal(range[1]))
+    const porId = new Map(allRows.map(r => [r.id, r]))
+    return lista
+      .map(f => ({ ...(porId.get(f.linhaId) || { id: f.linhaId }), ...(vid ? { [vid]: f.valor } : {}) }))
+      .filter(r => !icpFilter || r[icpId] === 'Sim')
+  }, [fechLista, allRows, colMap, range, icpFilter, activeEmpresaId])
 
   const m = useMemo(() => {
     const vid = colMap['valor']
