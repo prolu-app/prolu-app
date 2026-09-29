@@ -66,6 +66,12 @@ export const IconLock = (p) => (
 export const IconPlay = (p) => (
   <svg viewBox="0 0 24 24" {...p}><path d="M8 5v14l11-7z" /></svg>
 )
+export const IconVideo = (p) => (
+  <svg viewBox="0 0 24 24" {...p}><rect x="2" y="6" width="14" height="12" rx="2" /><path d="M16 10.5l5.2-3a.5.5 0 01.8.4v8.2a.5.5 0 01-.8.4L16 13.5" /></svg>
+)
+export const IconTexto = (p) => (
+  <svg viewBox="0 0 24 24" {...p}><path d="M4 6h16M4 10h16M4 14h10M4 18h13" /></svg>
+)
 export const IconPdf = (p) => (
   <svg viewBox="0 0 24 24" {...p}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
 )

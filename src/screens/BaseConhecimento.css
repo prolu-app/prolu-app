@@ -213,7 +213,10 @@
 .lesson-check.done svg { width: 11px; height: 11px; stroke: var(--white); stroke-width: 3; fill: none; }
 .lesson-check.pend { background: var(--gray-soft); border: 1.5px solid var(--ink-divider); }
 .lesson-info { flex: 1; min-width: 0; }
-.lesson-title { font-size: 13.5px; font-weight: 500; }
+.lesson-title { font-size: 13.5px; font-weight: 500; display: flex; align-items: center; gap: 7px; }
+/* ícone de tipo da aula (vídeo / PDF / texto) — herda a cor via currentColor */
+.lesson-tipo { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; flex-shrink: 0; color: var(--ink-60); }
+.lesson-tipo svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .lesson-meta { font-size: 11.5px; color: var(--ink-40); margin-top: 1px; }
 .lesson-pdf-tag { display: inline-flex; align-items: center; gap: 3px; background: var(--orange-soft); color: var(--orange-ink); border-radius: 99px; padding: 1px 7px; font-size: 10.5px; font-weight: 500; }
 .lesson-play { width: 30px; height: 30px; border-radius: 50%; background: var(--gray-soft); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.15s; }

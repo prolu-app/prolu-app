@@ -6,10 +6,21 @@ import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { FOLDERS } from '../data/seed.js'
 import {
   IconPlus, IconCheck, IconBack, IconPlay, IconChevronDown,
-  IconChevronLeft, IconChevronRight, IconEdit, IconTrash, IconBase, IconPdf,
+  IconChevronLeft, IconChevronRight, IconEdit, IconTrash, IconBase, IconPdf, IconVideo, IconTexto,
 } from '../components/Icons.jsx'
 import RichEditor from '../components/RichEditor.jsx'
 import './BaseConhecimento.css'
+
+// Ícone de tipo ao lado do nome da aula (lista do curso e lateral do player)
+const TIPO_AULA = {
+  video: { Icon: IconVideo, label: 'Vídeo' },
+  pdf:   { Icon: IconPdf,   label: 'PDF' },
+  doc:   { Icon: IconTexto, label: 'Texto' },
+}
+function IconeTipoAula({ tipo }) {
+  const t = TIPO_AULA[tipo] || TIPO_AULA.video
+  return <span className={`lesson-tipo lesson-tipo-${TIPO_AULA[tipo] ? tipo : 'video'}`} title={t.label} aria-label={`Aula em ${t.label}`}><t.Icon /></span>
+}
 
 const COVER_CLASS = { green: 'cover-green', blue: 'cover-blue', orange: 'cover-orange' }
 
@@ -123,8 +134,8 @@ export default function BaseConhecimento() {
   // Prolu admin "puro" (sem estar impersonando nem em modo visualização de
   // usuário) não tem escritório próprio — só o conteúdo Prolu global. O
   // mesmo critério usado pra decidir a sidebar de admin em AppLayout.jsx.
-  // Impersonando uma empresa, ele deve ver e editar o escritório dela
-  // normalmente (é para isso que a impersonação existe).
+  // Impersonando uma empresa, ele vê o escritório dela normalmente (suporte),
+  // mas só edita conteúdo Prolu — ver podeEditarPasta / migration_022.
   const isAdminMode = isProluAdmin && !impersonatedEmpresaId && !viewAsUser
   // Aba "Painel" (progresso da equipe): só master/gestor de um escritório
   // de verdade — prolu_admin puro não tem equipe pra ver.
@@ -802,6 +813,7 @@ export default function BaseConhecimento() {
                       onClick={() => { setPlayer(l.id); setMobileSidebar(false) }}
                     >
                       <div className={`lesson-check ${l.done ? 'done' : 'pend'}`}>{l.done && <IconCheck />}</div>
+                      <IconeTipoAula tipo={l.tipo} />
                       <span className="lesson-sidebar-title">{l.title}</span>
                     </div>
                   ))}
@@ -881,7 +893,7 @@ export default function BaseConhecimento() {
                 <div className="lesson-row" key={l.id} onClick={() => setPlayer(l.id)}>
                   <div className={`lesson-check ${l.done ? 'done' : 'pend'}`}>{l.done && <IconCheck />}</div>
                   <div className="lesson-info">
-                    <div className="lesson-title">{l.title}</div>
+                    <div className="lesson-title"><IconeTipoAula tipo={l.tipo} /><span>{l.title}</span></div>
                     {l.pdfs.length > 0 && <div className="lesson-meta"><span className="lesson-pdf-tag">📎 {l.pdfs.length} PDF</span></div>}
                   </div>
                   {podeEditarPasta(pasta) && (
