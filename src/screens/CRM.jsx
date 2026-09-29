@@ -563,12 +563,17 @@ export default function CRM() {
     setLoading(false)
   }
 
+  // Efeito da troca de status na data de fechamento (a fonte única de fechamentos depende dela):
+  // → "Fechado": preenche com hoje (se vazia); "Fechado" → outro status: limpa.
+  function efeitoStatusNaDataFech(row, col, value) {
+    if (col.slug !== 'status' || !dataFechCol || !row) return {}
+    if (value === 'Fechado' && !row[dataFechCol.id]) return { [dataFechCol.id]: todayISO() }
+    if (value !== 'Fechado' && row[col.id] === 'Fechado') return { [dataFechCol.id]: null }
+    return {}
+  }
+
   async function updateCell(rowId, col, value) {
-    let extra = {}
-    if (col.slug === 'status' && value === 'Fechado' && dataFechCol) {
-      const row = rows.find(r => r.id === rowId)
-      if (row && !row[dataFechCol.id]) extra[dataFechCol.id] = todayISO()
-    }
+    const extra = efeitoStatusNaDataFech(rows.find(r => r.id === rowId), col, value)
     setRows(prev => prev.map(r => r.id === rowId ? { ...r, [col.id]: value, ...extra } : r))
     if (!supabaseReady || !activeEmpresaId) return
     const row = rows.find(r => r.id === rowId)
@@ -1238,7 +1243,7 @@ export default function CRM() {
           onClose={closeDrawer}
           onSave={isDraft ? saveDraft : closeDrawer}
           onUpdateCell={(col, value) => {
-            if (isDraft) setDraftValues(prev => ({ ...prev, [col.id]: value }))
+            if (isDraft) setDraftValues(prev => ({ ...prev, [col.id]: value, ...efeitoStatusNaDataFech(prev, col, value) }))
             else updateCell(drawerRow.id, col, value)
           }}
           onAddOption={openOptionsModal}

@@ -428,6 +428,7 @@ export default function BaseConhecimento() {
   async function saveAula() {
     const { titulo, descricao, youtube_url, tipo, pdf_url, conteudo_doc } = aulaForm
     if (!titulo.trim()) return
+    if (tipo === 'pdf' && !pdf_url) { toast('Selecione o arquivo PDF da aula'); return }
     const { moduloId, aulaId } = aulaModal
     const editing = Boolean(aulaId)
     const payload = {
@@ -718,8 +719,14 @@ export default function BaseConhecimento() {
                 <h2 className="doc-titulo">{playerLesson.title}</h2>
                 <div className="doc-conteudo" dangerouslySetInnerHTML={{ __html: sanitizeHtml(playerLesson.conteudo_doc) }} />
               </div>
-            ) : playerLesson.tipo === 'pdf' && playerLesson.pdf_url ? (
-              <iframe src={playerLesson.pdf_url} className="pdf-viewer" title={playerLesson.title} />
+            ) : playerLesson.tipo === 'pdf' ? (
+              // o tipo decide o player: aula PDF nunca cai no player de vídeo, mesmo sem arquivo
+              playerLesson.pdf_url
+                ? <iframe src={playerLesson.pdf_url} className="pdf-viewer" title={playerLesson.title} />
+                : <div className="player-video-fake">
+                    <IconPdf />
+                    PDF desta aula ainda não foi enviado
+                  </div>
             ) : (
               <div className="youtube-embed">
                 {embedUrl
