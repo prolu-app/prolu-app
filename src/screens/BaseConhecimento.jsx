@@ -160,12 +160,13 @@ export default function BaseConhecimento() {
   // ── permissões de edição de conteúdo ──
   // Conteúdo Prolu (empresa_id null): só prolu_admin.
   const podeEditarProlu = isProluAdmin
-  // Conteúdo da empresa: gestor, master da empresa OU prolu_admin.
+  // Conteúdo da empresa: gestor ou master da própria empresa (o banco usa
+  // auth_empresa_id(), então prolu_admin visitando outro escritório não edita).
   const podeEditarEmpresa = isGestorOuSuperior
   // Pode criar/editar/excluir dentro de uma pasta específica?
   function podeEditarPasta(pasta) {
     if (!pasta || pasta.empresa_id == null) return podeEditarProlu
-    return podeEditarEmpresa && (pasta.empresa_id === activeEmpresaId || isProluAdmin)
+    return podeEditarEmpresa && pasta.empresa_id === user?.empresaId
   }
 
   // Reforço no front do que a RLS já garante no banco — evita que uma
@@ -416,9 +417,20 @@ export default function BaseConhecimento() {
       return
     }
     setAulaUploading(true)
-    const filePath = `${activeEmpresaId ?? 'prolu'}/${Date.now()}_${file.name}`
+    // 1ª pasta do caminho = dono do arquivo (policy do bucket, migration 022):
+    // 'prolu' para conteúdo Prolu, empresa_id para conteúdo do escritório.
+    const pastaDaAula = pastas.find(p => p.modules.some(m => m.id === aulaModal?.moduloId))
+    // O Storage rejeita chaves com acento/ç/símbolos ("Invalid key") — o nome
+    // original continua visível no app (pdf_nome); só o caminho é normalizado.
+    const nomeSeguro = file.name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9._-]+/g, '_')
+    const filePath = `${pastaDaAula?.empresa_id ?? 'prolu'}/${Date.now()}_${nomeSeguro}`
     const { error } = await supabase.storage.from('kb-pdfs').upload(filePath, file, { contentType: 'application/pdf', upsert: false })
-    if (error) { toast('Erro ao enviar PDF'); setAulaUploading(false); return }
+    if (error) {
+      console.error('[kb] upload de PDF falhou', error)
+      toast(`Erro ao enviar PDF: ${error.message}`)
+      setAulaUploading(false)
+      return
+    }
     const { data: { publicUrl } } = supabase.storage.from('kb-pdfs').getPublicUrl(filePath)
     await replaceOldPdf(publicUrl)
     setAulaForm(f => ({ ...f, pdf_url: publicUrl, pdf_nome: file.name }))
