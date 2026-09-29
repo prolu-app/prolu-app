@@ -92,7 +92,7 @@ export default function App() {
         <Route path="/plano-pratico" element={<RotaProtegida temAcesso={acesso.planoPratico}><PlanoPratico /></RotaProtegida>} />
         <Route path="/cliente-ideal" element={<RotaProtegida temAcesso={acesso.clienteIdeal}><ClienteIdeal /></RotaProtegida>} />
         <Route path="/indicadores" element={<RotaProtegida temAcesso={acesso.indicadores}><Indicadores /></RotaProtegida>} />
-        <Route path="/agente-prolu" element={<AgentePrl />} />
+        <Route path="/agente-prolu" element={<RotaProtegida temAcesso={acesso.agenteProlu}><AgentePrl /></RotaProtegida>} />
         {/* /equipe foi substituída pela aba "Equipe" de /configuracoes */}
         <Route path="/equipe" element={<Navigate to="/configuracoes" replace />} />
         <Route path="/configuracoes" element={<RotaProtegida temAcesso={acesso.configuracoes}><Configuracoes /></RotaProtegida>} />

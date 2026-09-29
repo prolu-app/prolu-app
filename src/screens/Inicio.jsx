@@ -57,7 +57,7 @@ function saudacao() {
 }
 
 export default function Inicio() {
-  const { user, activeEmpresaId, isEmpresaMaster } = useAuth()
+  const { user, activeEmpresaId, isEmpresaMaster, acesso } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const [avisos, setAvisos] = useState([])
@@ -174,17 +174,16 @@ export default function Inicio() {
       : melhorCanal(CRM_ROWS.map((r) => ({ origem: r.__origem, fechado: r.__status === 'Fechado' })))
   )
 
-  // Plano Prático continua visível pra todo mundo (gestor/comum inclusos)
-  // — essa parte roda sempre, independente de role.
+  // Plano Prático (seção Ferramentas) — fora do perfil comum, então nem busca pra ele.
   useEffect(() => {
-    if (!supabaseReady || !activeEmpresaId) return
+    if (!supabaseReady || !activeEmpresaId || !acesso.planoPratico) return
     Promise.all([
       supabase.from('plano_acoes').select('*', { count: 'exact', head: true }).eq('empresa_id', activeEmpresaId),
       supabase.from('plano_acoes').select('*', { count: 'exact', head: true }).eq('empresa_id', activeEmpresaId).eq('status', 'done'),
     ]).then(([{ count: planoTotal }, { count: planoDone }]) => {
       setResumo((prev) => ({ ...prev, planoDone: planoDone ?? 0, planoTotal: planoTotal ?? 0 }))
     })
-  }, [activeEmpresaId])
+  }, [activeEmpresaId, acesso.planoPratico])
 
   // Faturamento e insight de canal são dados comerciais (derivados do CRM)
   // — só master/prolu_admin veem esses blocos, então nem busca pros
@@ -261,7 +260,8 @@ export default function Inicio() {
         </p>
       </div>
 
-      {/* agente prolu */}
+      {/* agente prolu — seção Ferramentas, fora do perfil comum */}
+      {acesso.agenteProlu && (
       <div className="agent-bar" onClick={() => navigate('/agente-prolu')}>
         <div className="agent-bar-icon"><IconAgente /></div>
         <div className="agent-bar-text">
@@ -273,13 +273,13 @@ export default function Inicio() {
           <IconArrowRight />
         </div>
       </div>
+      )}
 
       {/* resumo — Faturamento YTD é dado comercial: só master/prolu_admin.
-          gestor/comum veem só Plano Prático + Base de Conhecimento (sem
-          nada no lugar do Faturamento por enquanto — ver Gestão de
-          Projetos, futuro). */}
+          gestor vê Plano Prático + Base de Conhecimento; comum (sem a seção
+          Ferramentas) vê só Base de Conhecimento. */}
       <div className="section-title">Resumo do escritório</div>
-      <div className={`pulse-card${isEmpresaMaster ? '' : ' pulse-card-2'}`}>
+      <div className={`pulse-card${isEmpresaMaster ? '' : acesso.planoPratico ? ' pulse-card-2' : ' pulse-card-1'}`}>
         {isEmpresaMaster && (
           <>
             <div className="pulse-metric">
@@ -294,6 +294,8 @@ export default function Inicio() {
             <div className="pulse-divider" />
           </>
         )}
+        {acesso.planoPratico && (
+          <>
         <div className="pulse-metric">
           <div className="pulse-label">Plano Prático</div>
           <div className="pulse-val">
@@ -306,6 +308,8 @@ export default function Inicio() {
           </div>
         </div>
         <div className="pulse-divider" />
+          </>
+        )}
         <div className="pulse-metric">
           <div className="pulse-label">Base de Conhecimento</div>
           <div className="pulse-val">

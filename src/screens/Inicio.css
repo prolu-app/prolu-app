@@ -102,6 +102,9 @@
    Base de Conhecimento) sobram, divididas igualmente em vez de deixar
    espaço vazio onde o Faturamento estaria. */
 .pulse-card-2 { grid-template-columns: 1fr 1px 1fr; }
+/* comum: sem Faturamento nem Plano Prático — só Base de Conhecimento. */
+.pulse-card-1,
+.pulse-card.pulse-card-1 { grid-template-columns: 1fr; }
 .pulse-divider { background: var(--ink-divider); }
 .pulse-metric { padding: 0 22px; }
 .pulse-metric:first-child { padding-left: 0; }

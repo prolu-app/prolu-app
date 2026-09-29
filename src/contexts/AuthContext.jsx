@@ -241,8 +241,10 @@ export function AuthProvider({ children }) {
     precificacao:     isEmpresaMaster,
     dashboard:        isEmpresaMaster,
     indicadores:      isEmpresaMaster,
-    planoPratico:     true, // todos
+    // seção Ferramentas inteira fica fora do perfil comum
+    planoPratico:     isGestorOuSuperior,
     clienteIdeal:     isGestorOuSuperior,
+    agenteProlu:      isGestorOuSuperior,
     baseConhecimento: true, // todos podem ver
     editarConteudo:   isGestorOuSuperior, // criar/editar na BC
     projetos:         true, // todos (futuro)

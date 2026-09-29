@@ -28,7 +28,7 @@ const NAV_SECTIONS = [
     items: [
       { to: '/plano-pratico', label: 'Plano Prático', Icon: IconPlano, access: 'planoPratico' },
       { to: '/cliente-ideal', label: 'Cliente Ideal', Icon: IconCliente, access: 'clienteIdeal' },
-      { to: '/agente-prolu', label: 'Agente Prolu', Icon: IconAgente },
+      { to: '/agente-prolu', label: 'Agente Prolu', Icon: IconAgente, access: 'agenteProlu' },
     ],
   },
   {
