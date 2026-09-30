@@ -526,6 +526,9 @@ body.crm-col-resizing { cursor: col-resize; user-select: none; }
 }
 .crm-period-input:hover, .crm-period-input.dp-open { box-shadow: 0 0 0 1.5px var(--ink-divider); }
 .crm-period-apply { width: 100%; justify-content: center; margin-top: 4px; padding: 10px 16px; }
+.crm-period-actions { display: flex; gap: 6px; margin-top: 4px; }
+.crm-period-actions .crm-period-apply,
+.crm-period-actions .crm-period-clear { flex: 1; margin-top: 0; justify-content: center; padding: 10px 12px; }
 
 @media (max-width: 860px) {
   .crm-new-btn { display: none; }

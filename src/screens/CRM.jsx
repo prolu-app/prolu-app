@@ -342,7 +342,7 @@ function ColFilterPortal({ anchorRef, onClose, children }) {
 // Renderizado inline no th, ao lado do nome da coluna.
 function ColFilterButton({
   col, isSelectFilter, isDateFilter, active, isOpen, options, selectedSet, draft,
-  onToggleOpen, onClose, onClearSelect, onToggleValue, onDraftChange, onApplyDate,
+  onToggleOpen, onClose, onClearSelect, onToggleValue, onDraftChange, onApplyDate, onClearDate,
 }) {
   const btnRef = useRef(null)
 
@@ -390,8 +390,15 @@ function ColFilterButton({
                 className="crm-period-input"
                 min={draft.start || undefined}
               />
-              {draft.start && draft.end && (
-                <button className="btn-primary crm-period-apply" onClick={onApplyDate}>Aplicar</button>
+              {(draft.start || draft.end || active) && (
+                <div className="crm-period-actions">
+                  {(draft.start || draft.end || active) && (
+                    <button type="button" className="btn-cancel crm-period-clear" onClick={onClearDate}>Limpar</button>
+                  )}
+                  {draft.start && draft.end && (
+                    <button type="button" className="btn-primary crm-period-apply" onClick={onApplyDate}>Aplicar</button>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -812,6 +819,13 @@ export default function CRM() {
     })
   }
 
+  // Limpa o período da coluna (aplicado + rascunho) e fecha o popover
+  function clearColDateFilter(colId) {
+    setColDateFilters(prev => { const next = { ...prev }; delete next[colId]; return next })
+    setColDateDraft(prev => { const next = { ...prev }; delete next[colId]; return next })
+    setOpenColFilter(null)
+  }
+
   function applyColDateFilter(colId) {
     setColDateFilters(prev => ({ ...prev, [colId]: colDateDraft[colId] }))
     setOpenColFilter(null)
@@ -838,7 +852,10 @@ export default function CRM() {
     return map
   }, [rows, columns])
 
+  // inclui os filtros de período — antes só contava os de seleção, e com só uma
+  // data aplicada o botão "Limpar filtros" nem aparecia
   const hasColFilters = Object.values(colSelectFilters).some(s => s && s.size > 0)
+    || Object.values(colDateFilters).some(d => d?.start && d?.end)
     || Object.values(colDateFilters).some(r => r && r.start && r.end)
 
   const filtered = useMemo(() => sorted.filter(r => {
@@ -1271,6 +1288,7 @@ export default function CRM() {
                           onToggleValue={value => toggleColSelectValue(c.id, value)}
                           onDraftChange={next => setColDateDraft(d => ({ ...d, [c.id]: next }))}
                           onApplyDate={() => applyColDateFilter(c.id)}
+                          onClearDate={() => clearColDateFilter(c.id)}
                         />
                       )}
                     </div>
