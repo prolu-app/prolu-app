@@ -121,8 +121,39 @@ body.crm-col-resizing { cursor: col-resize; user-select: none; }
 }
 .crm-table th.th-sel { z-index: 4; }
 .crm-table td.td-sel { z-index: 1; }
+/* Checkbox desenhado (appearance: none) pra controlar a borda: sem borda em
+   repouso, borda clara no hover da linha/card (ou sempre, com seleção ativa
+   ou em tela de toque); marcado = fundo escuro com check branco. O check e o
+   traço do "parcial" são SVG de fundo (::after em input não funciona no Firefox). */
 .th-sel input, .td-sel input, .crm-card-sel input {
-  width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: var(--ink); vertical-align: middle;
+  -webkit-appearance: none; appearance: none;
+  width: 16px; height: 16px; margin: 0; flex-shrink: 0; vertical-align: middle; cursor: pointer;
+  border: 1.5px solid transparent; border-radius: 4px; background: transparent;
+  background-position: center; background-repeat: no-repeat; background-size: 12px;
+  transition: border-color 0.12s, background-color 0.12s;
+}
+/* só caixas desmarcadas mudam de borda — a marcada mantém o visual escuro */
+.crm-table tbody tr:hover .td-sel input:not(:checked),
+.crm-table thead tr:hover .th-sel input:not(:checked):not(:indeterminate),
+.crm-cards .crm-card:hover .crm-card-sel input:not(:checked),
+.crm-has-selection .td-sel input:not(:checked),
+.crm-has-selection .th-sel input:not(:checked):not(:indeterminate),
+.crm-has-selection .crm-card-sel input:not(:checked) { border-color: var(--ink-divider); }
+/* mouse sobre a própria caixa: um tom acima (mesma especificidade, vem depois) */
+.crm-table tbody tr .td-sel input:not(:checked):hover,
+.crm-table thead tr .th-sel input:not(:checked):not(:indeterminate):hover,
+.crm-cards .crm-card .crm-card-sel input:not(:checked):hover { border-color: var(--ink-40); }
+.th-sel input:focus-visible, .td-sel input:focus-visible, .crm-card-sel input:focus-visible {
+  outline: 2px solid var(--ink-40); outline-offset: 2px; border-color: var(--ink-divider);
+}
+.th-sel input:checked, .td-sel input:checked, .crm-card-sel input:checked {
+  background-color: var(--ink); border-color: var(--ink); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.th-sel input:indeterminate {
+  background-color: var(--ink); border-color: var(--ink); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 8h7' fill='none' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+@media (hover: none) {
+  .td-sel input:not(:checked), .th-sel input:not(:checked):not(:indeterminate), .crm-card-sel input:not(:checked) { border-color: var(--ink-divider); }
 }
 /* depois do hover geral (mesma especificidade): linha selecionada fica marcada mesmo no hover */
 .crm-table tbody tr.is-selected td { background: var(--green-soft); }

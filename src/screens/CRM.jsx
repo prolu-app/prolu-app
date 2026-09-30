@@ -1239,7 +1239,7 @@ export default function CRM() {
       </div>
 
       {/* DESKTOP: tabela */}
-      <div className={`crm-table-wrap density-${density}`} ref={tableRef}>
+      <div className={`crm-table-wrap density-${density}${idsSelecionados.length ? ' crm-has-selection' : ''}`} ref={tableRef}>
         <table className={`crm-table${columns.some(c => c.width) ? ' has-col-widths' : ''}`}>
           <thead>
             <tr>
@@ -1398,7 +1398,7 @@ export default function CRM() {
       </div>
 
       {/* MOBILE: cards */}
-      <div className="crm-cards">
+      <div className={`crm-cards${idsSelecionados.length ? ' crm-has-selection' : ''}`}>
         {(isMobile ? mobileRows : filtered).map(row => (
           <div className="crm-card" key={row.id} onClick={() => setDrawerRowId(row.id)}>
             <button
