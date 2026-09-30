@@ -36,6 +36,29 @@
    completo, que já reserva exatamente o necessário acima e abaixo.) */
 .crm-table-wrap { background: var(--white); border-radius: var(--r-lg); box-shadow: var(--shadow-rest); overflow-x: auto; overflow-y: auto; width: 100%; max-height: calc(100vh - 190px - 53px - 32px); min-height: 400px; }
 .crm-table { min-width: 1500px; width: 100%; border-collapse: collapse; font-size: 13.5px; }
+/* com larguras ajustadas pelo usuário, a soma das colunas manda — o min-width
+   fixo faria o navegador redistribuir a sobra e "desfazer" o ajuste */
+.crm-table.has-col-widths { min-width: 0; }
+
+/* ── redimensionar coluna (só desktop: a tabela nem aparece no mobile) ── */
+.crm-table th.th-resizable { position: relative; }
+.th-resize-handle {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 8px;
+  cursor: col-resize; z-index: 3; touch-action: none;
+}
+.th-resize-handle::after {
+  content: ''; position: absolute; top: 25%; bottom: 25%; right: 0; width: 2px;
+  border-radius: 2px; background: transparent; transition: background 0.15s;
+}
+.crm-table th:hover .th-resize-handle::after { background: var(--ink-divider); }
+.th-resize-handle:hover::after, body.crm-col-resizing .th-resize-handle::after { background: var(--ink-40); }
+body.crm-col-resizing { cursor: col-resize; user-select: none; }
+/* largura manual: o título não invade a coluna vizinha (o dropdown de filtro
+   é renderizado em portal, então o overflow não o corta) */
+.crm-table th.th-has-width { overflow: hidden; }
+.crm-table th.th-has-width .th-content { min-width: 0; }
+.crm-table th.th-has-width .th-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+@media (hover: none) { .th-resize-handle { display: none; } }
 .crm-table thead { position: sticky; top: 0; z-index: 2; }
 .crm-table th { text-align: left; padding: 14px 16px; font-family: 'Montserrat', sans-serif; font-size: 10.5px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--ink-40); border-bottom: 1px solid var(--ink-divider); white-space: nowrap; background: var(--white); }
 .th-label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: color 0.15s; border-radius: 6px; padding: 2px 4px; margin: -2px -4px; }
@@ -390,7 +413,10 @@
   width: 14px; height: 14px; flex-shrink: 0;
   color: var(--ink-40); cursor: grab;
 }
-.crm-col-vis-grip svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
+/* IconGrip é desenhado com "pontos" de 0.01 de comprimento — sem linecap
+   round eles não aparecem (era por isso que o grip ficava invisível). */
+.crm-col-vis-grip svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 3; stroke-linecap: round; fill: none; }
+.crm-colpanel-row:hover .crm-col-vis-grip { color: var(--ink); }
 .crm-colpanel-row.dragging .crm-col-vis-grip { cursor: grabbing; }
 
 .crm-col-vis-name { flex: 1; }

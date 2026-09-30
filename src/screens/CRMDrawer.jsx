@@ -29,7 +29,7 @@ function ClientField({ col, value, onChange, clientes, activeEmpresaId, onClient
   const inputRef = useRef(null)
 
   useEffect(() => { setInputVal(value || '') }, [value])
-  useEffect(() => { if (autoFocus) inputRef.current?.focus() }, [autoFocus])
+  useEffect(() => { if (autoFocus) inputRef.current?.focus({ preventScroll: true }) }, [autoFocus])
 
   const suggestions = useMemo(() => {
     const q = inputVal.trim().toLowerCase()

@@ -92,7 +92,9 @@ function parseCol(c) {
   const isObj = c.opcoes != null && !Array.isArray(c.opcoes)
   const fixed = c.fixo === true || (isObj && c.opcoes.fixed === true)
   return {
-    id: c.id, name: c.nome, type: c.tipo, width: 150,
+    // largura: px ajustado pelo usuário (null = automática); oculta: escondida
+    // na tabela. Ambos por escritório, em crm_colunas (migration_023).
+    id: c.id, name: c.nome, type: c.tipo, width: c.largura ?? null, oculta: c.oculta === true,
     fixed, slug: isObj ? (c.opcoes.slug || null) : null,
     // colunas fixas inseridas via SQL têm opcoes como array simples → editableOptions true por padrão
     editableOptions: fixed ? (isObj ? c.opcoes.editableOptions !== false : true) : true,
@@ -410,7 +412,6 @@ export default function CRM() {
   const [optionsModal, setOptionsModal] = useState(null)
   const [optionsForm, setOptionsForm] = useState([])
   const [newOptName, setNewOptName] = useState('')
-  const [hiddenCols, setHiddenCols] = useState(new Set())
   const [colVisOpen, setColVisOpen] = useState(false)
   const [dragColId, setDragColId] = useState(null)
   const [dragOverColId, setDragOverColId] = useState(null)
@@ -489,10 +490,23 @@ export default function CRM() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, rows])
   useEffect(() => { if (supabaseReady && activeEmpresaId) loadClientes() }, [activeEmpresaId])
+  // Migração única: colunas ocultas que ficaram salvas no localStorage deste
+  // navegador (modelo antigo) vão pro banco, se o escritório ainda não tiver
+  // nenhuma coluna oculta lá — depois a chave local é apagada.
   useEffect(() => {
-    const key = `crm_hidden_cols_${activeEmpresaId || 'demo'}`
-    try { const s = localStorage.getItem(key); if (s) setHiddenCols(new Set(JSON.parse(s))) } catch {}
-  }, [activeEmpresaId])
+    if (loading || !supabaseReady || !activeEmpresaId || !columns.length) return
+    const key = `crm_hidden_cols_${activeEmpresaId}`
+    let ids = []
+    try { ids = JSON.parse(localStorage.getItem(key) || '[]') } catch {}
+    if (!Array.isArray(ids) || !ids.length) return
+    try { localStorage.removeItem(key) } catch {}
+    if (columns.some(c => c.oculta)) return
+    const alvo = columns.filter(c => ids.includes(c.id))
+    if (!alvo.length) return
+    setColumns(prev => prev.map(c => ids.includes(c.id) ? { ...c, oculta: true } : c))
+    supabase.from('crm_colunas').update({ oculta: true }).in('id', alvo.map(c => c.id))
+      .then(({ error }) => { if (error) toast('Não foi possível salvar as colunas ocultas') })
+  }, [loading, activeEmpresaId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadClientes() {
     const { data } = await supabase.from('clientes').select('id, nome').eq('empresa_id', activeEmpresaId).order('nome')
@@ -611,7 +625,8 @@ export default function CRM() {
 
   function openNewDraft() {
     const empty = {}
-    columns.forEach(c => { empty[c.id] = c.type === 'tags' ? [] : null })
+    // data de entrada = hoje, como na linha criada direto na tabela (addRow)
+    columns.forEach(c => { empty[c.id] = c.slug === 'data_entrada' ? todayISO() : (c.type === 'tags' ? [] : null) })
     setDraftValues(empty)
     setDrawerRowId('__new__')
   }
@@ -696,14 +711,14 @@ export default function CRM() {
       : []
     if (!supabaseReady || !activeEmpresaId) {
       const id = 'c_' + Date.now()
-      setColumns(prev => [...prev, { id, name: colForm.name.trim(), type: colForm.type, width: 150, fixed: false, slug: null, editableOptions: true, options: opcoes, ordem: prev.length }])
+      setColumns(prev => [...prev, { id, name: colForm.name.trim(), type: colForm.type, width: null, oculta: false, fixed: false, slug: null, editableOptions: true, options: opcoes, ordem: prev.length }])
       setColModal(null); return
     }
     const { data, error } = await supabase.from('crm_colunas').insert({
       empresa_id: activeEmpresaId, nome: colForm.name.trim(), tipo: colForm.type, ordem: columns.length, opcoes,
     }).select('*').single()
     if (error) { toast('Não foi possível criar a coluna'); return }
-    setColumns(prev => [...prev, { id: data.id, name: data.nome, type: data.tipo, width: 150, fixed: false, slug: null, editableOptions: true, options: Array.isArray(data.opcoes) ? data.opcoes : [], ordem: data.ordem }])
+    setColumns(prev => [...prev, { id: data.id, name: data.nome, type: data.tipo, width: null, oculta: false, fixed: false, slug: null, editableOptions: true, options: Array.isArray(data.opcoes) ? data.opcoes : [], ordem: data.ordem }])
     setColModal(null)
     toast('Coluna criada')
   }
@@ -905,16 +920,51 @@ export default function CRM() {
     }
   }, [colSelectFilters, colDateFilters])
 
-  const visibleCols = useMemo(() => columns.filter(c => !hiddenCols.has(c.id)), [columns, hiddenCols])
+  const visibleCols = useMemo(() => columns.filter(c => !c.oculta), [columns])
+  const hiddenCols = useMemo(() => new Set(columns.filter(c => c.oculta).map(c => c.id)), [columns])
+
+  // Config de colunas (oculta/largura) é do escritório: grava em crm_colunas.
+  async function salvarConfigColunas(ids, patch) {
+    setColumns(prev => prev.map(c => ids.includes(c.id) ? { ...c, ...patch } : c))
+    if (!supabaseReady || !activeEmpresaId || !ids.length) return
+    const dbPatch = {}
+    if ('oculta' in patch) dbPatch.oculta = patch.oculta
+    if ('width' in patch) dbPatch.largura = patch.width
+    const { error } = await supabase.from('crm_colunas').update(dbPatch).in('id', ids)
+    if (error) toast('Não foi possível salvar a configuração das colunas')
+  }
 
   function toggleColVis(colId) {
-    setHiddenCols(prev => {
-      const next = new Set(prev)
-      if (next.has(colId)) next.delete(colId)
-      else next.add(colId)
-      localStorage.setItem(`crm_hidden_cols_${activeEmpresaId || 'demo'}`, JSON.stringify([...next]))
-      return next
-    })
+    const col = columns.find(c => c.id === colId)
+    if (col) salvarConfigColunas([colId], { oculta: !col.oculta })
+  }
+
+  // ── largura: arrastar a borda direita do cabeçalho (só desktop/tabela) ──
+  const COL_MIN_W = 60, COL_MAX_W = 800
+  function startColResize(e, col) {
+    e.preventDefault()
+    e.stopPropagation()
+    const th = e.currentTarget.parentElement
+    const inicioX = e.clientX
+    const inicioW = th.getBoundingClientRect().width
+    let largura = Math.round(inicioW)
+    const handle = e.currentTarget
+    handle.setPointerCapture?.(e.pointerId)
+    document.body.classList.add('crm-col-resizing')
+    function mover(ev) {
+      largura = Math.min(COL_MAX_W, Math.max(COL_MIN_W, Math.round(inicioW + ev.clientX - inicioX)))
+      setColumns(prev => prev.map(c => c.id === col.id ? { ...c, width: largura } : c))
+    }
+    function soltar() {
+      handle.removeEventListener('pointermove', mover)
+      handle.removeEventListener('pointerup', soltar)
+      handle.removeEventListener('pointercancel', soltar)
+      document.body.classList.remove('crm-col-resizing')
+      salvarConfigColunas([col.id], { width: largura })
+    }
+    handle.addEventListener('pointermove', mover)
+    handle.addEventListener('pointerup', soltar)
+    handle.addEventListener('pointercancel', soltar)
   }
 
   function changeDensity(d) {
@@ -934,9 +984,10 @@ export default function CRM() {
     const reordered = list.map((c, i) => ({ ...c, ordem: i }))
     setColumns(reordered)
     if (supabaseReady && activeEmpresaId) {
-      reordered.forEach(c => {
-        supabase.from('crm_colunas').update({ ordem: c.ordem }).eq('id', c.id)
-      })
+      // await é obrigatório: o query builder do supabase-js só envia a
+      // requisição quando é aguardado — antes a ordem nunca era gravada.
+      Promise.all(reordered.map(c => supabase.from('crm_colunas').update({ ordem: c.ordem }).eq('id', c.id)))
+        .then(res => { if (res.some(r => r.error)) toast('Não foi possível salvar a ordem das colunas') })
     }
   }
 
@@ -983,7 +1034,7 @@ export default function CRM() {
           <div className="page-title">CRM</div>
           <div className="page-sub">Todo pedido de orçamento, em um lugar só.</div>
         </div>
-        <button className="btn-primary crm-new-btn" onClick={addRow}><IconPlus /> Novo registro</button>
+        <button className="btn-primary crm-new-btn" onClick={openNewDraft}><IconPlus /> Novo registro</button>
       </div>
 
       <div className="crm-toolbar">
@@ -1041,10 +1092,9 @@ export default function CRM() {
                     )
                   })}
                   {hiddenCols.size > 0 && (
-                    <button className="crm-col-vis-reset" onClick={() => {
-                      setHiddenCols(new Set())
-                      localStorage.removeItem(`crm_hidden_cols_${activeEmpresaId || 'demo'}`)
-                    }}>Mostrar todas</button>
+                    <button className="crm-col-vis-reset" onClick={() => salvarConfigColunas([...hiddenCols], { oculta: false })}>
+                      Mostrar todas
+                    </button>
                   )}
                 </div>
               </>
@@ -1070,7 +1120,7 @@ export default function CRM() {
 
       {/* DESKTOP: tabela */}
       <div className={`crm-table-wrap density-${density}`} ref={tableRef}>
-        <table className="crm-table">
+        <table className={`crm-table${columns.some(c => c.width) ? ' has-col-widths' : ''}`}>
           <thead>
             <tr>
               {visibleCols.map(c => {
@@ -1081,7 +1131,8 @@ export default function CRM() {
                   ? (colSelectFilters[c.id]?.size > 0)
                   : !!(colDateFilters[c.id]?.start && colDateFilters[c.id]?.end)
                 return (
-                  <th key={c.id} data-col={c.slug || undefined} style={density === 'compact' ? undefined : { minWidth: c.width }}>
+                  <th key={c.id} data-col={c.slug || undefined} className={`th-resizable${c.width ? ' th-has-width' : ''}`}
+                    style={c.width ? { width: c.width, minWidth: c.width, maxWidth: c.width } : (density === 'compact' ? undefined : { minWidth: 150 })}>
                     <div className="th-content">
                       {c.fixed ? (
                         <span className="th-label th-fixed">{c.name}</span>
@@ -1110,6 +1161,17 @@ export default function CRM() {
                         />
                       )}
                     </div>
+                    {/* arrastar ajusta a largura; duplo clique volta pra automática */}
+                    <span
+                      className="th-resize-handle"
+                      role="separator"
+                      aria-orientation="vertical"
+                      aria-label={`Ajustar largura da coluna ${c.name}`}
+                      title="Arraste para ajustar a largura · duplo clique para automática"
+                      onPointerDown={e => startColResize(e, c)}
+                      onClick={e => e.stopPropagation()}
+                      onDoubleClick={e => { e.stopPropagation(); salvarConfigColunas([c.id], { width: null }) }}
+                    />
                   </th>
                 )
               })}
@@ -1232,7 +1294,7 @@ export default function CRM() {
         )}
       </div>
 
-      <button className="fab" onClick={() => { if (isMobile) openNewDraft(); else addRow() }} aria-label="Novo registro"><IconPlus /></button>
+      <button className="fab" onClick={openNewDraft} aria-label="Novo registro"><IconPlus /></button>
 
       {/* Drawer de detalhe */}
       {drawerRow && (
