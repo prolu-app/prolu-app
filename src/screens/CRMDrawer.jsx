@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
-import { IconClose, IconArrowRight, IconPlus, IconTrash, IconCopy } from '../components/Icons.jsx'
+import { IconClose, IconPlus, IconTrash, IconCopy } from '../components/Icons.jsx'
 import { SelectDropdown } from '../components/SelectDropdown.jsx'
 import { DatePicker } from '../components/DatePicker.jsx'
 import { carregarCalculoPrecificacao } from '../hooks/usePrecificacaoCalculo.js'
@@ -440,19 +440,19 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
                 <div className="dr-comment-empty">Nenhuma precificação ainda.</div>
               )}
               {!precifLoading && precificacoes.map((p) => (
-                <div className="dr-precif-item" key={p.id}>
+                // mesmo padrão da listagem /precificacao: o card inteiro abre; copiar/excluir aparecem no hover
+                <div className="dr-precif-item" key={p.id} role="button" tabIndex={0}
+                  onClick={() => navigate(`/precificacao/${p.id}?origem=crm&linha_id=${row.id}`)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/precificacao/${p.id}?origem=crm&linha_id=${row.id}`) }}>
                   <div className="dr-precif-info">
                     <span className="dr-precif-nome">{p.nome}</span>
                     <span className="dr-precif-meta">{p.totalHoras == null ? '—' : `${p.totalHoras}h · ${fmtMoney(p.valorFinal)}`}</span>
                   </div>
-                  <button className="dr-precif-abrir" onClick={() => navigate(`/precificacao/${p.id}?origem=crm&linha_id=${row.id}`)}>
-                    Abrir <IconArrowRight />
-                  </button>
-                  <button className="dr-precif-dup" onClick={() => duplicarPrecif(p.id)} disabled={duplicandoPrecifId != null}
+                  <button className="dr-precif-dup" onClick={(e) => { e.stopPropagation(); duplicarPrecif(p.id) }} disabled={duplicandoPrecifId != null}
                     aria-label="Duplicar precificação" title={duplicandoPrecifId === p.id ? 'Duplicando…' : 'Duplicar precificação'}>
                     <IconCopy />
                   </button>
-                  <button className="dr-precif-del" onClick={() => setConfirmDeletePrecif(p.id)} aria-label="Excluir precificação" title="Excluir precificação">
+                  <button className="dr-precif-del" onClick={(e) => { e.stopPropagation(); setConfirmDeletePrecif(p.id) }} aria-label="Excluir precificação" title="Excluir precificação">
                     <IconTrash />
                   </button>
                 </div>
