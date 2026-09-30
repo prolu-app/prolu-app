@@ -111,6 +111,74 @@ body.crm-col-resizing { cursor: col-resize; user-select: none; }
   box-shadow: -3px 0 8px rgba(18, 18, 16, 0.05);
 }
 .crm-table tbody tr:hover .td-actions { background: #fafaf6; }
+
+/* ── seleção (ações em massa): coluna fixa à esquerda ── */
+.crm-table th.th-sel,
+.crm-table td.td-sel {
+  position: sticky; left: 0;
+  width: 40px; min-width: 40px; max-width: 40px;
+  padding: 0; text-align: center; background: var(--white);
+}
+.crm-table th.th-sel { z-index: 4; }
+.crm-table td.td-sel { z-index: 1; }
+.th-sel input, .td-sel input, .crm-card-sel input {
+  width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: var(--ink); vertical-align: middle;
+}
+/* depois do hover geral (mesma especificidade): linha selecionada fica marcada mesmo no hover */
+.crm-table tbody tr.is-selected td { background: var(--green-soft); }
+.crm-card-sel { display: inline-flex; align-items: center; padding: 4px; margin: -4px 4px -4px -4px; cursor: pointer; }
+
+/* ── barra de ações em massa (rodapé, fixa) ── */
+.crm-bulk-spacer { height: 84px; }
+.crm-bulk-scrim { position: fixed; inset: 0; z-index: 59; }
+.crm-bulk-bar {
+  position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 60;
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 8px 8px 16px; max-width: calc(100vw - 32px);
+  background: var(--ink); color: var(--white);
+  border-radius: 14px; box-shadow: 0 10px 30px rgba(18, 18, 16, 0.28);
+}
+.crm-bulk-count { font-size: 13px; margin-right: 6px; white-space: nowrap; }
+.crm-bulk-count strong { font-weight: 700; }
+.crm-bulk-wrap { position: relative; }
+.crm-bulk-btn {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  background: rgba(255, 255, 255, 0.08); color: var(--white); border: none; cursor: pointer;
+  border-radius: 9px; padding: 8px 12px; font-family: inherit; font-size: 13px; font-weight: 500;
+  transition: background 0.15s;
+}
+.crm-bulk-btn:hover, .crm-bulk-btn.open { background: rgba(255, 255, 255, 0.18); }
+.crm-bulk-btn:disabled { opacity: 0.5; cursor: wait; }
+.crm-bulk-btn.danger { color: #ffb4b4; }
+.crm-bulk-btn.danger:hover { background: rgba(224, 84, 84, 0.3); color: var(--white); }
+.crm-bulk-close {
+  display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+  background: none; border: none; color: rgba(255, 255, 255, 0.7); cursor: pointer; border-radius: 8px;
+}
+.crm-bulk-close:hover { background: rgba(255, 255, 255, 0.12); color: var(--white); }
+.crm-bulk-close svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2.2; fill: none; }
+/* menus abrem para cima (a barra está no rodapé) */
+.crm-bulk-menu {
+  position: absolute; bottom: calc(100% + 10px); left: 0; z-index: 61;
+  min-width: 210px; max-height: 50vh; overflow-y: auto;
+  background: var(--white); color: var(--ink); border-radius: 12px; padding: 6px;
+  box-shadow: 0 12px 32px rgba(18, 18, 16, 0.18);
+}
+.crm-bulk-menu-title {
+  font-family: 'Montserrat', sans-serif; font-size: 9.5px; font-weight: 600; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--ink-40); padding: 8px 10px 4px;
+}
+.crm-bulk-opt {
+  display: flex; width: 100%; background: none; border: none; cursor: pointer;
+  padding: 6px 8px; border-radius: 8px; text-align: left;
+}
+.crm-bulk-opt:hover { background: var(--gray-soft); }
+
+@media (max-width: 860px) {
+  .crm-bulk-bar { left: 12px; right: 12px; bottom: 12px; transform: none; max-width: none; overflow-x: auto; }
+  /* com a barra rolando na horizontal, o menu não pode ser absoluto dentro dela */
+  .crm-bulk-menu { position: fixed; left: 12px; right: 12px; bottom: 76px; }
+}
 .th-actions {
   position: sticky;
   right: 0;

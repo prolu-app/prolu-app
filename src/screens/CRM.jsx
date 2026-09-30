@@ -107,6 +107,13 @@ function parseCol(c) {
 
 function flattenRow(dbRow) { return { id: dbRow.id, ...dbRow.valores } }
 
+// .in('id', [...]) vai na URL — em lotes de 100 ids pra não estourar o tamanho
+function emLotes(lista, tamanho = 100) {
+  const out = []
+  for (let i = 0; i < lista.length; i += tamanho) out.push(lista.slice(i, i + tamanho))
+  return out
+}
+
 function pillClass(col, value) {
   const opt = col?.options?.find(o => o.value === value)
   return `pill-${opt?.color || 'gray'}`
@@ -416,7 +423,11 @@ export default function CRM() {
   const [dragColId, setDragColId] = useState(null)
   const [dragOverColId, setDragOverColId] = useState(null)
   const [dragOverPos, setDragOverPos] = useState(null)
-  const [deleteConfirm, setDeleteConfirm] = useState(null) // { type:'row'|'col', id, nome }
+  const [deleteConfirm, setDeleteConfirm] = useState(null) // { type:'row'|'col'|'bulk', id, nome, count }
+  // ── ações em massa ──
+  const [selecionados, setSelecionados] = useState(() => new Set())
+  const [bulkMenu, setBulkMenu] = useState(null) // 'status' | 'proposta' | 'classificar' | null
+  const [bulkSalvando, setBulkSalvando] = useState(false)
   const [addOptInput, setAddOptInput] = useState('')
   const [addOptColor, setAddOptColor] = useState(COLOR_OPTS[0])
   const [density, setDensity] = useState(() => {
@@ -923,6 +934,98 @@ export default function CRM() {
   const visibleCols = useMemo(() => columns.filter(c => !c.oculta), [columns])
   const hiddenCols = useMemo(() => new Set(columns.filter(c => c.oculta).map(c => c.id)), [columns])
 
+  // ── Seleção para ações em massa ──
+  // Só vale o que está visível: se um filtro esconde um registro selecionado,
+  // ele sai da seleção (nenhuma ação em massa atinge o que não se vê).
+  useEffect(() => {
+    setSelecionados(prev => {
+      if (!prev.size) return prev
+      const visiveis = new Set(filtered.map(r => r.id))
+      const next = new Set([...prev].filter(id => visiveis.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [filtered])
+  const idsSelecionados = useMemo(() => filtered.filter(r => selecionados.has(r.id)).map(r => r.id), [filtered, selecionados])
+  const todosMarcados = filtered.length > 0 && idsSelecionados.length === filtered.length
+  const algunsMarcados = idsSelecionados.length > 0 && !todosMarcados
+
+  function toggleSelecionado(id) {
+    setSelecionados(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  function toggleTodos() {
+    setSelecionados(todosMarcados ? new Set() : new Set(filtered.map(r => r.id)))
+  }
+  function limparSelecao() {
+    setSelecionados(new Set())
+    setBulkMenu(null)
+  }
+
+  async function recarregarLinhas(ids) {
+    const res = await Promise.all(emLotes(ids).map(lote => supabase.from('crm_linhas').select('*').in('id', lote)))
+    const porId = new Map()
+    res.forEach(r => (r.data || []).forEach(l => porId.set(l.id, flattenRow(l))))
+    setRows(prev => prev.map(r => porId.get(r.id) || r))
+  }
+
+  // Um único UPDATE no banco (crm_linhas_atualizar_em_massa, migration_024):
+  // merge do valor no jsonb de cada linha + regra da data de fechamento,
+  // com a RLS do usuário logado. Devolve quantas linhas foram atualizadas.
+  async function aplicarEmMassa(col, value) {
+    const ids = idsSelecionados
+    setBulkMenu(null)
+    if (!ids.length || !col) return
+    if (!supabaseReady || !activeEmpresaId) {
+      setRows(prev => prev.map(r => ids.includes(r.id) ? { ...r, [col.id]: value, ...efeitoStatusNaDataFech(r, col, value) } : r))
+      return
+    }
+    setBulkSalvando(true)
+    const { data: n, error } = await supabase.rpc('crm_linhas_atualizar_em_massa', {
+      p_ids: ids, p_patch: { [col.id]: value }, p_hoje: todayISO(),
+    })
+    if (error) {
+      console.error('[crm] ação em massa falhou', error)
+      toast('Não foi possível atualizar os registros')
+      setBulkSalvando(false)
+      return
+    }
+    await recarregarLinhas(ids)
+    setFechVersao(v => v + 1)
+    setBulkSalvando(false)
+    toast(n === ids.length
+      ? `${n} ${n === 1 ? 'registro atualizado' : 'registros atualizados'}`
+      : `${n} de ${ids.length} registros atualizados — os demais você não tem permissão para editar`)
+  }
+
+  async function excluirEmMassa() {
+    const ids = idsSelecionados
+    if (!ids.length) return
+    if (!supabaseReady || !activeEmpresaId) {
+      setRows(prev => prev.filter(r => !ids.includes(r.id)))
+      limparSelecao()
+      return
+    }
+    setBulkSalvando(true)
+    // .select('id') devolve só o que a RLS deixou de fato apagar
+    const res = await Promise.all(emLotes(ids).map(lote => supabase.from('crm_linhas').delete().in('id', lote).select('id')))
+    const apagados = new Set(res.flatMap(r => (r.data || []).map(x => x.id)))
+    const erro = res.find(r => r.error)?.error
+    if (erro) console.error('[crm] exclusão em massa falhou', erro)
+    setRows(prev => prev.filter(r => !apagados.has(r.id)))
+    if (drawerRowId && apagados.has(drawerRowId)) setDrawerRowId(null)
+    limparSelecao()
+    setFechVersao(v => v + 1)
+    setBulkSalvando(false)
+    const n = apagados.size
+    toast(n === ids.length
+      ? `${n} ${n === 1 ? 'registro excluído' : 'registros excluídos'}`
+      : `${n} de ${ids.length} registros excluídos — os demais não puderam ser excluídos`)
+  }
+
   // Config de colunas (oculta/largura) é do escritório: grava em crm_colunas.
   async function salvarConfigColunas(ids, patch) {
     setColumns(prev => prev.map(c => ids.includes(c.id) ? { ...c, ...patch } : c))
@@ -1123,6 +1226,16 @@ export default function CRM() {
         <table className={`crm-table${columns.some(c => c.width) ? ' has-col-widths' : ''}`}>
           <thead>
             <tr>
+              <th className="th-sel">
+                <input
+                  type="checkbox"
+                  ref={el => { if (el) el.indeterminate = algunsMarcados }}
+                  checked={todosMarcados}
+                  onChange={toggleTodos}
+                  aria-label="Selecionar todos os registros visíveis"
+                  title="Selecionar todos os registros visíveis"
+                />
+              </th>
               {visibleCols.map(c => {
                 const isSelectFilter = SELECT_FILTER_SLUGS.includes(c.slug)
                 const isDateFilter = DATE_FILTER_SLUGS.includes(c.slug)
@@ -1180,7 +1293,10 @@ export default function CRM() {
           </thead>
           <tbody>
             {filtered.map(row => (
-              <tr key={row.id}>
+              <tr key={row.id} className={selecionados.has(row.id) ? 'is-selected' : undefined}>
+                <td className="td-sel">
+                  <input type="checkbox" checked={selecionados.has(row.id)} onChange={() => toggleSelecionado(row.id)} aria-label="Selecionar registro" />
+                </td>
                 {visibleCols.map(col => (
                   <td key={col.id} data-col={col.slug || undefined}>
                     <InlineCell
@@ -1226,6 +1342,7 @@ export default function CRM() {
             {/* Linha fantasma */}
             {!search && !hasColFilters && (
               <tr className="crm-phantom-row" onClick={addRow} title="Clique para adicionar registro">
+                <td className="td-sel" />
                 {visibleCols.map(col => (
                   <td key={col.id} data-col={col.slug || undefined}>
                     {col.slug === 'data_entrada' && (
@@ -1274,6 +1391,9 @@ export default function CRM() {
               <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
             </button>
             <div className="crm-card-row1">
+              <label className="crm-card-sel" onClick={e => e.stopPropagation()}>
+                <input type="checkbox" checked={selecionados.has(row.id)} onChange={() => toggleSelecionado(row.id)} aria-label="Selecionar registro" />
+              </label>
               <span className="crm-card-name">{(clienteCol ? row[clienteCol.id] : null) || 'Sem nome'}</span>
               {statusCol && renderCellValue(row, statusCol)}
             </div>
@@ -1294,7 +1414,67 @@ export default function CRM() {
         )}
       </div>
 
-      <button className="fab" onClick={openNewDraft} aria-label="Novo registro"><IconPlus /></button>
+      {idsSelecionados.length === 0 && (
+        <button className="fab" onClick={openNewDraft} aria-label="Novo registro"><IconPlus /></button>
+      )}
+
+      {idsSelecionados.length > 0 && (
+        <>
+          <div className="crm-bulk-spacer" />
+          {bulkMenu && <div className="crm-bulk-scrim" onClick={() => setBulkMenu(null)} />}
+          <div className="crm-bulk-bar" role="toolbar" aria-label="Ações em massa">
+            <span className="crm-bulk-count">
+              <strong>{idsSelecionados.length}</strong> {idsSelecionados.length === 1 ? 'selecionado' : 'selecionados'}
+            </span>
+            {[
+              { key: 'status', label: 'Status', cols: [statusCol] },
+              { key: 'proposta', label: 'Recebeu proposta?', cols: [columns.find(c => c.slug === 'proposta')] },
+              { key: 'classificar', label: 'Classificar', cols: ['segmento', 'tipo_projeto', 'origem'].map(sl => columns.find(c => c.slug === sl)) },
+            ].map(({ key, label, cols }) => {
+              const lista = cols.filter(c => c && (c.options || []).length)
+              if (!lista.length) return null
+              return (
+                <div className="crm-bulk-wrap" key={key}>
+                  <button
+                    type="button"
+                    className={`crm-bulk-btn${bulkMenu === key ? ' open' : ''}`}
+                    onClick={() => setBulkMenu(m => m === key ? null : key)}
+                    disabled={bulkSalvando}
+                    aria-expanded={bulkMenu === key}
+                  >
+                    {label}
+                  </button>
+                  {bulkMenu === key && (
+                    <div className="crm-bulk-menu" role="menu">
+                      {lista.map(col => (
+                        <div key={col.id}>
+                          {lista.length > 1 && <div className="crm-bulk-menu-title">{col.name}</div>}
+                          {col.options.map(o => (
+                            <button key={o.value} type="button" role="menuitem" className="crm-bulk-opt" onClick={() => aplicarEmMassa(col, o.value)}>
+                              <span className={`pill ${pillClass(col, o.value)}`}>{o.value}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            <button
+              type="button"
+              className="crm-bulk-btn danger"
+              onClick={() => { setBulkMenu(null); setDeleteConfirm({ type: 'bulk', count: idsSelecionados.length }) }}
+              disabled={bulkSalvando}
+            >
+              Excluir
+            </button>
+            <button type="button" className="crm-bulk-close" onClick={limparSelecao} aria-label="Limpar seleção" title="Limpar seleção">
+              <IconClose />
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Drawer de detalhe */}
       {drawerRow && (
@@ -1442,7 +1622,7 @@ export default function CRM() {
         <div className="modal-overlay" style={{ zIndex: 100 }} onClick={e => { if (e.target === e.currentTarget) setDeleteConfirm(null) }}>
           <div className="modal">
             <div className="modal-title">
-              {deleteConfirm.type === 'row' ? 'Excluir registro' : 'Excluir coluna'}
+              {deleteConfirm.type === 'row' ? 'Excluir registro' : deleteConfirm.type === 'bulk' ? 'Excluir registros' : 'Excluir coluna'}
             </div>
             {deleteConfirm.nome && (
               <p className="modal-delete-name">{deleteConfirm.nome}</p>
@@ -1450,15 +1630,18 @@ export default function CRM() {
             <p className="modal-delete-warn">
               {deleteConfirm.type === 'col'
                 ? 'Todos os dados desta coluna em todos os registros serão perdidos.'
-                : 'Essa ação não pode ser desfeita.'}
+                : deleteConfirm.type === 'bulk'
+                  ? `Excluir ${deleteConfirm.count} ${deleteConfirm.count === 1 ? 'registro selecionado' : 'registros selecionados'}? Essa ação não pode ser desfeita.`
+                  : 'Essa ação não pode ser desfeita.'}
             </p>
             <div className="modal-actions">
               <button className="btn-cancel" onClick={() => setDeleteConfirm(null)}>Cancelar</button>
               <button className="btn-danger" onClick={() => {
                 if (deleteConfirm.type === 'row') removeRow(deleteConfirm.id)
+                else if (deleteConfirm.type === 'bulk') excluirEmMassa()
                 else removeColumn(deleteConfirm.id)
                 setDeleteConfirm(null)
-              }}>Excluir</button>
+              }}>{deleteConfirm.type === 'bulk' ? `Excluir ${deleteConfirm.count}` : 'Excluir'}</button>
             </div>
           </div>
         </div>
