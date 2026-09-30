@@ -3,10 +3,11 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
-import { IconClose, IconArrowRight, IconPlus, IconTrash } from '../components/Icons.jsx'
+import { IconClose, IconArrowRight, IconPlus, IconTrash, IconCopy } from '../components/Icons.jsx'
 import { SelectDropdown } from '../components/SelectDropdown.jsx'
 import { DatePicker } from '../components/DatePicker.jsx'
 import { carregarCalculoPrecificacao } from '../hooks/usePrecificacaoCalculo.js'
+import { duplicarPrecificacao } from '../utils/duplicar.js'
 import './CRMDrawer.css'
 
 function fmtDateTime(iso) {
@@ -225,6 +226,7 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
   const [criandoPrecif, setCriandoPrecif] = useState(false)
   const [confirmDeletePrecif, setConfirmDeletePrecif] = useState(null) // id da precificação a excluir
   const [excluindoPrecif, setExcluindoPrecif] = useState(false)
+  const [duplicandoPrecifId, setDuplicandoPrecifId] = useState(null)
   const listRef = useRef(null)
 
   const clienteCol = columns.find(c => c.slug === 'cliente')
@@ -281,6 +283,21 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
     setCriandoPrecif(false)
     if (error || !data) return
     navigate(`/precificacao/${data.id}?origem=crm&linha_id=${row.id}`)
+  }
+
+  // A cópia herda crm_linha_id do original — continua vinculada a este registro
+  async function duplicarPrecif(precifId) {
+    if (duplicandoPrecifId) return
+    setDuplicandoPrecifId(precifId)
+    try {
+      const novoId = await duplicarPrecificacao(precifId, { usuarioId: user?.id })
+      toast('Precificação duplicada')
+      navigate(`/precificacao/${novoId}?origem=crm&linha_id=${row.id}`)
+    } catch (e) {
+      console.error('[crm] duplicar precificação falhou', e)
+      toast('Erro ao duplicar precificação')
+      setDuplicandoPrecifId(null)
+    }
   }
 
   async function excluirPrecificacao() {
@@ -430,6 +447,10 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
                   </div>
                   <button className="dr-precif-abrir" onClick={() => navigate(`/precificacao/${p.id}?origem=crm&linha_id=${row.id}`)}>
                     Abrir <IconArrowRight />
+                  </button>
+                  <button className="dr-precif-dup" onClick={() => duplicarPrecif(p.id)} disabled={duplicandoPrecifId != null}
+                    aria-label="Duplicar precificação" title={duplicandoPrecifId === p.id ? 'Duplicando…' : 'Duplicar precificação'}>
+                    <IconCopy />
                   </button>
                   <button className="dr-precif-del" onClick={() => setConfirmDeletePrecif(p.id)} aria-label="Excluir precificação" title="Excluir precificação">
                     <IconTrash />

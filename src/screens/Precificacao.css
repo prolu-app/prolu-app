@@ -92,7 +92,7 @@
 
 .pz-td-nome { font-weight: 500; color: var(--ink); }
 .pz-td-meta { color: var(--ink-60); }
-.pz-td-actions { width: 44px; text-align: right; }
+.pz-td-actions { width: 80px; text-align: right; white-space: nowrap; }
 
 .pz-row { cursor: pointer; }
 
@@ -110,6 +110,26 @@
 .pz-row:hover .pz-del-btn { opacity: 1; }
 .pz-del-btn:hover { background: rgba(224, 84, 84, 0.1); color: var(--red); }
 .pz-del-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
+
+.pz-dup-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-40);
+  display: inline-flex;
+  padding: 7px;
+  border-radius: 8px;
+  opacity: 0;
+  transition: opacity 0.12s, background 0.15s, color 0.15s;
+}
+.pz-row:hover .pz-dup-btn { opacity: 1; }
+.pz-dup-btn:hover { background: var(--gray-soft); color: var(--ink); }
+.pz-dup-btn:disabled { cursor: wait; }
+.pz-dup-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
+/* touch: sem hover, as ações da linha ficam sempre visíveis */
+@media (hover: none) {
+  .pz-dup-btn, .pz-del-btn { opacity: 1; }
+}
 
 @media (max-width: 700px) {
   .pz-table th:nth-child(3), .pz-table td:nth-child(3),

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { supabase, supabaseReady } from '../../services/supabaseClient.js'
 import { useToast } from '../../contexts/ToastContext.jsx'
-import { IconPlus, IconTrash, IconEdit, IconFile } from '../../components/Icons.jsx'
+import { IconPlus, IconTrash, IconEdit, IconFile, IconCopy } from '../../components/Icons.jsx'
 import EtapasEditor from '../../components/EtapasEditor.jsx'
 import ImportarModeloTxtModal from '../../components/ImportarModeloTxtModal.jsx'
 import { carregarModeloTree } from '../../utils/modeloPrecificacaoTree.js'
+import { duplicarModelo } from '../../utils/duplicar.js'
 import './AdminModelosPrecificacao.css'
 
 export default function AdminModelosPrecificacao() {
@@ -20,6 +21,7 @@ export default function AdminModelosPrecificacao() {
   const [nomeNovo, setNomeNovo] = useState('')
   const [criando, setCriando] = useState(false)
   const [modalImportar, setModalImportar] = useState(false)
+  const [duplicandoId, setDuplicandoId] = useState(null)
 
   useEffect(() => { carregarModelos() }, [])
 
@@ -54,6 +56,23 @@ export default function AdminModelosPrecificacao() {
     setModalNovo(false)
     setNomeNovo('')
     selecionar(data.id)
+  }
+
+  // Visão global (sem escritório de destino): a cópia de um Modelo Padrão
+  // Prolu continua sendo Modelo Padrão Prolu.
+  async function duplicar(modeloId) {
+    if (duplicandoId) return
+    setDuplicandoId(modeloId)
+    try {
+      const novo = await duplicarModelo(modeloId, { prolu: true })
+      setModelos((prev) => [...prev, { id: novo.id, nome: novo.nome }].sort((a, b) => a.nome.localeCompare(b.nome)))
+      selecionar(novo.id)
+      toast('Modelo Prolu duplicado')
+    } catch (e) {
+      console.error('[admin modelos] duplicar falhou', e)
+      toast('Erro ao duplicar modelo')
+    }
+    setDuplicandoId(null)
   }
 
   async function renomear(modeloId, nome) {
@@ -222,7 +241,8 @@ export default function AdminModelosPrecificacao() {
                 onSelect={() => selecionar(m.id)}
                 onEditar={() => setEditandoId(m.id)}
                 onRenomear={(nome) => renomear(m.id, nome)}
-                onExcluir={() => excluir(m.id)} />
+                onExcluir={() => excluir(m.id)}
+                onDuplicar={() => duplicar(m.id)} duplicando={duplicandoId === m.id} />
             ))}
           </div>
 
@@ -286,7 +306,7 @@ export default function AdminModelosPrecificacao() {
   )
 }
 
-function ModeloItem({ m, ativo, editando, onSelect, onEditar, onRenomear, onExcluir }) {
+function ModeloItem({ m, ativo, editando, onSelect, onEditar, onRenomear, onExcluir, onDuplicar, duplicando }) {
   if (editando) {
     return (
       <input
@@ -302,6 +322,7 @@ function ModeloItem({ m, ativo, editando, onSelect, onEditar, onRenomear, onExcl
     <div className={`amp-item${ativo ? ' active' : ''}`}>
       <button className="amp-item-select" onClick={onSelect}>{m.nome}</button>
       <div className="amp-item-actions">
+        <button onClick={onDuplicar} disabled={duplicando} aria-label="Duplicar" title={duplicando ? 'Duplicando…' : 'Duplicar'}><IconCopy /></button>
         <button onClick={onEditar} aria-label="Renomear"><IconEdit /></button>
         <button onClick={onExcluir} aria-label="Excluir"><IconTrash /></button>
       </div>

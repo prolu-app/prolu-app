@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
-import { IconPlus, IconSearch, IconClose, IconArrowRight, IconSettings, IconChevronDown, IconTrash } from '../components/Icons.jsx'
+import { IconPlus, IconSearch, IconClose, IconArrowRight, IconSettings, IconChevronDown, IconTrash, IconCopy } from '../components/Icons.jsx'
 import { carregarCalculoPrecificacao } from '../hooks/usePrecificacaoCalculo.js'
+import { duplicarPrecificacao } from '../utils/duplicar.js'
 import './Precificacao.css'
 
 const COMPLEXIDADE_LABEL = { baixa: 'Baixa', normal: 'Normal', alta: 'Alta' }
@@ -21,7 +22,7 @@ function fmtDate(iso) {
 }
 
 export default function Precificacao() {
-  const { activeEmpresaId } = useAuth()
+  const { activeEmpresaId, user } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
 
@@ -34,6 +35,7 @@ export default function Precificacao() {
   const [configAberto, setConfigAberto] = useState(false)
   const [confirmExcluir, setConfirmExcluir] = useState(null) // id da precificação a excluir
   const [excluindo, setExcluindo] = useState(false)
+  const [duplicandoId, setDuplicandoId] = useState(null)
 
   useEffect(() => { carregar() }, [activeEmpresaId])
 
@@ -92,6 +94,20 @@ export default function Precificacao() {
     setCriando(false)
     if (error || !data) { toast('Erro ao criar precificação'); return }
     navigate(`/precificacao/${data.id}`)
+  }
+
+  async function duplicar(precifId) {
+    if (duplicandoId) return
+    setDuplicandoId(precifId)
+    try {
+      const novoId = await duplicarPrecificacao(precifId, { usuarioId: user?.id })
+      toast('Precificação duplicada')
+      navigate(`/precificacao/${novoId}`)
+    } catch (e) {
+      console.error('[precificacao] duplicar falhou', e)
+      toast('Erro ao duplicar precificação')
+      setDuplicandoId(null)
+    }
   }
 
   async function excluirPrecificacao() {
@@ -202,6 +218,15 @@ export default function Precificacao() {
                   <td className="pz-td-meta">{p.totalHoras == null ? '—' : fmtMoney(p.valorFinal)}</td>
                   <td className="pz-td-meta">{fmtDate(p.created_at)}</td>
                   <td className="pz-td-actions">
+                    <button
+                      className="pz-dup-btn"
+                      onClick={(e) => { e.stopPropagation(); duplicar(p.id) }}
+                      disabled={duplicandoId != null}
+                      aria-label="Duplicar precificação"
+                      title={duplicandoId === p.id ? 'Duplicando…' : 'Duplicar precificação'}
+                    >
+                      <IconCopy />
+                    </button>
                     <button
                       className="pz-del-btn"
                       onClick={(e) => { e.stopPropagation(); setConfirmExcluir(p.id) }}

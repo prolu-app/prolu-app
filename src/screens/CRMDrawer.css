@@ -262,6 +262,20 @@
 }
 .dr-precif-abrir:hover { background: var(--green); }
 .dr-precif-abrir svg { width: 11px; height: 11px; stroke: currentColor; stroke-width: 2.4; fill: none; }
+.dr-precif-dup {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-40);
+  display: flex;
+  padding: 7px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.dr-precif-dup:hover { background: var(--gray-soft); color: var(--ink); }
+.dr-precif-dup:disabled { cursor: wait; opacity: 0.6; }
+.dr-precif-dup svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2; fill: none; }
 .dr-precif-del {
   background: none;
   border: none;

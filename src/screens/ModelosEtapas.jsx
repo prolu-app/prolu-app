@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
-import { IconBack, IconPlus, IconTrash, IconEdit } from '../components/Icons.jsx'
+import { IconBack, IconPlus, IconTrash, IconEdit, IconCopy } from '../components/Icons.jsx'
 import EtapasEditor from '../components/EtapasEditor.jsx'
 import { carregarModeloTree } from '../utils/modeloPrecificacaoTree.js'
+import { duplicarModelo } from '../utils/duplicar.js'
 import './ModelosEtapas.css'
 
 export default function ModelosEtapas() {
@@ -23,6 +24,7 @@ export default function ModelosEtapas() {
   const [nomeNovo, setNomeNovo] = useState('')
   const [globalNovo, setGlobalNovo] = useState(false)
   const [criando, setCriando] = useState(false)
+  const [duplicandoId, setDuplicandoId] = useState(null)
 
   useEffect(() => { carregarModelos() }, [activeEmpresaId])
 
@@ -76,6 +78,24 @@ export default function ModelosEtapas() {
     setNomeNovo('')
     setGlobalNovo(false)
     selecionar(data.id)
+  }
+
+  // Esta tela é sempre contexto de escritório (activeEmpresaId = escritório
+  // logado ou impersonado): a cópia é SEMPRE modelo do escritório, editável
+  // por ele — inclusive quando o original é um Modelo Padrão Prolu.
+  async function duplicar(modeloId) {
+    if (duplicandoId || !activeEmpresaId) return
+    setDuplicandoId(modeloId)
+    try {
+      const novo = await duplicarModelo(modeloId, { empresaId: activeEmpresaId })
+      setModelos((prev) => [...prev, novo].sort((a, b) => a.nome.localeCompare(b.nome)))
+      selecionar(novo.id)
+      toast('Modelo duplicado em "Meus modelos"')
+    } catch (e) {
+      console.error('[modelos] duplicar falhou', e)
+      toast('Erro ao duplicar modelo')
+    }
+    setDuplicandoId(null)
   }
 
   async function renomear(modeloId, nome) {
@@ -232,7 +252,8 @@ export default function ModelosEtapas() {
                     onSelect={() => selecionar(m.id)}
                     onEditar={() => setEditandoId(m.id)}
                     onRenomear={(nome) => renomear(m.id, nome)}
-                    onExcluir={() => excluir(m.id)} />
+                    onExcluir={() => excluir(m.id)}
+                    onDuplicar={() => duplicar(m.id)} duplicando={duplicandoId === m.id} />
                 ))}
               </>
             )}
@@ -245,7 +266,8 @@ export default function ModelosEtapas() {
                     onSelect={() => selecionar(m.id)}
                     onEditar={() => setEditandoId(m.id)}
                     onRenomear={(nome) => renomear(m.id, nome)}
-                    onExcluir={() => excluir(m.id)} />
+                    onExcluir={() => excluir(m.id)}
+                    onDuplicar={() => duplicar(m.id)} duplicando={duplicandoId === m.id} />
                 ))}
               </>
             )}
@@ -256,7 +278,7 @@ export default function ModelosEtapas() {
               <p className="me-empty">Carregando…</p>
             ) : !editavel ? (
               <>
-                <p className="me-readonly-note">Modelo Prolu — somente leitura.</p>
+                <p className="me-readonly-note">Modelo Prolu — somente leitura. Use <strong>Duplicar</strong> para criar uma cópia editável em Meus modelos.</p>
                 <EtapasEditor etapas={etapas} readOnly />
               </>
             ) : (
@@ -315,7 +337,7 @@ export default function ModelosEtapas() {
   )
 }
 
-function ModeloItem({ m, ativo, editavel, editando, onSelect, onEditar, onRenomear, onExcluir }) {
+function ModeloItem({ m, ativo, editavel, editando, onSelect, onEditar, onRenomear, onExcluir, onDuplicar, duplicando }) {
   if (editando) {
     return (
       <input
@@ -330,12 +352,16 @@ function ModeloItem({ m, ativo, editavel, editando, onSelect, onEditar, onRenome
   return (
     <div className={`me-item${ativo ? ' active' : ''}`}>
       <button className="me-item-select" onClick={onSelect}>{m.nome}</button>
-      {editavel && (
-        <div className="me-item-actions">
-          <button onClick={onEditar} aria-label="Renomear"><IconEdit /></button>
-          <button onClick={onExcluir} aria-label="Excluir"><IconTrash /></button>
-        </div>
-      )}
+      <div className="me-item-actions">
+        {/* duplicar vale pra qualquer modelo visível, inclusive Prolu somente leitura */}
+        <button onClick={onDuplicar} disabled={duplicando} aria-label="Duplicar" title={duplicando ? 'Duplicando…' : 'Duplicar'}><IconCopy /></button>
+        {editavel && (
+          <>
+            <button onClick={onEditar} aria-label="Renomear"><IconEdit /></button>
+            <button onClick={onExcluir} aria-label="Excluir"><IconTrash /></button>
+          </>
+        )}
+      </div>
     </div>
   )
 }
