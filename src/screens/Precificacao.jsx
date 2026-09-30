@@ -200,7 +200,7 @@ export default function Precificacao() {
                 <th>Horas</th>
                 <th>Valor</th>
                 <th>Criado em</th>
-                <th />
+                <th className="pz-th-actions" aria-label="Ações" />
               </tr>
             </thead>
             <tbody>
@@ -218,6 +218,7 @@ export default function Precificacao() {
                   <td className="pz-td-meta">{p.totalHoras == null ? '—' : fmtMoney(p.valorFinal)}</td>
                   <td className="pz-td-meta">{fmtDate(p.created_at)}</td>
                   <td className="pz-td-actions">
+                    <div className="pz-acoes">
                     <button
                       className="pz-dup-btn"
                       onClick={(e) => { e.stopPropagation(); duplicar(p.id) }}
@@ -235,6 +236,7 @@ export default function Precificacao() {
                     >
                       <IconTrash />
                     </button>
+                    </div>
                   </td>
                 </tr>
               ))}

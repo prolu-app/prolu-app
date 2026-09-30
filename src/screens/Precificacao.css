@@ -92,7 +92,37 @@
 
 .pz-td-nome { font-weight: 500; color: var(--ink); }
 .pz-td-meta { color: var(--ink-60); }
-.pz-td-actions { width: 80px; text-align: right; white-space: nowrap; }
+/* Ações da linha (duplicar/excluir): coluna de largura zero "grudada" na borda
+   direita da ÁREA VISÍVEL da tabela (sticky), não no fim da linha — quando a
+   tabela rola na horizontal, o conteúdo passa por baixo e as ações ficam
+   paradas. No hover o painel ocupa a ponta direita da linha (fundo igual ao da
+   linha + divisória), sem precisar rolar até o fim. */
+.pz-table th.pz-th-actions,
+.pz-table td.pz-td-actions {
+  position: sticky;
+  right: 0;
+  width: 0;
+  min-width: 0;
+  padding: 0;
+}
+.pz-table td.pz-td-actions { z-index: 1; }
+.pz-acoes {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 10px 0 8px;
+  background: var(--cream);
+  border-left: 1px solid var(--ink-divider);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+}
+.pz-row:hover .pz-acoes,
+.pz-row:focus-within .pz-acoes { opacity: 1; pointer-events: auto; }
 
 .pz-row { cursor: pointer; }
 
@@ -104,10 +134,8 @@
   display: inline-flex;
   padding: 7px;
   border-radius: 8px;
-  opacity: 0;
-  transition: opacity 0.12s, background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
-.pz-row:hover .pz-del-btn { opacity: 1; }
 .pz-del-btn:hover { background: rgba(224, 84, 84, 0.1); color: var(--red); }
 .pz-del-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
 
@@ -119,16 +147,14 @@
   display: inline-flex;
   padding: 7px;
   border-radius: 8px;
-  opacity: 0;
-  transition: opacity 0.12s, background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
-.pz-row:hover .pz-dup-btn { opacity: 1; }
 .pz-dup-btn:hover { background: var(--gray-soft); color: var(--ink); }
 .pz-dup-btn:disabled { cursor: wait; }
 .pz-dup-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
-/* touch: sem hover, as ações da linha ficam sempre visíveis */
+/* touch: sem hover, o painel de ações fica sempre visível (fundo branco da linha) */
 @media (hover: none) {
-  .pz-dup-btn, .pz-del-btn { opacity: 1; }
+  .pz-acoes { opacity: 1; pointer-events: auto; background: var(--white); }
 }
 
 @media (max-width: 700px) {
