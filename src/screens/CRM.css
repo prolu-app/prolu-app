@@ -122,7 +122,7 @@ body.crm-col-resizing { cursor: col-resize; user-select: none; }
 .crm-table th.th-sel { z-index: 4; }
 .crm-table td.td-sel { z-index: 1; }
 /* Checkbox desenhado (appearance: none) pra controlar a borda: sem borda em
-   repouso, borda clara no hover da linha/card (ou sempre, com seleção ativa
+   repouso, borda clara no hover da LINHA/card — não da caixa em si (ou sempre, com seleção ativa
    ou em tela de toque); marcado = fundo escuro com check branco. O check e o
    traço do "parcial" são SVG de fundo (::after em input não funciona no Firefox). */
 .th-sel input, .td-sel input, .crm-card-sel input {
@@ -139,10 +139,6 @@ body.crm-col-resizing { cursor: col-resize; user-select: none; }
 .crm-has-selection .td-sel input:not(:checked),
 .crm-has-selection .th-sel input:not(:checked):not(:indeterminate),
 .crm-has-selection .crm-card-sel input:not(:checked) { border-color: var(--ink-divider); }
-/* mouse sobre a própria caixa: um tom acima (mesma especificidade, vem depois) */
-.crm-table tbody tr .td-sel input:not(:checked):hover,
-.crm-table thead tr .th-sel input:not(:checked):not(:indeterminate):hover,
-.crm-cards .crm-card .crm-card-sel input:not(:checked):hover { border-color: var(--ink-40); }
 .th-sel input:focus-visible, .td-sel input:focus-visible, .crm-card-sel input:focus-visible {
   outline: 2px solid var(--ink-40); outline-offset: 2px; border-color: var(--ink-divider);
 }
