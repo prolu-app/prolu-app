@@ -227,6 +227,11 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
   const [confirmDeletePrecif, setConfirmDeletePrecif] = useState(null) // id da precificação a excluir
   const [excluindoPrecif, setExcluindoPrecif] = useState(false)
   const [duplicandoPrecifId, setDuplicandoPrecifId] = useState(null)
+  // Pedido vindo de formulário público: origem (crm_linhas.formulario_id) +
+  // ficha com os campos extras (crm_fichas). Buscado à parte — formulario_id
+  // não entra no objeto da linha, senão updateCell o gravaria dentro de valores.
+  const [origemForm, setOrigemForm] = useState(null)
+  const [fichas, setFichas] = useState([])
   const listRef = useRef(null)
 
   const clienteCol = columns.find(c => c.slug === 'cliente')
@@ -250,6 +255,22 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
       .order('created_at', { ascending: true })
       .then(({ data }) => { setComments(data || []); setCommentLoading(false) })
   }, [row?.id])
+
+  useEffect(() => {
+    setOrigemForm(null)
+    setFichas([])
+    if (!supabaseReady || !row?.id || isNew || row.id.startsWith('r')) return
+    let vivo = true
+    Promise.all([
+      supabase.from('crm_linhas').select('formulario_id, formularios(nome)').eq('id', row.id).maybeSingle(),
+      supabase.from('crm_fichas').select('id, formulario_nome, respostas, created_at').eq('linha_id', row.id).order('created_at'),
+    ]).then(([{ data: linha }, { data: fs }]) => {
+      if (!vivo) return
+      if (linha?.formulario_id) setOrigemForm(linha.formularios?.nome || 'Formulário removido')
+      setFichas(fs || [])
+    })
+    return () => { vivo = false }
+  }, [row?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Busca precificações vinculadas a esse registro do CRM (com o cálculo
   // de cada uma, já que total de horas e valor não são persistidos)
@@ -428,6 +449,23 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
                   <div className="dr-comment-text">{c.texto}</div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Ficha do pedido — só para registros que vieram de formulário público */}
+          {!isNew && (origemForm || fichas.length > 0) && (
+            <div className="dr-ficha-section">
+              <div className="dr-section-title">Ficha do pedido</div>
+              <div className="dr-ficha-origem">
+                Enviado pelo formulário <strong>{origemForm || fichas[0]?.formulario_nome || '—'}</strong>
+                {fichas[0]?.created_at && <> em {fmtDateTime(fichas[0].created_at)}</>}
+              </div>
+              {fichas.flatMap(fc => (Array.isArray(fc.respostas) ? fc.respostas : []).map((r, i) => (
+                <div className="dr-ficha-item" key={`${fc.id}-${i}`}>
+                  <div className="dr-ficha-label">{r.label}</div>
+                  <div className="dr-ficha-valor">{r.valor}</div>
+                </div>
+              )))}
             </div>
           )}
 

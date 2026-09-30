@@ -6,6 +6,7 @@ import AppLayout from './components/AppLayout.jsx'
 import Login from './screens/Login.jsx'
 import Onboarding from './screens/Onboarding.jsx'
 import AceitarConvite from './screens/AceitarConvite.jsx'
+import FormularioPublico from './screens/FormularioPublico.jsx'
 
 import Inicio from './screens/Inicio.jsx'
 import BaseConhecimento from './screens/BaseConhecimento.jsx'
@@ -56,6 +57,9 @@ export default function App() {
   // (needsOnboarding) tentaria te mandar pro cadastro normal em vez da
   // tela de aceite do convite.
   if (location.pathname === '/aceitar-convite') return <AceitarConvite />
+  // Formulário público (/f/:slug): sem login, fora do AppLayout — carrega e
+  // envia pela Edge Function formulario-publico.
+  if (location.pathname.startsWith('/f/')) return <FormularioPublico />
 
   if (loading) {
     return (

@@ -1,0 +1,211 @@
+// Edge Function: formulario-publico
+// Única porta de entrada da página pública /f/:slug (sem login). Duas ações:
+//   { acao: 'carregar', slug }                     → formulário ativo + campos
+//   { acao: 'enviar', slug, respostas, _site }     → valida e grava no CRM
+//
+// Roda com a service role key (ignora RLS) — por isso NÃO existe nenhuma
+// policy anon nas tabelas: toda a validação acontece aqui antes de gravar
+// (formulário ativo, campos conhecidos, obrigatoriedade, tipo, opções).
+//
+// Envio gera, para a empresa dona do formulário:
+//   crm_linhas  → colunas mapeadas + data de entrada (hoje) + status inicial
+//                 + Origem padrão do formulário, e formulario_id (origem)
+//   clientes    → contato criado/vinculado quando há campo mapeado p/ Cliente
+//   crm_fichas  → campos extras (sem coluna no CRM), só visíveis no drawer
+// Tabelas/colunas: migrations 025 e 026.
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+function jsonResponse(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
+}
+
+const LIMITE = { text: 300, textarea: 5000, email: 254, phone: 30, number: 30, select: 300 } as Record<string, number>
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+type Campo = {
+  id: string; label: string; tipo: string; obrigatorio: boolean; ordem: number
+  opcoes: { value: string }[]; crm_coluna_id: string | null
+}
+type Coluna = { id: string; nome: string; tipo: string; slug: string | null; opcoes: string[] }
+
+// crm_colunas.opcoes: colunas fixas = objeto { slug, items: [{value}] };
+// colunas criadas pelo usuário = array [{value}] (mesma leitura de CRM.jsx)
+function lerColuna(c: { id: string; nome: string; tipo: string; opcoes: unknown }): Coluna {
+  const obj = c.opcoes && !Array.isArray(c.opcoes) ? c.opcoes as Record<string, unknown> : null
+  const itens = obj ? (obj.items as { value: string }[] | undefined) || [] : (Array.isArray(c.opcoes) ? c.opcoes as { value: string }[] : [])
+  return { id: c.id, nome: c.nome, tipo: c.tipo, slug: obj ? (obj.slug as string) || null : null, opcoes: itens.map(o => o.value) }
+}
+
+// Opções que valem para o campo: se mapeado para uma seleção do CRM, as da
+// coluna (decisão da Fase 2); senão, as do próprio campo.
+function opcoesDoCampo(campo: Campo, colunas: Map<string, Coluna>): string[] {
+  const col = campo.crm_coluna_id ? colunas.get(campo.crm_coluna_id) : null
+  if (col && col.tipo === 'select') return col.opcoes
+  return (campo.opcoes || []).map(o => o.value)
+}
+
+function hojeSaoPaulo(): string {
+  // en-CA formata como YYYY-MM-DD
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  if (req.method !== 'POST') return jsonResponse({ error: 'Método não permitido.' }, 405)
+
+  let body: Record<string, unknown>
+  try {
+    body = await req.json()
+  } catch {
+    return jsonResponse({ error: 'Corpo da requisição inválido.' }, 400)
+  }
+
+  const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : ''
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug) || slug.length > 60) {
+    return jsonResponse({ error: 'Formulário não encontrado.' }, 404)
+  }
+
+  const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+
+  const { data: form } = await supabase
+    .from('formularios')
+    .select('id, empresa_id, nome, descricao, ativo, origem_crm, empresas(nome)')
+    .eq('slug', slug)
+    .maybeSingle()
+  // formulário inativo responde igual a inexistente: não revela que existe
+  if (!form || !form.ativo) return jsonResponse({ error: 'Este formulário não está disponível.' }, 404)
+
+  const [{ data: camposRaw }, { data: colunasRaw }] = await Promise.all([
+    supabase.from('formulario_campos')
+      .select('id, label, tipo, obrigatorio, ordem, opcoes, crm_coluna_id')
+      .eq('formulario_id', form.id).order('ordem'),
+    supabase.from('crm_colunas').select('id, nome, tipo, opcoes').eq('empresa_id', form.empresa_id),
+  ])
+  const campos = (camposRaw || []) as Campo[]
+  const colunas = new Map((colunasRaw || []).map(c => [c.id, lerColuna(c)]))
+
+  // ── carregar ──
+  if (body.acao === 'carregar') {
+    return jsonResponse({
+      formulario: {
+        nome: form.nome,
+        descricao: form.descricao,
+        escritorio: (form.empresas as { nome?: string } | null)?.nome || null,
+      },
+      campos: campos.map(c => ({
+        id: c.id, label: c.label, tipo: c.tipo, obrigatorio: c.obrigatorio,
+        opcoes: c.tipo === 'select' ? opcoesDoCampo(c, colunas) : [],
+      })),
+    }, 200)
+  }
+
+  if (body.acao !== 'enviar') return jsonResponse({ error: 'Ação inválida.' }, 400)
+
+  // Honeypot: campo invisível na página; robô que preenche recebe "ok" e nada é gravado
+  if (typeof body._site === 'string' && body._site.trim() !== '') return jsonResponse({ ok: true }, 200)
+
+  const respostas = (body.respostas && typeof body.respostas === 'object') ? body.respostas as Record<string, unknown> : {}
+
+  // ── validação campo a campo (ids desconhecidos são ignorados) ──
+  const erros: Record<string, string> = {}
+  const valores: Record<string, string> = {}
+  for (const c of campos) {
+    const bruto = respostas[c.id]
+    const v = typeof bruto === 'string' ? bruto.trim() : (typeof bruto === 'number' ? String(bruto) : '')
+    if (!v) {
+      if (c.obrigatorio) erros[c.id] = 'Campo obrigatório.'
+      continue
+    }
+    if (v.length > (LIMITE[c.tipo] ?? 300)) { erros[c.id] = 'Resposta muito longa.'; continue }
+    if (c.tipo === 'email' && !EMAIL_RE.test(v)) { erros[c.id] = 'E-mail inválido.'; continue }
+    if (c.tipo === 'phone') {
+      const digitos = v.replace(/\D/g, '')
+      if (digitos.length < 8 || digitos.length > 15) { erros[c.id] = 'Telefone inválido.'; continue }
+    }
+    if (c.tipo === 'number' && !Number.isFinite(Number(v.replace(',', '.')))) { erros[c.id] = 'Informe um número.'; continue }
+    if (c.tipo === 'select' && !opcoesDoCampo(c, colunas).includes(v)) { erros[c.id] = 'Opção inválida.'; continue }
+    valores[c.id] = v
+  }
+  if (Object.keys(erros).length) return jsonResponse({ error: 'Verifique os campos destacados.', erros }, 422)
+
+  // ── monta o registro do CRM ──
+  const porSlug = (s: string) => [...colunas.values()].find(c => c.slug === s)
+  const linha: Record<string, unknown> = {}
+  const extras: { campo_id: string; label: string; tipo: string; valor: string }[] = []
+  let nomeCliente: string | null = null
+
+  for (const c of campos) {
+    const v = valores[c.id]
+    if (v === undefined) continue
+    const col = c.crm_coluna_id ? colunas.get(c.crm_coluna_id) : null
+    if (!col) {
+      extras.push({ campo_id: c.id, label: c.label || 'Pergunta', tipo: c.tipo, valor: v })
+      continue
+    }
+    if (col.tipo === 'number' || col.tipo === 'money') linha[col.id] = Number(v.replace(',', '.'))
+    else linha[col.id] = v
+    if (col.tipo === 'client') nomeCliente = v
+  }
+
+  // padrões de um pedido novo (só se nenhum campo mapeado já preencheu)
+  const colEntrada = porSlug('data_entrada')
+  if (colEntrada && linha[colEntrada.id] === undefined) linha[colEntrada.id] = hojeSaoPaulo()
+  const colStatus = porSlug('status')
+  if (colStatus && linha[colStatus.id] === undefined && colStatus.opcoes.length) {
+    linha[colStatus.id] = colStatus.opcoes.includes('Pedido de orçamento') ? 'Pedido de orçamento' : colStatus.opcoes[0]
+  }
+  const colOrigem = porSlug('origem')
+  if (colOrigem && linha[colOrigem.id] === undefined && form.origem_crm) linha[colOrigem.id] = form.origem_crm
+
+  const { data: nova, error: linhaErr } = await supabase
+    .from('crm_linhas')
+    .insert({ empresa_id: form.empresa_id, valores: linha, formulario_id: form.id })
+    .select('id').single()
+  if (linhaErr || !nova) {
+    console.error('[formulario-publico] crm_linhas', linhaErr)
+    return jsonResponse({ error: 'Não foi possível enviar agora. Tente novamente.' }, 500)
+  }
+
+  if (extras.length) {
+    const { error: fichaErr } = await supabase.from('crm_fichas').insert({
+      linha_id: nova.id, empresa_id: form.empresa_id, formulario_id: form.id,
+      formulario_nome: form.nome, respostas: extras,
+    })
+    if (fichaErr) {
+      // sem a ficha o pedido ficaria incompleto: desfaz o registro
+      console.error('[formulario-publico] crm_fichas', fichaErr)
+      await supabase.from('crm_linhas').delete().eq('id', nova.id)
+      return jsonResponse({ error: 'Não foi possível enviar agora. Tente novamente.' }, 500)
+    }
+  }
+
+  // ── contato (Cliente): vincula ao existente com o mesmo nome ou cria ──
+  // Por último, depois do registro e da ficha gravados — se algo antes
+  // falhasse, não sobra contato órfão.
+  if (nomeCliente) {
+    const { data: existentes } = await supabase
+      .from('clientes').select('id').eq('empresa_id', form.empresa_id)
+      // ilike sem curinga = igualdade sem diferenciar maiúsculas; escapa % _ \ do nome
+      .ilike('nome', nomeCliente.replace(/[%_\\]/g, (m) => '\\' + m)).limit(1)
+    if (!existentes?.length) {
+      const primeiro = (tipo: string) => campos.find(c => c.tipo === tipo && valores[c.id] !== undefined)
+      const email = primeiro('email'); const tel = primeiro('phone')
+      const { error: cliErr } = await supabase.from('clientes').insert({
+        empresa_id: form.empresa_id, nome: nomeCliente,
+        email: email ? valores[email.id] : null, telefone: tel ? valores[tel.id] : null,
+      })
+      if (cliErr) console.error('[formulario-publico] contato', cliErr) // não impede o registro no CRM
+    }
+  }
+
+  return jsonResponse({ ok: true }, 200)
+})

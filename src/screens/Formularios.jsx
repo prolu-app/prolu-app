@@ -4,10 +4,11 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { IconPlus } from '../components/Icons.jsx'
+import { slugify, comSufixo } from '../utils/slug.js'
 import './Formularios.css'
 
-// Formulários do escritório (Fase 1: só o builder, sem link público).
-// Tabelas formularios / formulario_campos — migration_025.
+// Formulários do escritório: builder (Fase 1) + link público /f/:slug (Fase 2).
+// Tabelas formularios / formulario_campos — migrations 025 e 026.
 
 function fmtData(iso) {
   if (!iso) return '—'
@@ -54,7 +55,7 @@ export default function Formularios() {
     setLoading(true)
     const { data, error } = await supabase
       .from('formularios')
-      .select('id, nome, descricao, ativo, updated_at, formulario_campos(count)')
+      .select('id, nome, descricao, slug, ativo, updated_at, formulario_campos(count)')
       .eq('empresa_id', activeEmpresaId)
       .order('created_at', { ascending: true })
     if (error) { console.error('[formularios] carregar', error); toast('Erro ao carregar formulários') }
@@ -76,11 +77,18 @@ export default function Formularios() {
   async function criar() {
     if (!nomeNovo.trim() || criando) return
     setCriando(true)
-    const { data, error } = await supabase
-      .from('formularios')
-      .insert({ empresa_id: activeEmpresaId, nome: nomeNovo.trim(), descricao: descNovo.trim() || null })
-      .select('id')
-      .single()
+    // endereço público gerado do nome; é único no sistema todo (outro
+    // escritório pode já ter usado) — em colisão (23505) tenta com sufixo
+    const base = slugify(nomeNovo)
+    let data = null, error = null
+    for (let tentativa = 0; tentativa < 4; tentativa++) {
+      ;({ data, error } = await supabase
+        .from('formularios')
+        .insert({ empresa_id: activeEmpresaId, nome: nomeNovo.trim(), descricao: descNovo.trim() || null, slug: tentativa ? comSufixo(base) : base })
+        .select('id')
+        .single())
+      if (error?.code !== '23505') break
+    }
     setCriando(false)
     if (error || !data) { console.error('[formularios] criar', error); toast('Erro ao criar formulário'); return }
     navigate(`/formularios/${data.id}`)
@@ -141,6 +149,7 @@ export default function Formularios() {
                   <td>
                     <div className="fm-nome">{f.nome}</div>
                     {f.descricao && <div className="fm-desc">{f.descricao}</div>}
+                    <div className="fm-slug">/f/{f.slug}</div>
                   </td>
                   <td className="fm-meta">{f.qtdCampos} {f.qtdCampos === 1 ? 'campo' : 'campos'}</td>
                   <td className="fm-meta">{fmtData(f.updated_at)}</td>

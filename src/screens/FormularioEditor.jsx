@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
-import { IconBack, IconPlus, IconTrash, IconGrip, IconClose, IconChevronDown } from '../components/Icons.jsx'
+import { IconBack, IconPlus, IconTrash, IconGrip, IconClose, IconChevronDown, IconCopy, IconArrowUpRight } from '../components/Icons.jsx'
+import { slugify, slugValido, urlPublica } from '../utils/slug.js'
 import { FmSwitch } from './Formularios.jsx'
 import './Formularios.css'
 
@@ -16,6 +17,27 @@ const TIPOS = [
   { value: 'email', label: 'E-mail' },
   { value: 'select', label: 'Seleção' },
 ]
+
+// ── Mapeamento campo → coluna do CRM (Fase 2) ──
+// Tipos de campo aceitos por tipo de coluna do CRM. Colunas de data, tags e
+// checkbox não recebem campos; Status é preenchido sozinho no envio.
+const CAMPO_ACEITA = {
+  text: ['text', 'textarea', 'phone', 'email'],
+  client: ['text'],
+  number: ['number'],
+  money: ['number'],
+  select: ['select'],
+}
+const SLUGS_AUTOMATICOS = ['status']
+function tipoPadraoPara(colTipo) { return CAMPO_ACEITA[colTipo]?.[0] || 'text' }
+function colunaMapeavel(col) { return !!CAMPO_ACEITA[col.tipo] && !SLUGS_AUTOMATICOS.includes(col.slug) }
+
+// crm_colunas.opcoes: fixas = objeto { slug, items }; criadas = array (igual CRM.jsx)
+function lerColunaCrm(c) {
+  const obj = c.opcoes != null && !Array.isArray(c.opcoes) ? c.opcoes : null
+  const itens = obj ? (obj.items || []) : (Array.isArray(c.opcoes) ? c.opcoes : [])
+  return { id: c.id, nome: c.nome, tipo: c.tipo, slug: obj?.slug || null, opcoes: itens.map(o => o.value) }
+}
 
 // Mesmo critério do EtapasEditor/CRM: metade de cima = antes, de baixo = depois
 function posicaoNoAlvo(ev) {
@@ -39,6 +61,10 @@ export default function FormularioEditor() {
   const [armadoId, setArmadoId] = useState(null)
   const [dragId, setDragId] = useState(null)
   const [dragOver, setDragOver] = useState(null) // { id, pos: 'before' | 'after' }
+  const [colunasCrm, setColunasCrm] = useState([])
+  // remonta o input do endereço após cada tentativa: mostra sempre o slug salvo
+  // (normalizado), e não o texto digitado quando era inválido ou já estava em uso
+  const [slugVersao, setSlugVersao] = useState(0)
 
   // prolu_admin visitando outro escritório só lê (RLS da migration_025)
   const podeEditar = !!form && form.empresa_id === user?.empresaId
@@ -66,6 +92,12 @@ export default function FormularioEditor() {
     if (!f) setNaoEncontrado(true)
     setForm(f || null)
     setCampos(cs || [])
+    if (f) {
+      const { data: cols } = await supabase
+        .from('crm_colunas').select('id, nome, tipo, opcoes, ordem')
+        .eq('empresa_id', f.empresa_id).order('ordem')
+      setColunasCrm((cols || []).map(lerColunaCrm))
+    }
     setLoading(false)
   }
 
@@ -76,6 +108,30 @@ export default function FormularioEditor() {
     const { error } = await supabase.from('formularios').update(patch).eq('id', id)
     if (error) { setForm(anterior); toast('Não foi possível salvar'); return false }
     return true
+  }
+
+  async function salvarSlug(digitado) {
+    setSlugVersao(v => v + 1)
+    const novo = slugify(digitado)
+    if (!slugValido(novo) || novo === form.slug) return
+    const anterior = form.slug
+    setForm(prev => ({ ...prev, slug: novo }))
+    const { error } = await supabase.from('formularios').update({ slug: novo }).eq('id', id)
+    if (error) {
+      setForm(prev => ({ ...prev, slug: anterior }))
+      toast(error.code === '23505' ? 'Esse endereço já está em uso — escolha outro' : 'Não foi possível salvar o endereço')
+      return
+    }
+    toast('Endereço atualizado — o link anterior deixou de funcionar')
+  }
+
+  async function copiarLink() {
+    try {
+      await navigator.clipboard.writeText(urlPublica(form.slug))
+      toast('Link copiado')
+    } catch {
+      toast('Não foi possível copiar — selecione o link e copie manualmente')
+    }
   }
 
   // ── campos ──
@@ -97,7 +153,10 @@ export default function FormularioEditor() {
     const anterior = campos
     setCampos(prev => prev.map(c => c.id === campoId ? { ...c, ...patch } : c))
     const { error } = await supabase.from('formulario_campos').update(patch).eq('id', campoId)
-    if (error) { setCampos(anterior); toast('Não foi possível salvar o campo') }
+    if (error) {
+      setCampos(anterior)
+      toast(error.code === '23505' ? 'Essa coluna do CRM já recebe outro campo deste formulário' : 'Não foi possível salvar o campo')
+    }
   }
 
   async function removerCampo(campoId) {
@@ -190,6 +249,52 @@ export default function FormularioEditor() {
         </div>
       </div>
 
+      <div className="fm-publico">
+        <div className="fm-publico-row">
+          <span className="fm-publico-label">Link público</span>
+          <div className="fm-publico-link">
+            <span className="fm-publico-prefixo">{window.location.host}/f/</span>
+            <CampoTextoSalvo
+              key={slugVersao}
+              className="fm-slug-input"
+              valor={form.slug}
+              disabled={!podeEditar}
+              obrigatorio
+              aria-label="Endereço do formulário"
+              onSalvar={salvarSlug}
+            />
+          </div>
+          <div className="fm-publico-acoes">
+            <button type="button" className="fm-icon-btn" onClick={copiarLink} title="Copiar link" aria-label="Copiar link"><IconCopy /></button>
+            <a className="fm-icon-btn" href={urlPublica(form.slug)} target="_blank" rel="noreferrer" title="Abrir formulário" aria-label="Abrir formulário"><IconArrowUpRight /></a>
+          </div>
+        </div>
+        {!form.ativo && <p className="fm-publico-aviso">Formulário inativo: o link mostra "Formulário indisponível" e não recebe respostas.</p>}
+        {(() => {
+          const colOrigem = colunasCrm.find(c => c.slug === 'origem')
+          if (!colOrigem) return null
+          return (
+            <div className="fm-publico-row">
+              <span className="fm-publico-label">Origem no CRM</span>
+              <select
+                className="fm-tipo fm-origem"
+                value={form.origem_crm || ''}
+                disabled={!podeEditar}
+                onChange={e => salvarForm({ origem_crm: e.target.value || null })}
+                aria-label="Origem preenchida no CRM"
+              >
+                <option value="">Não preencher</option>
+                {colOrigem.opcoes.map(o => <option key={o} value={o}>{o}</option>)}
+                {form.origem_crm && !colOrigem.opcoes.includes(form.origem_crm) && (
+                  <option value={form.origem_crm}>{form.origem_crm} (não existe mais na coluna)</option>
+                )}
+              </select>
+              <span className="fm-publico-dica">Preenche a coluna Origem de cada pedido que chegar por este formulário.</span>
+            </div>
+          )
+        })()}
+      </div>
+
       <div className="fm-section-title">
         Campos <span className="fm-count">{campos.length}</span>
       </div>
@@ -211,6 +316,8 @@ export default function FormularioEditor() {
             onSalvar={patch => salvarCampo(c.id, patch)}
             onRemover={() => removerCampo(c.id)}
             onMover={delta => mover(c.id, delta)}
+            colunasMapeaveis={colunasCrm.filter(colunaMapeavel)}
+            colunasUsadas={new Set(campos.filter(x => x.id !== c.id && x.crm_coluna_id).map(x => x.crm_coluna_id))}
             // arrastar
             armado={armadoId === c.id}
             onArmar={() => setArmadoId(c.id)}
@@ -265,7 +372,7 @@ function CampoTextoSalvo({ valor, onSalvar, multilinha, obrigatorio, className, 
 }
 
 function CampoCard({
-  campo, indice, total, podeEditar, focar, onFocado, onSalvar, onRemover, onMover,
+  campo, indice, total, podeEditar, focar, onFocado, onSalvar, onRemover, onMover, colunasMapeaveis, colunasUsadas,
   armado, onArmar, arrastando, dragOverPos, onDragStart, onDragOver, onDrop, onDragEnd,
 }) {
   const labelRef = useRef(null)
@@ -287,7 +394,28 @@ function CampoCard({
     setNovaOpcao('')
   }
 
-  const semOpcoes = campo.tipo === 'select' && opcoes.length === 0
+  const colMapeada = campo.crm_coluna_id ? colunasMapeaveis.find(c => c.id === campo.crm_coluna_id) : null
+  // mapeado para seleção do CRM: as opções são as da coluna (decisão da Fase 2)
+  const opcoesDaColuna = colMapeada?.tipo === 'select'
+  const semOpcoes = campo.tipo === 'select' && (opcoesDaColuna ? colMapeada.opcoes.length === 0 : opcoes.length === 0)
+
+  function mudarMapeamento(colId) {
+    if (!colId) { onSalvar({ crm_coluna_id: null }); return }
+    const col = colunasMapeaveis.find(c => c.id === colId)
+    if (!col) return
+    const patch = { crm_coluna_id: col.id }
+    if (!CAMPO_ACEITA[col.tipo].includes(campo.tipo)) patch.tipo = tipoPadraoPara(col.tipo)
+    onSalvar(patch)
+  }
+
+  function mudarTipo(tipo) {
+    // tipo novo incompatível com a coluna mapeada → volta a ser campo extra
+    if (colMapeada && !CAMPO_ACEITA[colMapeada.tipo].includes(tipo)) {
+      onSalvar({ tipo, crm_coluna_id: null })
+      return
+    }
+    onSalvar({ tipo })
+  }
 
   return (
     <div
@@ -335,15 +463,43 @@ function CampoCard({
           <select
             className="fm-tipo"
             value={campo.tipo}
-            disabled={!podeEditar}
-            onChange={e => onSalvar({ tipo: e.target.value })}
+            disabled={!podeEditar || opcoesDaColuna}
+            title={opcoesDaColuna ? 'Definido pela coluna do CRM' : undefined}
+            onChange={e => mudarTipo(e.target.value)}
             aria-label="Tipo do campo"
           >
             {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </div>
 
-        {campo.tipo === 'select' && (
+        <div className="fm-mapa">
+          <span className="fm-mapa-label">Vai para o CRM</span>
+          <select
+            className="fm-tipo fm-mapa-select"
+            value={campo.crm_coluna_id || ''}
+            disabled={!podeEditar}
+            onChange={e => mudarMapeamento(e.target.value)}
+            aria-label="Coluna do CRM que recebe este campo"
+          >
+            <option value="">Campo extra (ficha do pedido)</option>
+            {colunasMapeaveis.map(col => (
+              <option key={col.id} value={col.id} disabled={colunasUsadas.has(col.id)}>
+                {col.nome}{colunasUsadas.has(col.id) ? ' (já usada)' : ''}
+              </option>
+            ))}
+          </select>
+          {!campo.crm_coluna_id && <span className="fm-mapa-dica">Fica só no drawer do registro, não vira coluna</span>}
+        </div>
+
+        {campo.tipo === 'select' && opcoesDaColuna && (
+          <div className="fm-opcoes">
+            {colMapeada.opcoes.map(o => <span className="fm-opcao fm-opcao-crm" key={o}>{o}</span>)}
+            <span className="fm-mapa-dica">Opções da coluna {colMapeada.nome} do CRM — edite no CRM</span>
+            {semOpcoes && <span className="fm-aviso">A coluna não tem opções</span>}
+          </div>
+        )}
+
+        {campo.tipo === 'select' && !opcoesDaColuna && (
           <div className="fm-opcoes">
             {opcoes.map(o => (
               <span className="fm-opcao" key={o.value}>
