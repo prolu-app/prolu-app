@@ -7,6 +7,7 @@ import { IconArrowRight, IconClose, IconPlus, IconTrash } from '../components/Ic
 import EtapasEditor from '../components/EtapasEditor.jsx'
 import { usePrecificacaoCalculo } from '../hooks/usePrecificacaoCalculo.js'
 import { carregarModeloTree } from '../utils/modeloPrecificacaoTree.js'
+import { duplicarPrecificacao } from '../utils/duplicar.js'
 import './PrecificacaoDetalhe.css'
 
 const COMPLEXIDADES = [
@@ -94,7 +95,7 @@ function removeSubtarefaFromTree(list, subId) {
 
 export default function PrecificacaoDetalhe() {
   const { id } = useParams()
-  const { activeEmpresaId } = useAuth()
+  const { activeEmpresaId, user } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -130,6 +131,7 @@ export default function PrecificacaoDetalhe() {
   const [importando, setImportando] = useState(null)
   const [escolhaImportar, setEscolhaImportar] = useState(null) // id do modelo escolhido aguardando "substituir ou adicionar"
   const [concluindo, setConcluindo] = useState(false)
+  const [duplicando, setDuplicando] = useState(false)
   const [savedAt, setSavedAt] = useState(null)
   const savedTimeoutRef = useRef(null)
 
@@ -256,8 +258,8 @@ export default function PrecificacaoDetalhe() {
     setEditandoNome(false)
   }
 
-  async function concluir() {
-    setConcluindo(true)
+  // Grava todos os campos da aba Geral de uma vez (Concluir e Duplicar)
+  async function salvarFormulario() {
     await persistField({
       nome: form.nome.trim() || 'Sem nome',
       cliente_id: form.clienteId,
@@ -269,9 +271,31 @@ export default function PrecificacaoDetalhe() {
       metragem: form.metragem === '' ? null : Number(form.metragem),
       complexidade: form.complexidade,
     })
+  }
+
+  async function concluir() {
+    setConcluindo(true)
+    await salvarFormulario()
     setConcluindo(false)
     if (origem === 'crm' && linhaIdOrigem) navigate(`/crm?open=${linhaIdOrigem}`)
     else navigate('/precificacao')
+  }
+
+  // Salva o que estiver editado e duplica a precificação inteira; abre a cópia
+  // mantendo a origem (CRM) — a cópia herda o mesmo crm_linha_id.
+  async function duplicar() {
+    if (duplicando) return
+    setDuplicando(true)
+    try {
+      await salvarFormulario()
+      const novoId = await duplicarPrecificacao(id, { usuarioId: user?.id })
+      toast('Precificação duplicada')
+      navigate(`/precificacao/${novoId}${origem === 'crm' && linhaIdOrigem ? `?origem=crm&linha_id=${linhaIdOrigem}` : ''}`)
+    } catch (e) {
+      console.error('[precificacao] duplicar falhou', e)
+      toast('Erro ao duplicar precificação')
+    }
+    setDuplicando(false)
   }
 
   function selecionarCliente(c) {
@@ -654,6 +678,7 @@ export default function PrecificacaoDetalhe() {
           <h1 className="pd-nome" onClick={() => setEditandoNome(true)} title="Clique para editar">{form.nome}</h1>
         )}
         <div className="pd-header-actions">
+          <button className="btn-cancel" onClick={duplicar} disabled={duplicando}>{duplicando ? 'Duplicando…' : 'Duplicar'}</button>
           <button className="btn-cancel" onClick={abrirSalvarModelo}>Salvar como modelo</button>
           <button className="btn-primary" onClick={concluir} disabled={concluindo}>
             {concluindo ? 'Salvando…' : 'Concluir'}
