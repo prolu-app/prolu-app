@@ -12,7 +12,10 @@
 //                 + Origem padrão do formulário, e formulario_id (origem)
 //   clientes    → contato criado/vinculado quando há campo mapeado p/ Cliente
 //   crm_fichas  → campos extras (sem coluna no CRM), só visíveis no drawer
-// Tabelas/colunas: migrations 025 e 026.
+// Tabelas/colunas: migrations 025, 026 e 027 (css_personalizado).
+//
+// Também atende o embed (public/embed.js): o modo "cru" chama esta função
+// direto do site do escritório (CORS liberado, sem apikey — verify_jwt off).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -78,7 +81,7 @@ Deno.serve(async (req) => {
 
   const { data: form } = await supabase
     .from('formularios')
-    .select('id, empresa_id, nome, descricao, ativo, origem_crm, empresas(nome)')
+    .select('id, empresa_id, nome, descricao, ativo, origem_crm, css_personalizado, empresas(nome)')
     .eq('slug', slug)
     .maybeSingle()
   // formulário inativo responde igual a inexistente: não revela que existe
@@ -100,6 +103,8 @@ Deno.serve(async (req) => {
         nome: form.nome,
         descricao: form.descricao,
         escritorio: (form.empresas as { nome?: string } | null)?.nome || null,
+        // só a página /f/:slug (e o iframe) aplica; o embed cru ignora
+        css: form.css_personalizado || null,
       },
       campos: campos.map(c => ({
         id: c.id, label: c.label, tipo: c.tipo, obrigatorio: c.obrigatorio,

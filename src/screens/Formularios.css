@@ -107,6 +107,62 @@
 .fm-origem { width: auto; min-width: 180px; }
 .fm-publico-dica, .fm-mapa-dica { font-size: 12px; color: var(--ink-40); }
 
+/* incorporar + CSS personalizado (Fase 3) */
+.fm-embed-btn {
+  display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+  background: var(--gray-soft); border: none; border-radius: 8px; color: var(--ink-60);
+  font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.fm-embed-btn:hover { color: var(--ink); background: #e6e6e1; }
+.fm-embed-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
+.fm-css-row { align-items: flex-start; }
+.fm-css-row .fm-publico-label { padding-top: 10px; }
+.fm-css-box { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 6px; }
+.fm-css-input {
+  width: 100%; border: none; outline: none; resize: vertical; min-height: 64px;
+  background: var(--cream); border-radius: 8px; padding: 9px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; line-height: 1.5; color: var(--ink);
+}
+.fm-css-input:focus { box-shadow: 0 0 0 1.5px var(--ink-divider); }
+.fm-css-input:disabled { -webkit-text-fill-color: currentColor; }
+.fm-link-btn {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font: inherit; color: var(--ink-60); text-decoration: underline;
+}
+.fm-link-btn:hover { color: var(--ink); }
+
+.modal.fm-embed { width: 680px; max-height: calc(100vh - 32px); overflow-y: auto; }
+.fm-embed-modos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.fm-embed-modo {
+  display: flex; flex-direction: column; gap: 4px; text-align: left; cursor: pointer;
+  background: var(--white); border: 1.5px solid var(--ink-30); border-radius: var(--r-md);
+  padding: 12px 14px; font-family: inherit; color: var(--ink);
+}
+.fm-embed-modo:hover { border-color: var(--ink-40); }
+.fm-embed-modo.on { border-color: var(--ink); background: var(--cream); }
+.fm-embed-modo-titulo { font-size: 13.5px; font-weight: 600; }
+.fm-embed-modo-texto { font-size: 12px; line-height: 1.45; color: var(--ink-60); }
+.fm-embed-bloco { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
+.fm-embed-bloco-head { display: flex; align-items: center; justify-content: space-between; }
+.fm-embed-copiar {
+  display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: none; border-radius: 99px;
+  background: var(--green); color: var(--ink); font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.fm-embed-copiar svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2; fill: none; }
+.fm-embed-codigo, .fm-embed-exemplo {
+  width: 100%; border: none; outline: none; resize: none; margin: 0;
+  background: var(--cream); border-radius: 8px; padding: 10px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.5; color: var(--ink);
+  white-space: pre-wrap; word-break: break-all;
+}
+.fm-embed-classes { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.fm-embed-classes td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--ink-divider); vertical-align: top; color: var(--ink-60); }
+.fm-embed-classes td:first-child { white-space: nowrap; }
+.fm-embed-classes code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; color: var(--ink); }
+.fm-embed-campo { color: var(--ink) !important; max-width: 200px; white-space: normal !important; }
+.fm-embed-seletor { background: none; border: none; padding: 0; cursor: copy; text-align: left; word-break: break-all; }
+.fm-embed-seletor:hover code { text-decoration: underline; }
+
 /* mapeamento campo → coluna do CRM */
 .fm-mapa { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .fm-mapa-label { font-size: 12.5px; color: var(--ink-60); }
@@ -203,6 +259,8 @@
   .fm-tipo { width: 100%; }
   .fm-publico-label { width: 100%; }
   .fm-mapa-select, .fm-origem { width: 100%; }
+  .fm-embed-modos { grid-template-columns: 1fr; }
+  .fm-embed-classes td:first-child { white-space: normal; word-break: break-all; }
   /* no toque o arrastar HTML5 não funciona — as setas ↑↓ fazem o papel */
   .fm-grip { display: none; }
 }

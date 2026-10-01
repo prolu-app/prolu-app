@@ -3,9 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
-import { IconBack, IconPlus, IconTrash, IconGrip, IconClose, IconChevronDown, IconCopy, IconArrowUpRight } from '../components/Icons.jsx'
+import { IconBack, IconPlus, IconTrash, IconGrip, IconClose, IconChevronDown, IconCopy, IconArrowUpRight, IconCode } from '../components/Icons.jsx'
 import { slugify, slugValido, urlPublica } from '../utils/slug.js'
 import { FmSwitch } from './Formularios.jsx'
+import IncorporarFormulario from './IncorporarFormulario.jsx'
 import './Formularios.css'
 
 // Códigos em inglês no banco (igual crm_colunas.tipo), rótulo em português aqui.
@@ -65,6 +66,7 @@ export default function FormularioEditor() {
   // remonta o input do endereço após cada tentativa: mostra sempre o slug salvo
   // (normalizado), e não o texto digitado quando era inválido ou já estava em uso
   const [slugVersao, setSlugVersao] = useState(0)
+  const [incorporar, setIncorporar] = useState(false)
 
   // prolu_admin visitando outro escritório só lê (RLS da migration_025)
   const podeEditar = !!form && form.empresa_id === user?.empresaId
@@ -267,6 +269,7 @@ export default function FormularioEditor() {
           <div className="fm-publico-acoes">
             <button type="button" className="fm-icon-btn" onClick={copiarLink} title="Copiar link" aria-label="Copiar link"><IconCopy /></button>
             <a className="fm-icon-btn" href={urlPublica(form.slug)} target="_blank" rel="noreferrer" title="Abrir formulário" aria-label="Abrir formulário"><IconArrowUpRight /></a>
+            <button type="button" className="fm-embed-btn" onClick={() => setIncorporar(true)}><IconCode /> Incorporar</button>
           </div>
         </div>
         {!form.ativo && <p className="fm-publico-aviso">Formulário inativo: o link mostra "Formulário indisponível" e não recebe respostas.</p>}
@@ -293,7 +296,30 @@ export default function FormularioEditor() {
             </div>
           )
         })()}
+        <div className="fm-publico-row fm-css-row">
+          <span className="fm-publico-label">CSS personalizado</span>
+          <div className="fm-css-box">
+            <CampoTextoSalvo
+              multilinha
+              className="fm-css-input"
+              rows={5}
+              valor={form.css_personalizado || ''}
+              disabled={!podeEditar}
+              maxLength={20000}
+              spellCheck={false}
+              placeholder={'.prolu-form__enviar { background: #1d3557; color: #fff; }'}
+              aria-label="CSS personalizado do formulário"
+              onSalvar={css => salvarForm({ css_personalizado: css || null }).then(ok => ok && toast('CSS salvo'))}
+            />
+            <span className="fm-publico-dica">
+              Muda a aparência do link público e do modo "Com estilo do Prolu" da incorporação.{' '}
+              <button type="button" className="fm-link-btn" onClick={() => setIncorporar(true)}>Ver classes</button>
+            </span>
+          </div>
+        </div>
       </div>
+
+      {incorporar && <IncorporarFormulario form={form} campos={campos} onFechar={() => setIncorporar(false)} />}
 
       <div className="fm-section-title">
         Campos <span className="fm-count">{campos.length}</span>

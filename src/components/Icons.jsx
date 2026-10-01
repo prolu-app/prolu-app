@@ -155,3 +155,6 @@ export const IconFormulario = (p) => (
 export const IconContacts = (p) => (
   <svg viewBox="0 0 24 24" {...p}><rect x="3" y="4" width="15" height="16" rx="2" /><circle cx="10.5" cy="10" r="2.3" /><path d="M7 16.5c0-1.7 1.4-3 3.5-3s3.5 1.3 3.5 3" /><path d="M20.3 8h1.7M20.3 12h1.7M20.3 16h1.7" /></svg>
 )
+export const IconCode = (p) => (
+  <svg viewBox="0 0 24 24" {...p}><path d="M16 18l6-6-6-6M8 6l-6 6 6 6" /></svg>
+)

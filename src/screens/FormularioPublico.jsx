@@ -5,6 +5,14 @@ import './FormularioPublico.css'
 // Página pública /f/:slug — sem login. Carrega e envia SEMPRE pela Edge
 // Function `formulario-publico` (nenhuma tabela tem acesso anon). A
 // validação aqui é só conforto: a função valida de novo antes de gravar.
+//
+// ?embed=1 → modo "com estilo do Prolu" da incorporação: a página roda dentro
+// de um iframe no site do escritório (fundo transparente, sem moldura) e
+// avisa a altura ao embed.js para o iframe crescer sem barra de rolagem.
+//
+// Classes prolu-form__* são CONTRATO público (CSS personalizado do
+// escritório e embed cru em public/embed.js usam os mesmos nomes) — não
+// renomear. Referência na tela "Incorporar" (IncorporarFormulario.jsx).
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -29,8 +37,14 @@ async function chamar(body) {
   return { error: payload || { error: 'Não foi possível conectar. Tente novamente.' }, status: error.context?.status }
 }
 
+// mensagens para o embed.js na página que contém o iframe
+function avisarSite(tipo, dados) {
+  if (window.parent !== window) window.parent.postMessage({ tipo: `prolu-form:${tipo}`, ...dados }, '*')
+}
+
 export default function FormularioPublico() {
   const slug = decodeURIComponent(window.location.pathname.replace(/^\/f\//, '').split('/')[0] || '')
+  const embed = new URLSearchParams(window.location.search).get('embed') === '1'
   const [estado, setEstado] = useState('carregando') // carregando | pronto | indisponivel | enviado
   const [form, setForm] = useState(null)
   const [campos, setCampos] = useState([])
@@ -40,6 +54,7 @@ export default function FormularioPublico() {
   const [erroGeral, setErroGeral] = useState(null)
   const [honeypot, setHoneypot] = useState('')
   const refs = useRef({})
+  const paginaRef = useRef(null)
 
   useEffect(() => {
     let vivo = true
@@ -53,6 +68,17 @@ export default function FormularioPublico() {
     })
     return () => { vivo = false }
   }, [slug])
+
+  // embed: fundo transparente (index.css pinta o body) e altura para o site
+  useEffect(() => {
+    if (!embed) return
+    document.documentElement.classList.add('prolu-embed')
+    const el = paginaRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => avisarSite('altura', { slug, altura: Math.ceil(el.getBoundingClientRect().height) }))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [embed, slug])
 
   function focarPrimeiroErro(errosAtuais) {
     const primeiro = campos.find(c => errosAtuais[c.id])
@@ -77,7 +103,9 @@ export default function FormularioPublico() {
       return
     }
     setEstado('enviado')
-    window.scrollTo({ top: 0 })
+    // no iframe quem rola é o site (embed.js traz o formulário para a tela)
+    if (embed) avisarSite('enviado', { slug })
+    else window.scrollTo({ top: 0 })
   }
 
   function alterar(campoId, v) {
@@ -86,43 +114,45 @@ export default function FormularioPublico() {
   }
 
   return (
-    <div className="fp-page">
-      <main className="fp-card">
-        {estado === 'carregando' && <p className="fp-status">Carregando…</p>}
+    <div ref={paginaRef} className={`prolu-pagina${embed ? ' prolu-pagina--embed' : ''}`}>
+      {/* CSS do escritório (editor do formulário) — vem depois do CSS base, então vence no empate */}
+      {form?.css && <style>{form.css}</style>}
+      <main className="prolu-form" data-estado={estado}>
+        {estado === 'carregando' && <p className="prolu-form__status">Carregando…</p>}
 
         {estado === 'indisponivel' && (
-          <div className="fp-center">
-            <h1 className="fp-title">Formulário indisponível</h1>
-            <p className="fp-sub">Este formulário não existe ou não está mais recebendo respostas.</p>
+          <div className="prolu-form__mensagem prolu-form__mensagem--indisponivel">
+            <h1 className="prolu-form__titulo">Formulário indisponível</h1>
+            <p className="prolu-form__texto">Este formulário não existe ou não está mais recebendo respostas.</p>
           </div>
         )}
 
         {estado === 'enviado' && (
-          <div className="fp-center">
-            <div className="fp-ok" aria-hidden="true">
+          <div className="prolu-form__mensagem prolu-form__mensagem--sucesso" role="status">
+            <div className="prolu-form__icone-ok" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
             </div>
-            <h1 className="fp-title">Recebemos suas informações!</h1>
-            <p className="fp-sub">
+            <h1 className="prolu-form__titulo">Recebemos suas informações!</h1>
+            <p className="prolu-form__texto">
               {form?.escritorio ? `A equipe do ${form.escritorio} vai entrar em contato em breve.` : 'Em breve entraremos em contato.'}
             </p>
           </div>
         )}
 
         {estado === 'pronto' && (
-          <form onSubmit={enviar} noValidate>
-            {form.escritorio && <div className="fp-escritorio">{form.escritorio}</div>}
-            <h1 className="fp-title">{form.nome}</h1>
-            {form.descricao && <p className="fp-sub fp-desc">{form.descricao}</p>}
+          <form className="prolu-form__form" onSubmit={enviar} noValidate>
+            {form.escritorio && <div className="prolu-form__escritorio">{form.escritorio}</div>}
+            <h1 className="prolu-form__titulo">{form.nome}</h1>
+            {form.descricao && <p className="prolu-form__descricao">{form.descricao}</p>}
 
             {/* honeypot: invisível pra pessoas; robôs que preenchem são descartados na função */}
-            <div className="fp-hp" aria-hidden="true">
+            <div className="prolu-form__hp" aria-hidden="true">
               <label>Site<input tabIndex={-1} autoComplete="off" value={honeypot} onChange={e => setHoneypot(e.target.value)} /></label>
             </div>
 
-            <div className="fp-campos">
+            <div className="prolu-form__campos">
               {campos.map(c => {
-                const id = `fp-${c.id}`
+                const id = `prolu-${c.id}`
                 const comum = {
                   id,
                   ref: el => { refs.current[c.id] = el },
@@ -131,13 +161,16 @@ export default function FormularioPublico() {
                   'aria-invalid': !!erros[c.id],
                   'aria-describedby': erros[c.id] ? `${id}-erro` : undefined,
                   required: c.obrigatorio,
-                  className: `fp-input${erros[c.id] ? ' has-error' : ''}`,
+                  className: 'prolu-form__input',
                 }
+                const classes = ['prolu-form__campo', `prolu-form__campo--${c.tipo}`]
+                if (c.obrigatorio) classes.push('prolu-form__campo--obrigatorio')
+                if (erros[c.id]) classes.push('prolu-form__campo--erro')
                 return (
-                  <div className="fp-campo" key={c.id}>
-                    <label className="fp-label" htmlFor={id}>
+                  <div className={classes.join(' ')} data-campo={c.id} data-tipo={c.tipo} key={c.id}>
+                    <label className="prolu-form__label" htmlFor={id}>
                       {c.label || 'Pergunta'}
-                      {c.obrigatorio && <span className="fp-req" aria-hidden="true"> *</span>}
+                      {c.obrigatorio && <span className="prolu-form__asterisco" aria-hidden="true"> *</span>}
                     </label>
                     {c.tipo === 'textarea' ? (
                       <textarea rows={4} maxLength={5000} {...comum} />
@@ -155,22 +188,22 @@ export default function FormularioPublico() {
                         maxLength={c.tipo === 'text' ? 300 : 254}
                       />
                     )}
-                    {erros[c.id] && <div className="fp-erro" id={`${id}-erro`}>{erros[c.id]}</div>}
+                    {erros[c.id] && <div className="prolu-form__erro" id={`${id}-erro`}>{erros[c.id]}</div>}
                   </div>
                 )
               })}
             </div>
 
-            {erroGeral && <p className="fp-erro-geral" role="alert">{erroGeral}</p>}
+            {erroGeral && <p className="prolu-form__erro-geral" role="alert">{erroGeral}</p>}
 
-            <button type="submit" className="fp-enviar" disabled={enviando}>
+            <button type="submit" className="prolu-form__enviar" disabled={enviando}>
               {enviando ? 'Enviando…' : 'Enviar'}
             </button>
-            <p className="fp-legenda">* campos obrigatórios</p>
+            <p className="prolu-form__legenda">* campos obrigatórios</p>
           </form>
         )}
       </main>
-      <footer className="fp-footer">Feito com Prolu</footer>
+      <footer className="prolu-pagina__rodape">Feito com Prolu</footer>
     </div>
   )
 }

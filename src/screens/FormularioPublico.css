@@ -1,62 +1,74 @@
-/* Página pública /f/:slug — fora do AppLayout, sem login */
-.fp-page {
+/* Página pública /f/:slug — fora do AppLayout, sem login.
+   prolu-form__* é contrato público (CSS personalizado do escritório e
+   public/embed.js): manter seletores de uma classe só, para o CSS do
+   escritório sobrescrever sem brigar por especificidade. */
+.prolu-pagina {
   min-height: 100vh; box-sizing: border-box;
   display: flex; flex-direction: column; align-items: center;
   padding: 48px 16px 24px; background: var(--cream);
 }
-.fp-card {
-  width: 100%; max-width: 560px; box-sizing: border-box;
+.prolu-form {
+  width: 100%; max-width: var(--prolu-largura, 560px); box-sizing: border-box;
   background: var(--white); border-radius: var(--r-lg); box-shadow: var(--shadow-rest);
   padding: 32px 28px;
 }
-.fp-status { color: var(--ink-40); text-align: center; margin: 24px 0; }
-.fp-center { text-align: center; padding: 16px 0; }
-.fp-escritorio {
+.prolu-form__status { color: var(--ink-40); text-align: center; margin: 24px 0; }
+.prolu-form__mensagem { text-align: center; padding: 16px 0; }
+.prolu-form__escritorio {
   font-family: 'Montserrat', sans-serif; font-size: 10.5px; font-weight: 600; letter-spacing: 1.2px;
   text-transform: uppercase; color: var(--ink-40); margin-bottom: 6px;
 }
-.fp-title { font-family: 'Abhaya Libre', serif; font-size: 30px; font-weight: 600; line-height: 1.15; margin: 0 0 8px; color: var(--ink); }
-.fp-sub { color: var(--ink-60); font-size: 14.5px; line-height: 1.55; margin: 0; }
-.fp-desc { white-space: pre-line; }
+.prolu-form__titulo { font-family: 'Abhaya Libre', serif; font-size: 30px; font-weight: 600; line-height: 1.15; margin: 0 0 8px; color: var(--ink); }
+.prolu-form__descricao,
+.prolu-form__texto { color: var(--ink-60); font-size: 14.5px; line-height: 1.55; margin: 0; }
+.prolu-form__descricao { white-space: pre-line; }
 
-.fp-hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+.prolu-form__hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
 
-.fp-campos { display: flex; flex-direction: column; gap: 18px; margin: 26px 0 22px; }
-.fp-campo { display: flex; flex-direction: column; gap: 6px; }
-.fp-label { font-size: 14px; font-weight: 500; color: var(--ink); }
-.fp-req { color: var(--red); }
-.fp-input {
+.prolu-form__campos { display: flex; flex-direction: column; gap: 18px; margin: 26px 0 22px; }
+.prolu-form__campo { display: flex; flex-direction: column; gap: 6px; }
+.prolu-form__label { font-size: 14px; font-weight: 500; color: var(--ink); }
+.prolu-form__asterisco { color: var(--red); }
+.prolu-form__input {
   width: 100%; box-sizing: border-box; border: none; outline: none;
   background: var(--cream); border-radius: 10px; padding: 12px 14px;
   font-family: inherit; font-size: 15px; color: var(--ink);
   box-shadow: 0 0 0 1.5px transparent; transition: box-shadow 0.15s;
 }
-textarea.fp-input { resize: vertical; min-height: 96px; }
-select.fp-input { cursor: pointer; }
-.fp-input:focus { box-shadow: 0 0 0 2px var(--green); }
-.fp-input.has-error { box-shadow: 0 0 0 1.5px var(--red); }
-.fp-erro { font-size: 12.5px; color: var(--red); }
-.fp-erro-geral { background: var(--red-soft); color: var(--red); border-radius: 10px; padding: 10px 14px; font-size: 13.5px; margin: 0 0 14px; }
+textarea.prolu-form__input { resize: vertical; min-height: 96px; }
+select.prolu-form__input { cursor: pointer; }
+.prolu-form__input:focus { box-shadow: 0 0 0 2px var(--green); }
+.prolu-form__input[aria-invalid="true"] { box-shadow: 0 0 0 1.5px var(--red); }
+.prolu-form__erro { font-size: 12.5px; color: var(--red); }
+.prolu-form__erro-geral { background: var(--red-soft); color: var(--red); border-radius: 10px; padding: 10px 14px; font-size: 13.5px; margin: 0 0 14px; }
 
-.fp-enviar {
+.prolu-form__enviar {
   width: 100%; border: none; cursor: pointer; border-radius: 99px; padding: 14px 20px;
   background: var(--green); color: var(--ink); font-family: inherit; font-size: 15px; font-weight: 600;
   transition: box-shadow 0.15s, transform 0.15s;
 }
-.fp-enviar:hover:not(:disabled) { box-shadow: 0 8px 24px rgba(184, 212, 15, 0.55); }
-.fp-enviar:disabled { opacity: 0.6; cursor: wait; }
-.fp-legenda { text-align: center; font-size: 12px; color: var(--ink-40); margin: 12px 0 0; }
+.prolu-form__enviar:hover:not(:disabled) { box-shadow: 0 8px 24px rgba(184, 212, 15, 0.55); }
+.prolu-form__enviar:disabled { opacity: 0.6; cursor: wait; }
+.prolu-form__legenda { text-align: center; font-size: 12px; color: var(--ink-40); margin: 12px 0 0; }
 
-.fp-ok {
+.prolu-form__icone-ok {
   width: 52px; height: 52px; border-radius: 50%; margin: 0 auto 16px;
   background: var(--green-soft); display: flex; align-items: center; justify-content: center;
 }
-.fp-ok svg { width: 26px; height: 26px; stroke: var(--green-ink); stroke-width: 2.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.prolu-form__icone-ok svg { width: 26px; height: 26px; stroke: var(--green-ink); stroke-width: 2.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
 
-.fp-footer { margin-top: 18px; font-size: 12px; color: var(--ink-40); }
+.prolu-pagina__rodape { margin-top: 18px; font-size: 12px; color: var(--ink-40); }
+
+/* ?embed=1 — dentro do iframe no site do escritório: sem fundo nem altura
+   mínima (a altura medida vai para o embed.js), cartão ocupa a largura.
+   Só seletores de uma classe/variável: o CSS do escritório continua vencendo. */
+html.prolu-embed body, html.prolu-embed #root { background: transparent; min-height: 0; }
+html.prolu-embed body::before { display: none; }
+.prolu-pagina--embed { min-height: 0; padding: 4px 4px 8px; background: transparent; --prolu-largura: none; }
 
 @media (max-width: 480px) {
-  .fp-page { padding-top: 20px; }
-  .fp-card { padding: 24px 18px; }
-  .fp-title { font-size: 25px; }
+  .prolu-pagina { padding-top: 20px; }
+  .prolu-pagina--embed { padding-top: 4px; }
+  .prolu-form { padding: 24px 18px; }
+  .prolu-form__titulo { font-size: 25px; }
 }
