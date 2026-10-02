@@ -1,17 +1,23 @@
-/* Página pública /f/:slug — fora do AppLayout, sem login.
-   prolu-form__* é contrato público (CSS personalizado do escritório e
-   public/embed.js): manter seletores de uma classe só, para o CSS do
-   escritório sobrescrever sem brigar por especificidade. */
+/* Página pública /f/:slug — fora do AppLayout, sem login. Também é o
+   conteúdo do iframe no embed "Com estilo do Prolu" (?embed=1).
+   Aparência configurável pelo painel Estilo do editor: chega como variáveis
+   --pf-* e classes prolu-pagina--* (utils/formularioEstilo.js); os valores
+   de fallback abaixo são a aparência padrão.
+   Os nomes prolu-form__* são os mesmos do embed cru (public/embed.js), onde
+   são contrato público para o CSS do site — não renomear. */
 .prolu-pagina {
+  position: relative; z-index: 1; /* fundo em cor cobre o brilho do body::before */
   min-height: 100vh; box-sizing: border-box;
   display: flex; flex-direction: column; align-items: center;
-  padding: 48px 16px 24px; background: var(--cream);
+  padding: 48px 16px 24px; background: var(--pf-pagina-bg, transparent);
 }
 .prolu-form {
   width: 100%; max-width: var(--prolu-largura, 560px); box-sizing: border-box;
-  background: var(--white); border-radius: var(--r-lg); box-shadow: var(--shadow-rest);
+  background: var(--pf-card-bg, var(--white)); border: var(--pf-card-borda, none);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-rest);
   padding: 32px 28px;
 }
+.prolu-pagina--card-transparente .prolu-form { box-shadow: none; }
 .prolu-form__status { color: var(--ink-40); text-align: center; margin: 24px 0; }
 .prolu-form__mensagem { text-align: center; padding: 16px 0; }
 .prolu-form__escritorio {
@@ -21,19 +27,20 @@
 .prolu-form__titulo { font-family: 'Abhaya Libre', serif; font-size: 30px; font-weight: 600; line-height: 1.15; margin: 0 0 8px; color: var(--ink); }
 .prolu-form__descricao,
 .prolu-form__texto { color: var(--ink-60); font-size: 14.5px; line-height: 1.55; margin: 0; }
-.prolu-form__descricao { white-space: pre-line; }
+.prolu-form__descricao, .prolu-form__texto { white-space: pre-line; }
 
 .prolu-form__hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
 
+/* sempre uma coluna: um campo por linha */
 .prolu-form__campos { display: flex; flex-direction: column; gap: 18px; margin: 26px 0 22px; }
 .prolu-form__campo { display: flex; flex-direction: column; gap: 6px; }
 .prolu-form__label { font-size: 14px; font-weight: 500; color: var(--ink); }
 .prolu-form__asterisco { color: var(--red); }
 .prolu-form__input {
   width: 100%; box-sizing: border-box; border: none; outline: none;
-  background: var(--cream); border-radius: 10px; padding: 12px 14px;
+  background: var(--pf-input-bg, var(--cream)); border-radius: 10px; padding: var(--pf-input-pad, 12px 14px);
   font-family: inherit; font-size: 15px; color: var(--ink);
-  box-shadow: 0 0 0 1.5px transparent; transition: box-shadow 0.15s;
+  box-shadow: 0 0 0 1.5px var(--pf-input-contorno, transparent); transition: box-shadow 0.15s;
 }
 textarea.prolu-form__input { resize: vertical; min-height: 96px; }
 select.prolu-form__input { cursor: pointer; }
@@ -43,10 +50,15 @@ select.prolu-form__input { cursor: pointer; }
 .prolu-form__erro-geral { background: var(--red-soft); color: var(--red); border-radius: 10px; padding: 10px 14px; font-size: 13.5px; margin: 0 0 14px; }
 
 .prolu-form__enviar {
-  width: 100%; border: none; cursor: pointer; border-radius: 99px; padding: 14px 20px;
+  display: block; width: 100%; border: none; cursor: pointer; border-radius: 99px; padding: 14px 20px;
   background: var(--green); color: var(--ink); font-family: inherit; font-size: 15px; font-weight: 600;
   transition: box-shadow 0.15s, transform 0.15s;
 }
+.prolu-pagina--botao-esquerda .prolu-form__enviar,
+.prolu-pagina--botao-direita .prolu-form__enviar { width: auto; min-width: 160px; padding: 13px 32px; }
+.prolu-pagina--botao-direita .prolu-form__enviar { margin-left: auto; }
+.prolu-pagina--botao-esquerda .prolu-form__legenda { text-align: left; }
+.prolu-pagina--botao-direita .prolu-form__legenda { text-align: right; }
 .prolu-form__enviar:hover:not(:disabled) { box-shadow: 0 8px 24px rgba(184, 212, 15, 0.55); }
 .prolu-form__enviar:disabled { opacity: 0.6; cursor: wait; }
 .prolu-form__legenda { text-align: center; font-size: 12px; color: var(--ink-40); margin: 12px 0 0; }
@@ -59,12 +71,13 @@ select.prolu-form__input { cursor: pointer; }
 
 .prolu-pagina__rodape { margin-top: 18px; font-size: 12px; color: var(--ink-40); }
 
-/* ?embed=1 — dentro do iframe no site do escritório: sem fundo nem altura
-   mínima (a altura medida vai para o embed.js), cartão ocupa a largura.
-   Só seletores de uma classe/variável: o CSS do escritório continua vencendo. */
+/* ?embed=1 — dentro do iframe no site do escritório: sem altura mínima (a
+   altura medida vai para o embed.js) e o cartão ocupa a largura. Fundo
+   "transparente" mostra o site; em cor, ganha respiro em volta do cartão. */
 html.prolu-embed body, html.prolu-embed #root { background: transparent; min-height: 0; }
 html.prolu-embed body::before { display: none; }
-.prolu-pagina--embed { min-height: 0; padding: 4px 4px 8px; background: transparent; --prolu-largura: none; }
+.prolu-pagina--embed { min-height: 0; padding: 4px 4px 8px; --prolu-largura: none; }
+.prolu-pagina--embed.prolu-pagina--fundo-cor { padding: 16px; }
 
 @media (max-width: 480px) {
   .prolu-pagina { padding-top: 20px; }

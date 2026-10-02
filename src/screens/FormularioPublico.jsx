@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../services/supabaseClient.js'
+import { estiloParaPagina, SUCESSO_TITULO_PADRAO, sucessoTextoPadrao, URL_REDIRECT_RE } from '../utils/formularioEstilo.js'
 import './FormularioPublico.css'
 
 // Página pública /f/:slug — sem login. Carrega e envia SEMPRE pela Edge
@@ -7,12 +8,15 @@ import './FormularioPublico.css'
 // validação aqui é só conforto: a função valida de novo antes de gravar.
 //
 // ?embed=1 → modo "com estilo do Prolu" da incorporação: a página roda dentro
-// de um iframe no site do escritório (fundo transparente, sem moldura) e
-// avisa a altura ao embed.js para o iframe crescer sem barra de rolagem.
+// de um iframe no site do escritório e avisa a altura ao embed.js para o
+// iframe crescer sem barra de rolagem.
 //
-// Classes prolu-form__* são CONTRATO público (CSS personalizado do
-// escritório e embed cru em public/embed.js usam os mesmos nomes) — não
-// renomear. Referência na tela "Incorporar" (IncorporarFormulario.jsx).
+// Aparência: painel Estilo do editor (formularios.estilo → utils/formularioEstilo.js),
+// aplicada aqui e, portanto, no iframe. Depois do envio: mensagem (textos
+// do escritório ou padrão) ou redirecionamento, conforme a resposta da função.
+//
+// Classes prolu-form__* são as mesmas do embed cru (public/embed.js), onde
+// são contrato público para o CSS do site — não renomear.
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -45,7 +49,7 @@ function avisarSite(tipo, dados) {
 export default function FormularioPublico() {
   const slug = decodeURIComponent(window.location.pathname.replace(/^\/f\//, '').split('/')[0] || '')
   const embed = new URLSearchParams(window.location.search).get('embed') === '1'
-  const [estado, setEstado] = useState('carregando') // carregando | pronto | indisponivel | enviado
+  const [estado, setEstado] = useState('carregando') // carregando | pronto | indisponivel | redirecionando | enviado
   const [form, setForm] = useState(null)
   const [campos, setCampos] = useState([])
   const [valores, setValores] = useState({})
@@ -53,8 +57,10 @@ export default function FormularioPublico() {
   const [enviando, setEnviando] = useState(false)
   const [erroGeral, setErroGeral] = useState(null)
   const [honeypot, setHoneypot] = useState('')
+  const [sucesso, setSucesso] = useState(null) // textos da mensagem final vindos do envio
   const refs = useRef({})
   const paginaRef = useRef(null)
+  const visual = estiloParaPagina(form?.estilo)
 
   useEffect(() => {
     let vivo = true
@@ -69,7 +75,7 @@ export default function FormularioPublico() {
     return () => { vivo = false }
   }, [slug])
 
-  // embed: fundo transparente (index.css pinta o body) e altura para o site
+  // embed: body/#root transparentes (index.css pinta o body) e altura para o site
   useEffect(() => {
     if (!embed) return
     document.documentElement.classList.add('prolu-embed')
@@ -95,17 +101,35 @@ export default function FormularioPublico() {
     if (Object.keys(novosErros).length) { focarPrimeiroErro(novosErros); return }
 
     setEnviando(true)
-    const { error } = await chamar({ acao: 'enviar', slug, respostas: valores, _site: honeypot })
+    const { data, error } = await chamar({ acao: 'enviar', slug, respostas: valores, _site: honeypot })
     setEnviando(false)
     if (error) {
       if (error.erros) { setErros(error.erros); focarPrimeiroErro(error.erros) }
       setErroGeral(error.error || 'Não foi possível enviar. Tente novamente.')
       return
     }
+    const url = typeof data?.redirecionar === 'string' && URL_REDIRECT_RE.test(data.redirecionar) ? data.redirecionar : null
+    if (url) { redirecionar(url); return }
+    setSucesso(data?.sucesso || null)
     setEstado('enviado')
     // no iframe quem rola é o site (embed.js traz o formulário para a tela)
     if (embed) avisarSite('enviado', { slug })
     else window.scrollTo({ top: 0 })
+  }
+
+  // Página de obrigado do escritório (Google Tag / Pixel ficam lá). No iframe
+  // quem navega é o site: o embed.js recebe a URL e troca a página inteira.
+  // Sem o embed.js colado, tenta navegar o topo direto; se o navegador
+  // bloquear, mostra a mensagem padrão — o envio já foi gravado.
+  function redirecionar(url) {
+    setEstado('redirecionando')
+    if (!embed) { window.location.assign(url); return }
+    avisarSite('redirecionar', { slug, url })
+    setTimeout(() => {
+      try { window.top.location.href = url } catch {
+        setEstado('enviado')
+      }
+    }, 2000)
   }
 
   function alterar(campoId, v) {
@@ -114,11 +138,10 @@ export default function FormularioPublico() {
   }
 
   return (
-    <div ref={paginaRef} className={`prolu-pagina${embed ? ' prolu-pagina--embed' : ''}`}>
-      {/* CSS do escritório (editor do formulário) — vem depois do CSS base, então vence no empate */}
-      {form?.css && <style>{form.css}</style>}
+    <div ref={paginaRef} className={`prolu-pagina ${visual.classes}${embed ? ' prolu-pagina--embed' : ''}`} style={visual.vars}>
       <main className="prolu-form" data-estado={estado}>
         {estado === 'carregando' && <p className="prolu-form__status">Carregando…</p>}
+        {estado === 'redirecionando' && <p className="prolu-form__status" role="status">Enviado! Redirecionando…</p>}
 
         {estado === 'indisponivel' && (
           <div className="prolu-form__mensagem prolu-form__mensagem--indisponivel">
@@ -132,10 +155,8 @@ export default function FormularioPublico() {
             <div className="prolu-form__icone-ok" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
             </div>
-            <h1 className="prolu-form__titulo">Recebemos suas informações!</h1>
-            <p className="prolu-form__texto">
-              {form?.escritorio ? `A equipe do ${form.escritorio} vai entrar em contato em breve.` : 'Em breve entraremos em contato.'}
-            </p>
+            <h1 className="prolu-form__titulo">{sucesso?.titulo || SUCESSO_TITULO_PADRAO}</h1>
+            <p className="prolu-form__texto">{sucesso?.texto || sucessoTextoPadrao(form?.escritorio)}</p>
           </div>
         )}
 

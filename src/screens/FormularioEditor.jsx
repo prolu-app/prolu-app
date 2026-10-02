@@ -7,6 +7,8 @@ import { IconBack, IconPlus, IconTrash, IconGrip, IconClose, IconChevronDown, Ic
 import { slugify, slugValido, urlPublica } from '../utils/slug.js'
 import { FmSwitch } from './Formularios.jsx'
 import IncorporarFormulario from './IncorporarFormulario.jsx'
+import { PainelEstilo, PainelPosEnvio } from './FormularioAparencia.jsx'
+import CampoTextoSalvo from '../components/CampoTextoSalvo.jsx'
 import './Formularios.css'
 
 // Códigos em inglês no banco (igual crm_colunas.tipo), rótulo em português aqui.
@@ -296,27 +298,6 @@ export default function FormularioEditor() {
             </div>
           )
         })()}
-        <div className="fm-publico-row fm-css-row">
-          <span className="fm-publico-label">CSS personalizado</span>
-          <div className="fm-css-box">
-            <CampoTextoSalvo
-              multilinha
-              className="fm-css-input"
-              rows={5}
-              valor={form.css_personalizado || ''}
-              disabled={!podeEditar}
-              maxLength={20000}
-              spellCheck={false}
-              placeholder={'.prolu-form__enviar { background: #1d3557; color: #fff; }'}
-              aria-label="CSS personalizado do formulário"
-              onSalvar={css => salvarForm({ css_personalizado: css || null }).then(ok => ok && toast('CSS salvo'))}
-            />
-            <span className="fm-publico-dica">
-              Muda a aparência do link público e do modo "Com estilo do Prolu" da incorporação.{' '}
-              <button type="button" className="fm-link-btn" onClick={() => setIncorporar(true)}>Ver classes</button>
-            </span>
-          </div>
-        </div>
       </div>
 
       {incorporar && <IncorporarFormulario form={form} campos={campos} onFechar={() => setIncorporar(false)} />}
@@ -371,30 +352,11 @@ export default function FormularioEditor() {
           <IconPlus /> {adicionando ? 'Adicionando…' : 'Adicionar campo'}
         </button>
       )}
+
+      <PainelPosEnvio form={form} podeEditar={podeEditar} salvarForm={salvarForm} />
+      <PainelEstilo form={form} campos={campos} podeEditar={podeEditar} salvarForm={salvarForm} />
     </>
   )
-}
-
-// Input que só grava no blur/Enter (e só se mudou) — mesmo padrão dos nomes no CRM/etapas
-function CampoTextoSalvo({ valor, onSalvar, multilinha, obrigatorio, className, inputRef, ...resto }) {
-  const [texto, setTexto] = useState(valor)
-  useEffect(() => { setTexto(valor) }, [valor])
-  function confirmar() {
-    const limpo = texto.trim()
-    if (obrigatorio && !limpo) { setTexto(valor); return }
-    if (limpo !== (valor || '').trim()) onSalvar(limpo)
-  }
-  const props = {
-    ...resto,
-    ref: inputRef,
-    className,
-    value: texto,
-    onChange: e => setTexto(e.target.value),
-    onBlur: confirmar,
-  }
-  return multilinha
-    ? <textarea rows={2} {...props} />
-    : <input {...props} onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') { setTexto(valor); e.target.blur() } }} />
 }
 
 function CampoCard({

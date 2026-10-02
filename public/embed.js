@@ -5,8 +5,9 @@
  * Dois modos, mesmo formulário e mesma Edge Function `formulario-publico`:
  *
  *  1. Com estilo do Prolu — <iframe data-prolu-form src=".../f/:slug?embed=1">
- *     Este script só ajusta a altura do iframe (mensagens prolu-form:altura
- *     da página) e traz o formulário para a tela depois do envio.
+ *     Este script ajusta a altura do iframe (mensagens prolu-form:altura da
+ *     página), traz o formulário para a tela depois do envio e, se o
+ *     formulário redireciona após o envio, troca a página do site pela URL.
  *
  *  2. Cru — <div data-prolu-form="slug" data-api="https://.../functions/v1/formulario-publico">
  *     Este script monta o formulário direto no DOM do site, com as mesmas
@@ -22,6 +23,8 @@
   if (window.ProluForm) { window.ProluForm.montar(); return }
 
   var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  // redirecionamento pós-envio (página de obrigado do escritório): só http(s)
+  var URL_RE = /^https?:\/\/[^\s]+$/i
 
   // ── modo iframe: altura automática ──────────────────────────────────────
   function iframeDaMensagem(ev) {
@@ -43,6 +46,8 @@
       frame.style.height = Math.min(Math.ceil(d.altura), 20000) + 'px'
     } else if (d.tipo === 'prolu-form:enviado') {
       trazerParaTela(frame)
+    } else if (d.tipo === 'prolu-form:redirecionar' && typeof d.url === 'string' && URL_RE.test(d.url)) {
+      window.location.href = d.url
     }
   })
 
@@ -54,7 +59,7 @@
   // ── modo cru: formulário no DOM do site ─────────────────────────────────
   var CSS_BASE = [
     ':where(.prolu-form){display:block}',
-    ':where(.prolu-form__descricao){white-space:pre-line}',
+    ':where(.prolu-form__descricao,.prolu-form__texto){white-space:pre-line}',
     ':where(.prolu-form__campos){display:flex;flex-direction:column;gap:1em;margin:1em 0}',
     ':where(.prolu-form__campo){display:flex;flex-direction:column;gap:.35em}',
     ':where(.prolu-form__input){width:100%;box-sizing:border-box;font:inherit}',
@@ -265,8 +270,18 @@
           f.insertBefore(erroGeral, botao)
           return
         }
-        mensagem(raiz, 'sucesso', 'Recebemos suas informações!',
-          form.escritorio ? 'A equipe do ' + form.escritorio + ' vai entrar em contato em breve.' : 'Em breve entraremos em contato.')
+        var d = res.data || {}
+        if (typeof d.redirecionar === 'string' && URL_RE.test(d.redirecionar)) {
+          raiz.setAttribute('data-estado', 'redirecionando')
+          raiz.textContent = ''
+          raiz.appendChild(el('p', 'prolu-form__status', 'Enviado! Redirecionando…'))
+          window.location.href = d.redirecionar
+          return
+        }
+        // textos do escritório ou os padrões (mesmos de utils/formularioEstilo.js)
+        var suc = d.sucesso || {}
+        mensagem(raiz, 'sucesso', suc.titulo || 'Recebemos suas informações!',
+          suc.texto || (form.escritorio ? 'A equipe do ' + form.escritorio + ' vai entrar em contato em breve.' : 'Em breve entraremos em contato.'))
         trazerParaTela(raiz)
       })
     })

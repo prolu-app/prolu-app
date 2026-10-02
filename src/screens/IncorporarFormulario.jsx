@@ -4,11 +4,11 @@ import { IconCopy } from '../components/Icons.jsx'
 
 // Tela "Incorporar" do formulário (Fase 3): gera o código para o escritório
 // colar no próprio site. Dois modos, mesmo formulário e mesma Edge Function:
-//   iframe → /f/:slug?embed=1, isolado do site; aparência pelo CSS
-//            personalizado salvo no formulário
+//   iframe → /f/:slug?embed=1, isolado do site; aparência pelo painel
+//            Estilo do editor (formularios.estilo)
 //   cru    → public/embed.js monta o formulário direto no DOM do site, sem
 //            isolamento; aparência pelo CSS do próprio site
-// As classes listadas aqui são as de FormularioPublico.jsx e embed.js.
+// As classes listadas (só no modo cru) são as de embed.js — as mesmas da página pública.
 
 const API = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/formulario-publico`
 
@@ -16,7 +16,7 @@ const MODOS = [
   {
     value: 'iframe',
     titulo: 'Com estilo do Prolu',
-    texto: 'Um iframe com o formulário igual ao link público. O CSS do seu site não interfere. Para mudar a aparência, use o campo "CSS personalizado" do formulário.',
+    texto: 'Um iframe com o formulário igual ao link público. O CSS do seu site não interfere. A aparência vem do painel Estilo do formulário.',
   },
   {
     value: 'cru',
@@ -45,11 +45,6 @@ const CLASSES = [
   ['.prolu-form__mensagem', 'Mensagem final; --sucesso ou --indisponivel'],
   ['.prolu-form__texto', 'Texto da mensagem final'],
 ]
-const CLASSES_IFRAME = [
-  ['.prolu-pagina', 'Fundo em volta do formulário (dentro do iframe)'],
-  ['.prolu-form__icone-ok', 'Ícone de confirmação após o envio'],
-  ['.prolu-pagina__rodape', '"Feito com Prolu"'],
-]
 
 function attr(s) {
   return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
@@ -64,9 +59,7 @@ export default function IncorporarFormulario({ form, campos, onFechar }) {
     ? `<iframe src="${origem}/f/${form.slug}?embed=1" data-prolu-form title="${attr(form.nome)}" loading="lazy" style="width:100%;height:720px;border:0"></iframe>\n<script src="${origem}/embed.js" async></script>`
     : `<div data-prolu-form="${form.slug}" data-api="${API}"></div>\n<script src="${origem}/embed.js" async></script>`
 
-  const exemplo = modo === 'iframe'
-    ? `.prolu-form { box-shadow: none; border-radius: 0; }\n.prolu-form__enviar { background: #1d3557; color: #fff; }`
-    : `.prolu-form__input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; }\n.prolu-form__enviar { background: #1d3557; color: #fff; border: 0; padding: 12px 24px; }`
+  const exemplo = `.prolu-form__input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; }\n.prolu-form__enviar { background: #1d3557; color: #fff; border: 0; padding: 12px 24px; }`
 
   async function copiar(texto, msg) {
     try {
@@ -76,8 +69,6 @@ export default function IncorporarFormulario({ form, campos, onFechar }) {
       toast('Não foi possível copiar — selecione e copie manualmente')
     }
   }
-
-  const classes = modo === 'iframe' ? [...CLASSES, ...CLASSES_IFRAME] : CLASSES
 
   return (
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onFechar() }}>
@@ -118,24 +109,32 @@ export default function IncorporarFormulario({ form, campos, onFechar }) {
           </p>
         </div>
 
-        <div className="fm-embed-bloco">
-          <span className="fm-publico-label">Classes para estilizar</span>
-          <p className="fm-publico-dica">
-            {modo === 'iframe'
-              ? 'Escreva o CSS no campo "CSS personalizado" do formulário (no editor). Ele vale para o iframe e para o link público.'
-              : 'Escreva o CSS no próprio site. Os nomes são fixos e não mudam.'}
+        {modo === 'iframe' && (
+          <p className="fm-publico-dica fm-embed-nota">
+            Cores, bordas, altura dos campos e posição do botão: painel <b>Estilo</b> do formulário.
+            O que acontece depois do envio (mensagem ou redirecionamento): painel <b>Depois do envio</b>.
           </p>
-          <table className="fm-embed-classes">
-            <tbody>
-              {classes.map(([c, d]) => (
-                <tr key={c}><td><code>{c}</code></td><td>{d}</td></tr>
-              ))}
-            </tbody>
-          </table>
-          <pre className="fm-embed-exemplo">{exemplo}</pre>
-        </div>
+        )}
 
-        {campos.length > 0 && (
+        {modo === 'cru' && (
+          <div className="fm-embed-bloco">
+            <span className="fm-publico-label">Classes para estilizar</span>
+            <p className="fm-publico-dica">
+              Escreva o CSS no próprio site. Os nomes são fixos e não mudam. O painel Estilo do formulário não vale neste modo;
+              o painel Depois do envio (mensagem ou redirecionamento) vale.
+            </p>
+            <table className="fm-embed-classes">
+              <tbody>
+                {CLASSES.map(([c, d]) => (
+                  <tr key={c}><td><code>{c}</code></td><td>{d}</td></tr>
+                ))}
+              </tbody>
+            </table>
+            <pre className="fm-embed-exemplo">{exemplo}</pre>
+          </div>
+        )}
+
+        {modo === 'cru' && campos.length > 0 && (
           <div className="fm-embed-bloco">
             <span className="fm-publico-label">Campo a campo</span>
             <p className="fm-publico-dica">Cada campo tem um seletor próprio, que não muda ao editar a pergunta ou reordenar.</p>

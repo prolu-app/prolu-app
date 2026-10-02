@@ -12,7 +12,7 @@
 //                 + Origem padrão do formulário, e formulario_id (origem)
 //   clientes    → contato criado/vinculado quando há campo mapeado p/ Cliente
 //   crm_fichas  → campos extras (sem coluna no CRM), só visíveis no drawer
-// Tabelas/colunas: migrations 025, 026 e 027 (css_personalizado).
+// Tabelas/colunas: migrations 025, 026 e 028 (estilo + o que acontece após o envio).
 //
 // Também atende o embed (public/embed.js): o modo "cru" chama esta função
 // direto do site do escritório (CORS liberado, sem apikey — verify_jwt off).
@@ -61,6 +61,16 @@ function hojeSaoPaulo(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
 }
 
+// O que a página/embed faz após um envio aceito (migration_028): redirecionar
+// para a URL do escritório (ex.: página de obrigado com Google Tag / Pixel —
+// o Prolu não dispara tracking) ou mostrar a mensagem, com textos opcionais.
+function aposEnvio(form: Record<string, unknown>) {
+  const url = typeof form.redirect_url === 'string' ? form.redirect_url.trim() : ''
+  if (form.pos_envio === 'redirecionar' && /^https?:\/\/[^\s]+$/i.test(url)) return { redirecionar: url }
+  const texto = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null)
+  return { sucesso: { titulo: texto(form.sucesso_titulo), texto: texto(form.sucesso_texto) } }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return jsonResponse({ error: 'Método não permitido.' }, 405)
@@ -81,7 +91,9 @@ Deno.serve(async (req) => {
 
   const { data: form } = await supabase
     .from('formularios')
-    .select('id, empresa_id, nome, descricao, ativo, origem_crm, css_personalizado, empresas(nome)')
+    // '*' (e não lista de colunas): a função continua de pé mesmo durante uma
+    // migration que crie/remova colunas de configuração (ex.: 028)
+    .select('*, empresas(nome)')
     .eq('slug', slug)
     .maybeSingle()
   // formulário inativo responde igual a inexistente: não revela que existe
@@ -103,8 +115,8 @@ Deno.serve(async (req) => {
         nome: form.nome,
         descricao: form.descricao,
         escritorio: (form.empresas as { nome?: string } | null)?.nome || null,
-        // só a página /f/:slug (e o iframe) aplica; o embed cru ignora
-        css: form.css_personalizado || null,
+        // só a página /f/:slug (e o iframe) aplica; o embed cru ignora (CSS do site)
+        estilo: form.estilo || null,
       },
       campos: campos.map(c => ({
         id: c.id, label: c.label, tipo: c.tipo, obrigatorio: c.obrigatorio,
@@ -116,7 +128,7 @@ Deno.serve(async (req) => {
   if (body.acao !== 'enviar') return jsonResponse({ error: 'Ação inválida.' }, 400)
 
   // Honeypot: campo invisível na página; robô que preenche recebe "ok" e nada é gravado
-  if (typeof body._site === 'string' && body._site.trim() !== '') return jsonResponse({ ok: true }, 200)
+  if (typeof body._site === 'string' && body._site.trim() !== '') return jsonResponse({ ok: true, ...aposEnvio(form) }, 200)
 
   const respostas = (body.respostas && typeof body.respostas === 'object') ? body.respostas as Record<string, unknown> : {}
 
@@ -212,5 +224,5 @@ Deno.serve(async (req) => {
     }
   }
 
-  return jsonResponse({ ok: true }, 200)
+  return jsonResponse({ ok: true, ...aposEnvio(form) }, 200)
 })
