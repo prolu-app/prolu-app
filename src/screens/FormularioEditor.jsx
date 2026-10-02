@@ -7,7 +7,7 @@ import { IconBack, IconPlus, IconTrash, IconGrip, IconClose, IconChevronDown, Ic
 import { slugify, slugValido, urlPublica } from '../utils/slug.js'
 import { FmSwitch } from './Formularios.jsx'
 import IncorporarFormulario from './IncorporarFormulario.jsx'
-import { PainelEstilo, PainelPosEnvio } from './FormularioAparencia.jsx'
+import { PainelEstilo, PainelPosEnvio, PainelApresentacao } from './FormularioAparencia.jsx'
 import CampoTextoSalvo from '../components/CampoTextoSalvo.jsx'
 import './Formularios.css'
 
@@ -345,6 +345,7 @@ export default function FormularioEditor() {
           )
         })()}
       </div>
+      <PainelApresentacao form={form} podeEditar={podeEditar} salvarForm={salvarForm} />
       </section>
 
       {incorporar && <IncorporarFormulario form={form} campos={campos} onFechar={() => setIncorporar(false)} />}

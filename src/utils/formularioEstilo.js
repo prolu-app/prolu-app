@@ -106,3 +106,12 @@ export function sucessoTextoPadrao(escritorio) {
 }
 
 export const URL_REDIRECT_RE = /^https?:\/\/[^\s]+$/i
+
+// ── apresentação (migration_029) ──
+// ID de 11 caracteres de um link do YouTube (watch, youtu.be, embed, shorts,
+// live). Mesma regra na Edge Function e no public/embed.js.
+export function idDoYoutube(url) {
+  const m = (url || '').trim().match(/^(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})(?:[?&#/].*)?$/i)
+  return m ? m[1] : null
+}
+export const embedDoYoutube = id => `https://www.youtube.com/embed/${id}`

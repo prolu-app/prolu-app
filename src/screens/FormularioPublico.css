@@ -7,6 +7,7 @@
    são contrato público para o CSS do site — não renomear. */
 .prolu-pagina {
   position: relative; z-index: 1; /* fundo em cor cobre o brilho do body::before */
+  --pf-pad-x: 16px; /* padding lateral — a capa usa para ir de borda a borda */
   min-height: 100vh; box-sizing: border-box;
   display: flex; flex-direction: column; align-items: center;
   padding: 48px 16px 24px; background: var(--pf-pagina-bg, transparent);
@@ -77,10 +78,39 @@ select.prolu-form__input { cursor: pointer; }
    "transparente" mostra o site; em cor, ganha respiro em volta do cartão. */
 html.prolu-embed body, html.prolu-embed #root { background: transparent; min-height: 0; }
 html.prolu-embed body::before { display: none; }
-.prolu-pagina--embed { min-height: 0; padding: 4px 4px 8px; --prolu-largura: none; }
-.prolu-pagina--embed.prolu-pagina--fundo-cor { padding: 16px; }
+.prolu-pagina--embed { min-height: 0; padding: 4px 4px 8px; --prolu-largura: none; --pf-pad-x: 4px; }
+.prolu-pagina--embed.prolu-pagina--fundo-cor { padding: 16px; --pf-pad-x: 16px; }
+
+/* ── apresentação (migration_029): capa, logo, introdução, vídeo ── */
+/* capa de borda a borda no topo da página; o cartão sobe um pouco sobre ela */
+.prolu-pagina.prolu-pagina--com-capa { padding-top: 0; }
+.prolu-form__capa {
+  display: block; align-self: stretch; width: auto; max-width: none; height: 320px; object-fit: cover;
+  margin: 0 calc(-1 * var(--pf-pad-x));
+}
+.prolu-pagina--com-capa .prolu-form { position: relative; margin-top: -56px; }
+.prolu-pagina--com-capa.prolu-pagina--card-transparente .prolu-form { margin-top: 16px; }
+/* logo circular centralizado; com capa, metade dele fica sobre a capa */
+.prolu-form__logo {
+  display: block; width: 80px; height: 80px; border-radius: 50%; object-fit: cover;
+  margin: 0 auto 16px; background: var(--pf-card-bg, var(--white));
+}
+.prolu-pagina--com-capa .prolu-form__logo { margin-top: -72px; box-shadow: 0 0 0 4px var(--pf-card-bg, var(--white)); }
+.prolu-pagina--com-capa.prolu-pagina--card-transparente .prolu-form__logo { margin-top: 0; box-shadow: none; }
+.prolu-form__intro { white-space: pre-line; color: var(--ink-80); font-size: 15px; line-height: 1.6; margin: 18px 0 0; }
+.prolu-form__video { aspect-ratio: 16 / 9; width: 100%; margin: 18px 0 0; border-radius: 12px; overflow: hidden; background: #000; }
+.prolu-form__video iframe { display: block; width: 100%; height: 100%; border: 0; }
+/* botão opcional da mensagem de agradecimento: mesmas cores/cantos do botão Enviar */
+.prolu-form__obrigado-botao {
+  display: inline-block; margin-top: 20px; padding: 12px 28px; text-decoration: none;
+  border-radius: var(--pf-botao-raio, 99px); background: var(--pf-botao-bg, var(--green)); color: var(--pf-botao-texto, var(--ink));
+  font-size: 15px; font-weight: var(--pf-botao-peso, 600); transition: box-shadow 0.15s;
+}
+.prolu-form__obrigado-botao:hover { box-shadow: 0 8px 24px color-mix(in srgb, var(--pf-botao-bg, var(--green)) 55%, transparent); }
 
 @media (max-width: 480px) {
+  .prolu-form__capa { height: 240px; }
+  .prolu-pagina--com-capa .prolu-form__logo { margin-top: -64px; }
   .prolu-pagina { padding-top: 20px; }
   .prolu-pagina--embed { padding-top: 4px; }
   .prolu-form { padding: 24px 18px; }

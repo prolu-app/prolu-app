@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { useToast } from '../contexts/ToastContext.jsx'
 import CampoTextoSalvo from '../components/CampoTextoSalvo.jsx'
 import { FmSwitch } from './Formularios.jsx'
+import { supabase } from '../services/supabaseClient.js'
 import {
   ESTILO_PADRAO, RAIO_MAX, BOTAO_TEXTO_MAX, BOTAO_TEXTO_PADRAO, normalizarEstilo, estiloParaPagina, textoDoBotao,
-  SUCESSO_TITULO_PADRAO, URL_REDIRECT_RE,
+  SUCESSO_TITULO_PADRAO, URL_REDIRECT_RE, idDoYoutube,
 } from '../utils/formularioEstilo.js'
 import './FormularioPublico.css'
 
-// Editor do formulário — "Depois do envio" e "Estilo" (migration_028).
+// Editor do formulário — "Apresentação" (aba Geral, migration_029), "Depois do
+// envio" e "Estilo" (migration_028).
 // Estilo vale para /f/:slug e para o embed "Com estilo do Prolu" (iframe);
 // o embed cru continua estilizado só pelo CSS do site. Depois do envio vale
 // para a página e para os dois modos de embed.
@@ -206,6 +208,68 @@ export function PainelEstilo({ form, campos, podeEditar, salvarForm }) {
   )
 }
 
+// "seusite.com.br/x" → "https://seusite.com.br/x"; null se não for http(s) válido
+function completarUrl(digitada) {
+  const url = /^[a-z][a-z0-9+.-]*:/i.test(digitada) ? digitada : `https://${digitada}`
+  return URL_REDIRECT_RE.test(url) && url.length <= 2000 ? url : null
+}
+
+// Botão opcional na mensagem de agradecimento (migration_029). Sem coluna de
+// "ligado": aparece quando texto e URL estão preenchidos; desligar apaga os dois.
+function BotaoObrigado({ form, off, salvarForm }) {
+  const toast = useToast()
+  const [ligado, setLigado] = useState(!!(form.obrigado_botao_texto || form.obrigado_botao_url))
+  const [urlInvalida, setUrlInvalida] = useState(false)
+
+  async function alternar(v) {
+    setLigado(v)
+    if (!v && (form.obrigado_botao_texto || form.obrigado_botao_url)) {
+      if (await salvarForm({ obrigado_botao_texto: null, obrigado_botao_url: null })) toast('Botão removido da mensagem')
+      else setLigado(true)
+    }
+  }
+
+  async function salvarUrl(digitada) {
+    if (!digitada) { setUrlInvalida(false); salvarForm({ obrigado_botao_url: null }); return }
+    const url = completarUrl(digitada)
+    if (!url) { setUrlInvalida(true); return }
+    setUrlInvalida(false)
+    if (await salvarForm({ obrigado_botao_url: url })) toast('Botão salvo')
+  }
+
+  const incompleto = ligado && !(form.obrigado_botao_texto && form.obrigado_botao_url)
+  return (
+    <>
+      <Linha rotulo="Botão na mensagem">
+        <FmSwitch ligado={ligado} disabled={off} rotulo="Exibir botão na mensagem de agradecimento" onChange={alternar} />
+        <span className="fm-status-texto">{ligado ? 'Exibir botão' : 'Sem botão'}</span>
+      </Linha>
+      {ligado && (
+        <>
+          <Linha rotulo="Texto do botão">
+            <CampoTextoSalvo
+              className="fm-pos-input" valor={form.obrigado_botao_texto || ''} disabled={off} maxLength={60}
+              placeholder="Ex.: Acessar nosso site" aria-label="Texto do botão da mensagem de agradecimento"
+              onSalvar={v => salvarForm({ obrigado_botao_texto: v || null }).then(ok => ok && toast('Botão salvo'))}
+            />
+          </Linha>
+          <Linha rotulo="Link do botão" dica="Abre em uma nova aba.">
+            <CampoTextoSalvo
+              className={`fm-pos-input${urlInvalida ? ' invalido' : ''}`} valor={form.obrigado_botao_url || ''} disabled={off}
+              type="url" inputMode="url" maxLength={2000} placeholder="https://seusite.com.br"
+              aria-label="Link do botão da mensagem de agradecimento" aria-invalid={urlInvalida}
+              onFocus={() => setUrlInvalida(false)}
+              onSalvar={salvarUrl}
+            />
+            {urlInvalida && <span className="fm-pos-erro">Use um endereço completo, começando com https://</span>}
+            {incompleto && !urlInvalida && <span className="fm-publico-aviso">Preencha o texto e o link para o botão aparecer.</span>}
+          </Linha>
+        </>
+      )}
+    </>
+  )
+}
+
 export function PainelPosEnvio({ form, podeEditar, salvarForm }) {
   const toast = useToast()
   // "Redirecionar" escolhido mas ainda sem URL: só na tela — o banco exige a
@@ -229,8 +293,8 @@ export function PainelPosEnvio({ form, podeEditar, salvarForm }) {
       if (await salvarForm({ redirect_url: null, pos_envio: 'mensagem' })) { setModo('mensagem'); toast('Sem URL — volta a mostrar a mensagem') }
       return
     }
-    const url = /^[a-z][a-z0-9+.-]*:/i.test(digitada) ? digitada : `https://${digitada}`
-    if (!URL_REDIRECT_RE.test(url) || url.length > 2000) { setUrlInvalida(true); return }
+    const url = completarUrl(digitada)
+    if (!url) { setUrlInvalida(true); return }
     setUrlInvalida(false)
     if (await salvarForm({ redirect_url: url, pos_envio: 'redirecionar' })) toast('URL de redirecionamento salva')
   }
@@ -264,6 +328,7 @@ export function PainelPosEnvio({ form, podeEditar, salvarForm }) {
                 onSalvar={v => salvarForm({ sucesso_texto: v || null }).then(ok => ok && toast('Mensagem salva'))}
               />
             </Linha>
+            <BotaoObrigado form={form} off={off} salvarForm={salvarForm} />
           </>
         ) : (
           <Linha
@@ -279,6 +344,138 @@ export function PainelPosEnvio({ form, podeEditar, salvarForm }) {
             />
             {urlInvalida && <span className="fm-pos-erro">Use um endereço completo, começando com https://</span>}
             {!form.redirect_url && !urlInvalida && <span className="fm-publico-aviso">Enquanto não houver URL, continua mostrando a mensagem.</span>}
+          </Linha>
+        )}
+      </div>
+    </>
+  )
+}
+
+// ── Apresentação (aba Geral; migration_029) ──
+// Imagens no bucket público formularios-assets, em <empresa_id>/<formulario_id>/
+// (a policy de upload exige esse caminho e master do próprio escritório).
+const BUCKET = 'formularios-assets'
+const TIPOS_IMAGEM = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' }
+
+// caminho do arquivo a partir da URL pública (só se for deste bucket)
+function caminhoNoBucket(url) {
+  const marca = `/storage/v1/object/public/${BUCKET}/`
+  const i = (url || '').indexOf(marca)
+  return i >= 0 ? decodeURIComponent(url.slice(i + marca.length).split('?')[0]) : null
+}
+
+function UploadImagem({ form, coluna, prefixo, maxMb, redonda, rotulo, off, salvarForm }) {
+  const toast = useToast()
+  const inputRef = useRef(null)
+  const [enviando, setEnviando] = useState(false)
+  const url = form[coluna]
+
+  async function apagarArquivo(urlAntiga) {
+    const caminho = caminhoNoBucket(urlAntiga)
+    if (caminho) await supabase.storage.from(BUCKET).remove([caminho]) // melhor esforço
+  }
+
+  async function escolher(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const ext = TIPOS_IMAGEM[file.type]
+    if (!ext) { toast('Use uma imagem JPG, PNG, WEBP ou GIF'); return }
+    if (file.size > maxMb * 1024 * 1024) { toast(`Imagem muito grande — máximo ${maxMb} MB`); return }
+    setEnviando(true)
+    const caminho = `${form.empresa_id}/${form.id}/${prefixo}-${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from(BUCKET).upload(caminho, file, { contentType: file.type, cacheControl: '31536000', upsert: false })
+    if (error) {
+      setEnviando(false)
+      console.error('[formulario] upload', error)
+      toast('Não foi possível enviar a imagem')
+      return
+    }
+    const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(caminho)
+    const anterior = url
+    const ok = await salvarForm({ [coluna]: publicUrl })
+    setEnviando(false)
+    if (!ok) { await supabase.storage.from(BUCKET).remove([caminho]); return }
+    toast('Imagem salva')
+    if (anterior) apagarArquivo(anterior)
+  }
+
+  async function remover() {
+    const anterior = url
+    if (await salvarForm({ [coluna]: null })) { toast('Imagem removida'); apagarArquivo(anterior) }
+  }
+
+  return (
+    <div className="fm-upload">
+      <div className={`fm-upload-previa${redonda ? ' redonda' : ''}`}>
+        {url ? <img src={url} alt={rotulo} /> : <span>Sem imagem</span>}
+      </div>
+      {!off && (
+        <div className="fm-upload-acoes">
+          <input ref={inputRef} type="file" accept={Object.keys(TIPOS_IMAGEM).join(',')} hidden onChange={escolher} aria-label={rotulo} />
+          <button type="button" className="fm-embed-btn" onClick={() => inputRef.current?.click()} disabled={enviando}>
+            {enviando ? 'Enviando…' : url ? 'Trocar imagem' : 'Enviar imagem'}
+          </button>
+          {url && <button type="button" className="fm-link-btn" onClick={remover} disabled={enviando}>Remover</button>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function PainelApresentacao({ form, podeEditar, salvarForm }) {
+  const toast = useToast()
+  const [videoInvalido, setVideoInvalido] = useState(false)
+  const off = !podeEditar
+  const videoId = idDoYoutube(form.intro_video_youtube)
+
+  async function salvarVideo(digitado) {
+    if (!digitado) { setVideoInvalido(false); salvarForm({ intro_video_youtube: null }); return }
+    if (!idDoYoutube(digitado)) { setVideoInvalido(true); return }
+    setVideoInvalido(false)
+    if (await salvarForm({ intro_video_youtube: digitado })) toast('Vídeo salvo')
+  }
+
+  return (
+    <>
+      <div className="fm-section-title fm-apresentacao-titulo">Apresentação</div>
+      <p className="fm-section-sub">Aparece no topo do formulário: no link público e nos dois modos de incorporação. Tudo opcional.</p>
+      <div className="fm-publico">
+        <Linha rotulo="Logo" dica="Circular. Sem logo, a página não mostra nenhum. Até 5 MB (JPG, PNG, WEBP ou GIF).">
+          <UploadImagem form={form} coluna="logo_url" prefixo="logo" maxMb={5} redonda rotulo="Logo do formulário" off={off} salvarForm={salvarForm} />
+        </Linha>
+        <Linha rotulo="Capa" dica="Faixa no topo da página. Tamanho sugerido: 1200×400 px. Até 10 MB.">
+          <UploadImagem form={form} coluna="capa_url" prefixo="capa" maxMb={10} rotulo="Imagem de capa" off={off} salvarForm={salvarForm} />
+        </Linha>
+        <Linha rotulo="Introdução">
+          <CampoTextoSalvo
+            multilinha rows={4} className="fm-pos-input" valor={form.intro_texto || ''} disabled={off} maxLength={5000}
+            placeholder="Texto que aparece antes dos campos — as quebras de linha são mantidas" aria-label="Texto de introdução"
+            onSalvar={v => salvarForm({ intro_texto: v || null }).then(ok => ok && toast('Introdução salva'))}
+          />
+        </Linha>
+        <Linha rotulo="Vídeo do YouTube">
+          <CampoTextoSalvo
+            className={`fm-pos-input${videoInvalido ? ' invalido' : ''}`} valor={form.intro_video_youtube || ''} disabled={off}
+            type="url" inputMode="url" maxLength={300} placeholder="https://www.youtube.com/watch?v=…"
+            aria-label="Link do vídeo do YouTube" aria-invalid={videoInvalido}
+            onFocus={() => setVideoInvalido(false)}
+            onSalvar={salvarVideo}
+          />
+          {videoInvalido && <span className="fm-pos-erro">Não reconheci o link. Use um link do youtube.com ou youtu.be.</span>}
+          {videoId && !videoInvalido && (
+            <span className="fm-video-ok">
+              <img src={`https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`} alt="" /> Vídeo reconhecido
+            </span>
+          )}
+        </Linha>
+        {videoId && (
+          <Linha rotulo="Posição do vídeo">
+            <Segmentos
+              rotulo="Posição do vídeo" valor={form.intro_video_posicao === 'antes' ? 'antes' : 'depois'} disabled={off}
+              onChange={v => salvarForm({ intro_video_posicao: v })}
+              opcoes={[{ value: 'antes', label: 'Antes do texto de introdução' }, { value: 'depois', label: 'Depois do texto de introdução' }]}
+            />
           </Linha>
         )}
       </div>

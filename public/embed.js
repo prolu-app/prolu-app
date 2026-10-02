@@ -25,6 +25,40 @@
   var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   // redirecionamento pós-envio (página de obrigado do escritório): só http(s)
   var URL_RE = /^https?:\/\/[^\s]+$/i
+  var IMG_RE = /^https:\/\/[^\s]+$/i
+  var YT_ID_RE = /^[A-Za-z0-9_-]{11}$/
+
+  // apresentação (logo, capa, introdução, vídeo) — já validada pela função; revalida o formato
+  function apresentacao(form) {
+    var a = form.apresentacao && typeof form.apresentacao === 'object' ? form.apresentacao : {}
+    return {
+      logo: typeof a.logo === 'string' && IMG_RE.test(a.logo) ? a.logo : null,
+      capa: typeof a.capa === 'string' && IMG_RE.test(a.capa) ? a.capa : null,
+      intro: typeof a.intro === 'string' && a.intro.trim() ? a.intro : null,
+      videoId: typeof a.video_id === 'string' && YT_ID_RE.test(a.video_id) ? a.video_id : null,
+      videoAntes: a.video_posicao === 'antes'
+    }
+  }
+
+  function video(id, titulo) {
+    var box = el('div', 'prolu-form__video')
+    var fr = document.createElement('iframe')
+    fr.src = 'https://www.youtube.com/embed/' + id
+    fr.title = 'Vídeo — ' + titulo
+    fr.loading = 'lazy'
+    fr.allow = 'accelerometer; encrypted-media; gyroscope; picture-in-picture; web-share'
+    fr.referrerPolicy = 'strict-origin-when-cross-origin'
+    fr.allowFullscreen = true
+    box.appendChild(fr)
+    return box
+  }
+
+  function imagem(classe, src, alt) {
+    var img = el('img', classe)
+    img.src = src
+    img.alt = alt || ''
+    return img
+  }
 
   // ── modo iframe: altura automática ──────────────────────────────────────
   function iframeDaMensagem(ev) {
@@ -68,7 +102,13 @@
     ':where(.prolu-form__erro,.prolu-form__legenda){font-size:.85em}',
     ':where(.prolu-form__input[aria-invalid="true"]){border-color:#c62828;outline-color:#c62828}',
     ':where(.prolu-form__enviar){cursor:pointer;font:inherit}',
-    ':where(.prolu-form__enviar:disabled){opacity:.6;cursor:wait}'
+    ':where(.prolu-form__enviar:disabled){opacity:.6;cursor:wait}',
+    ':where(.prolu-form__capa){display:block;width:100%;height:auto;max-height:320px;object-fit:cover}',
+    ':where(.prolu-form__logo){display:block;width:80px;height:80px;border-radius:50%;object-fit:cover;margin:1em auto}',
+    ':where(.prolu-form__intro){white-space:pre-line}',
+    ':where(.prolu-form__video){aspect-ratio:16/9;width:100%;margin:1em 0}',
+    ':where(.prolu-form__video iframe){display:block;width:100%;height:100%;border:0}',
+    ':where(.prolu-form__obrigado-botao){display:inline-block;margin-top:1em}'
   ].join('\n')
 
   function estiloBase() {
@@ -108,13 +148,21 @@
       .catch(function () { return { error: { error: 'Não foi possível conectar. Tente novamente.' } } })
   }
 
-  function mensagem(raiz, tipo, titulo, texto) {
+  function mensagem(raiz, tipo, titulo, texto, botao) {
     raiz.textContent = ''
     raiz.setAttribute('data-estado', tipo === 'sucesso' ? 'enviado' : 'indisponivel')
     var box = el('div', 'prolu-form__mensagem prolu-form__mensagem--' + tipo)
     if (tipo === 'sucesso') box.setAttribute('role', 'status')
     box.appendChild(el('h2', 'prolu-form__titulo', titulo))
     box.appendChild(el('p', 'prolu-form__texto', texto))
+    // botão opcional do agradecimento (abre em nova aba)
+    if (botao && typeof botao.texto === 'string' && typeof botao.url === 'string' && URL_RE.test(botao.url)) {
+      var a = el('a', 'prolu-form__obrigado-botao', botao.texto)
+      a.href = botao.url
+      a.target = '_blank'
+      a.rel = 'noopener noreferrer'
+      box.appendChild(a)
+    }
     raiz.appendChild(box)
   }
 
@@ -145,9 +193,15 @@
     var f = el('form', 'prolu-form__form')
     f.noValidate = true
 
+    var ap = apresentacao(form)
+    if (ap.capa) f.appendChild(imagem('prolu-form__capa', ap.capa, ''))
+    if (ap.logo) f.appendChild(imagem('prolu-form__logo', ap.logo, form.escritorio ? 'Logo ' + form.escritorio : ''))
     if (form.escritorio) f.appendChild(el('div', 'prolu-form__escritorio', form.escritorio))
     f.appendChild(el('h2', 'prolu-form__titulo', form.nome))
     if (form.descricao) f.appendChild(el('p', 'prolu-form__descricao', form.descricao))
+    if (ap.videoId && ap.videoAntes) f.appendChild(video(ap.videoId, form.nome))
+    if (ap.intro) f.appendChild(el('p', 'prolu-form__intro', ap.intro))
+    if (ap.videoId && !ap.videoAntes) f.appendChild(video(ap.videoId, form.nome))
 
     // honeypot — escondido por estilo inline (o CSS do site não deve revelá-lo)
     var hp = el('div', 'prolu-form__hp')
@@ -284,7 +338,8 @@
         // textos do escritório ou os padrões (mesmos de utils/formularioEstilo.js)
         var suc = d.sucesso || {}
         mensagem(raiz, 'sucesso', suc.titulo || 'Recebemos suas informações!',
-          suc.texto || (form.escritorio ? 'A equipe do ' + form.escritorio + ' vai entrar em contato em breve.' : 'Em breve entraremos em contato.'))
+          suc.texto || (form.escritorio ? 'A equipe do ' + form.escritorio + ' vai entrar em contato em breve.' : 'Em breve entraremos em contato.'),
+          suc.botao)
         trazerParaTela(raiz)
       })
     })

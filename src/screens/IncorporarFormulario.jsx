@@ -30,6 +30,10 @@ const CLASSES = [
   ['.prolu-form__escritorio', 'Nome do escritório, acima do título'],
   ['.prolu-form__titulo', 'Título (nome do formulário); também nas mensagens'],
   ['.prolu-form__descricao', 'Descrição do formulário'],
+  ['.prolu-form__capa', 'Imagem de capa (se houver)'],
+  ['.prolu-form__logo', 'Logo (se houver)'],
+  ['.prolu-form__intro', 'Texto de introdução'],
+  ['.prolu-form__video', 'Caixa do vídeo do YouTube (iframe dentro)'],
   ['.prolu-form__campos', 'Lista com todos os campos'],
   ['.prolu-form__campo', 'Cada campo (rótulo + resposta + erro)'],
   ['.prolu-form__campo--{tipo}', 'Por tipo: text, textarea, number, phone, email, select'],
@@ -44,6 +48,7 @@ const CLASSES = [
   ['.prolu-form__legenda', '"* campos obrigatórios"'],
   ['.prolu-form__mensagem', 'Mensagem final; --sucesso ou --indisponivel'],
   ['.prolu-form__texto', 'Texto da mensagem final'],
+  ['.prolu-form__obrigado-botao', 'Botão opcional da mensagem final (link)'],
 ]
 
 function attr(s) {

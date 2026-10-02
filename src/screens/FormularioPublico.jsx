@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../services/supabaseClient.js'
-import { estiloParaPagina, textoDoBotao, SUCESSO_TITULO_PADRAO, sucessoTextoPadrao, URL_REDIRECT_RE } from '../utils/formularioEstilo.js'
+import { estiloParaPagina, textoDoBotao, SUCESSO_TITULO_PADRAO, sucessoTextoPadrao, URL_REDIRECT_RE, embedDoYoutube } from '../utils/formularioEstilo.js'
 import './FormularioPublico.css'
 
 // Página pública /f/:slug — sem login. Carrega e envia SEMPRE pela Edge
@@ -19,6 +19,19 @@ import './FormularioPublico.css'
 // são contrato público para o CSS do site — não renomear.
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+// vídeo do YouTube responsivo (16:9)
+function Video({ id, titulo }) {
+  return (
+    <div className="prolu-form__video">
+      <iframe
+        src={embedDoYoutube(id)} title={`Vídeo — ${titulo}`} loading="lazy"
+        allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerPolicy="strict-origin-when-cross-origin" allowFullScreen
+      />
+    </div>
+  )
+}
 
 function validar(campo, valor) {
   const v = (valor || '').trim()
@@ -61,6 +74,7 @@ export default function FormularioPublico() {
   const refs = useRef({})
   const paginaRef = useRef(null)
   const visual = estiloParaPagina(form?.estilo)
+  const ap = form?.apresentacao // logo, capa, introdução, vídeo (migration_029)
 
   useEffect(() => {
     let vivo = true
@@ -138,8 +152,11 @@ export default function FormularioPublico() {
   }
 
   return (
-    <div ref={paginaRef} className={`prolu-pagina ${visual.classes}${embed ? ' prolu-pagina--embed' : ''}`} style={visual.vars}>
+    <div ref={paginaRef} className={`prolu-pagina ${visual.classes}${embed ? ' prolu-pagina--embed' : ''}${ap?.capa ? ' prolu-pagina--com-capa' : ''}`} style={visual.vars}>
+      {/* capa e logo também na mensagem final: a marca continua na tela */}
+      {ap?.capa && <img className="prolu-form__capa" src={ap.capa} alt="" />}
       <main className="prolu-form" data-estado={estado}>
+        {ap?.logo && <img className="prolu-form__logo" src={ap.logo} alt={form.escritorio ? `Logo ${form.escritorio}` : ''} />}
         {estado === 'carregando' && <p className="prolu-form__status">Carregando…</p>}
         {estado === 'redirecionando' && <p className="prolu-form__status" role="status">Enviado! Redirecionando…</p>}
 
@@ -157,6 +174,9 @@ export default function FormularioPublico() {
             </div>
             <h1 className="prolu-form__titulo">{sucesso?.titulo || SUCESSO_TITULO_PADRAO}</h1>
             <p className="prolu-form__texto">{sucesso?.texto || sucessoTextoPadrao(form?.escritorio)}</p>
+            {sucesso?.botao && URL_REDIRECT_RE.test(sucesso.botao.url) && (
+              <a className="prolu-form__obrigado-botao" href={sucesso.botao.url} target="_blank" rel="noopener noreferrer">{sucesso.botao.texto}</a>
+            )}
           </div>
         )}
 
@@ -165,6 +185,9 @@ export default function FormularioPublico() {
             {form.escritorio && <div className="prolu-form__escritorio">{form.escritorio}</div>}
             <h1 className="prolu-form__titulo">{form.nome}</h1>
             {form.descricao && <p className="prolu-form__descricao">{form.descricao}</p>}
+            {ap?.video_id && ap.video_posicao === 'antes' && <Video id={ap.video_id} titulo={form.nome} />}
+            {ap?.intro && <p className="prolu-form__intro">{ap.intro}</p>}
+            {ap?.video_id && ap.video_posicao !== 'antes' && <Video id={ap.video_id} titulo={form.nome} />}
 
             {/* honeypot: invisível pra pessoas; robôs que preenchem são descartados na função */}
             <div className="prolu-form__hp" aria-hidden="true">

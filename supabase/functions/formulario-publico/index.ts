@@ -12,7 +12,8 @@
 //                 + Origem padrão do formulário, e formulario_id (origem)
 //   clientes    → contato criado/vinculado quando há campo mapeado p/ Cliente
 //   crm_fichas  → campos extras (sem coluna no CRM), só visíveis no drawer
-// Tabelas/colunas: migrations 025, 026 e 028 (estilo + o que acontece após o envio).
+// Tabelas/colunas: migrations 025, 026, 028 (estilo + após o envio) e 029
+// (apresentação: logo, capa, introdução, vídeo; botão no agradecimento).
 //
 // Também atende o embed (public/embed.js): o modo "cru" chama esta função
 // direto do site do escritório (CORS liberado, sem apikey — verify_jwt off).
@@ -67,8 +68,35 @@ function hojeSaoPaulo(): string {
 function aposEnvio(form: Record<string, unknown>) {
   const url = typeof form.redirect_url === 'string' ? form.redirect_url.trim() : ''
   if (form.pos_envio === 'redirecionar' && /^https?:\/\/[^\s]+$/i.test(url)) return { redirecionar: url }
-  const texto = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null)
-  return { sucesso: { titulo: texto(form.sucesso_titulo), texto: texto(form.sucesso_texto) } }
+  // botão opcional na mensagem (migration_029): só com texto e URL http(s)
+  const btnUrl = textoOuNull(form.obrigado_botao_url)
+  const botao = textoOuNull(form.obrigado_botao_texto) && btnUrl && /^https?:\/\/[^\s]+$/i.test(btnUrl)
+    ? { texto: textoOuNull(form.obrigado_botao_texto), url: btnUrl } : null
+  return { sucesso: { titulo: textoOuNull(form.sucesso_titulo), texto: textoOuNull(form.sucesso_texto), botao } }
+}
+
+function textoOuNull(v: unknown) {
+  return typeof v === 'string' && v.trim() ? v.trim() : null
+}
+
+// ID de 11 caracteres de um link do YouTube (watch, youtu.be, embed, shorts,
+// live) — mesma regra de src/utils/formularioEstilo.js
+function idDoYoutube(url: unknown): string | null {
+  if (typeof url !== 'string') return null
+  const m = url.trim().match(/^(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})(?:[?&#/].*)?$/i)
+  return m ? m[1] : null
+}
+
+// Elementos de apresentação (migration_029) — imagens só https
+function apresentacao(form: Record<string, unknown>) {
+  const img = (v: unknown) => { const s = textoOuNull(v); return s && /^https:\/\/[^\s]+$/i.test(s) ? s : null }
+  return {
+    logo: img(form.logo_url),
+    capa: img(form.capa_url),
+    intro: textoOuNull(form.intro_texto),
+    video_id: idDoYoutube(form.intro_video_youtube),
+    video_posicao: form.intro_video_posicao === 'antes' ? 'antes' : 'depois',
+  }
 }
 
 Deno.serve(async (req) => {
@@ -117,6 +145,7 @@ Deno.serve(async (req) => {
         escritorio: (form.empresas as { nome?: string } | null)?.nome || null,
         // só a página /f/:slug (e o iframe) aplica; o embed cru ignora (CSS do site)
         estilo: form.estilo || null,
+        apresentacao: apresentacao(form),
       },
       campos: campos.map(c => ({
         id: c.id, label: c.label, tipo: c.tipo, obrigatorio: c.obrigatorio,
