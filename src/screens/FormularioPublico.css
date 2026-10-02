@@ -49,6 +49,25 @@ select.prolu-form__input { cursor: pointer; }
 .prolu-form__input[aria-invalid="true"] { box-shadow: 0 0 0 1.5px var(--red); }
 .prolu-form__erro { font-size: 12.5px; color: var(--red); }
 
+/* telefone (components/FormTelefoneField.jsx, react-phone-number-input): o
+   wrapper .PhoneInput é um .prolu-form__input; país e número por dentro
+   ficam transparentes e herdam texto/fonte. Foco e erro no wrapper. */
+.prolu-form__telefone {
+  display: flex; align-items: center; gap: 10px;
+  --PhoneInput-color--focus: var(--pf-destaque, var(--green));
+  --PhoneInputCountrySelectArrow-color: currentColor;
+  --PhoneInputCountrySelectArrow-opacity: 0.55;
+  --PhoneInputCountryFlag-borderColor: rgba(18, 18, 16, 0.15);
+  --PhoneInputCountryFlag-height: 1.05em;
+}
+.prolu-form__telefone:focus-within { box-shadow: 0 0 0 calc(var(--pf-input-contorno-largura, 1.5px) + 0.5px) var(--pf-destaque, var(--green)); }
+.prolu-form__telefone--erro, .prolu-form__telefone--erro:focus-within { box-shadow: 0 0 0 1.5px var(--red); }
+.prolu-form__telefone .PhoneInputInput {
+  flex: 1; min-width: 0; border: none; outline: none; background: transparent; padding: 0; margin: 0;
+  font: inherit; color: inherit;
+}
+.prolu-form__telefone .PhoneInputCountry { margin: 0; }
+
 /* seleção própria (components/FormSelectField.jsx): o botão é um
    .prolu-form__input (fundo, texto, contorno, cantos, foco e erro vêm de lá) */
 .prolu-form__select { position: relative; }

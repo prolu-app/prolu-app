@@ -1,9 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../services/supabaseClient.js'
 import { estiloParaPagina, textoDoBotao, SUCESSO_TITULO_PADRAO, sucessoTextoPadrao, URL_REDIRECT_RE, embedDoYoutube } from '../utils/formularioEstilo.js'
 import { sanitizarIntro } from '../utils/introHtml.js'
 import FormSelectField from '../components/FormSelectField.jsx'
 import './FormularioPublico.css'
+
+// telefone com país/máscara (react-phone-number-input + bandeiras, ~120 KB gz): só
+// baixa quando o formulário tem campo de telefone — o resto do app não carrega
+const FormTelefoneField = lazy(() => import('../components/FormTelefoneField.jsx'))
+const carregarTelefone = () => import('react-phone-number-input')
 
 // Página pública /f/:slug — sem login. Carrega e envia SEMPRE pela Edge
 // Function `formulario-publico` (nenhuma tabela tem acesso anon). A
@@ -35,13 +40,15 @@ function Video({ id, titulo }) {
   )
 }
 
-function validar(campo, valor) {
+// telefonePossivel: isPossiblePhoneNumber da lib (carregada sob demanda em enviar)
+function validar(campo, valor, telefonePossivel) {
   const v = (valor || '').trim()
   if (!v) return campo.obrigatorio ? 'Campo obrigatório.' : null
   if (campo.tipo === 'email' && !EMAIL_RE.test(v)) return 'E-mail inválido.'
   if (campo.tipo === 'phone') {
-    const d = v.replace(/\D/g, '')
-    if (d.length < 8 || d.length > 15) return 'Telefone inválido.'
+    // E.164 do campo com país (+5511…): confere se é um número possível para o país
+    const possivel = v.startsWith('+') && telefonePossivel ? telefonePossivel(v) : /^\d{8,15}$/.test(v.replace(/\D/g, ''))
+    if (!possivel) return 'Telefone inválido.'
   }
   if (campo.tipo === 'number' && !Number.isFinite(Number(v.replace(',', '.')))) return 'Informe um número.'
   return null
@@ -117,7 +124,11 @@ export default function FormularioPublico() {
     e.preventDefault()
     if (enviando) return
     const novosErros = {}
-    campos.forEach(c => { const m = validar(c, valores[c.id]); if (m) novosErros[c.id] = m })
+    // já baixada pelo campo de telefone na tela; se falhar, valida só pelos dígitos
+    const telefonePossivel = campos.some(c => c.tipo === 'phone')
+      ? await carregarTelefone().then(m => m.isPossiblePhoneNumber, () => null)
+      : null
+    campos.forEach(c => { const m = validar(c, valores[c.id], telefonePossivel); if (m) novosErros[c.id] = m })
     setErros(novosErros)
     setErroGeral(null)
     if (Object.keys(novosErros).length) { focarPrimeiroErro(novosErros); return }
@@ -234,6 +245,14 @@ export default function FormularioPublico() {
                         invalido={!!erros[c.id]} describedBy={erros[c.id] ? `${id}-erro` : undefined}
                         onChange={v => alterar(c.id, v)} botaoRef={el => { refs.current[c.id] = el }}
                       />
+                    ) : c.tipo === 'phone' ? (
+                      <Suspense fallback={<input className="prolu-form__input" id={id} disabled aria-busy="true" placeholder="Carregando…" />}>
+                        <FormTelefoneField
+                          id={id} valor={valores[c.id] || ''} obrigatorio={c.obrigatorio}
+                          invalido={!!erros[c.id]} describedBy={erros[c.id] ? `${id}-erro` : undefined}
+                          onChange={v => alterar(c.id, v)} inputRef={el => { refs.current[c.id] = el }}
+                        />
+                      </Suspense>
                     ) : (
                       <input
                         {...comum}

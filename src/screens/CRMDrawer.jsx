@@ -232,6 +232,16 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
   // não entra no objeto da linha, senão updateCell o gravaria dentro de valores.
   const [origemForm, setOrigemForm] = useState(null)
   const [fichas, setFichas] = useState([])
+  // telefones da ficha chegam em E.164 (+5511998765432): formatados para leitura
+  // com react-phone-number-input, baixada só quando a ficha tem telefone
+  const [formatarTel, setFormatarTel] = useState(null)
+  useEffect(() => {
+    if (formatarTel || !fichas.some(fc => Array.isArray(fc.respostas) && fc.respostas.some(r => r.tipo === 'phone'))) return
+    import('react-phone-number-input').then(m => setFormatarTel(() => v => {
+      if (typeof v !== 'string' || !v.startsWith('+')) return v // telefones antigos: como foram digitados
+      return (v.startsWith('+55') ? m.formatPhoneNumber(v) : m.formatPhoneNumberIntl(v)) || v
+    })).catch(() => {})
+  }, [fichas, formatarTel])
   const listRef = useRef(null)
 
   const clienteCol = columns.find(c => c.slug === 'cliente')
@@ -463,7 +473,7 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
               {fichas.flatMap(fc => (Array.isArray(fc.respostas) ? fc.respostas : []).map((r, i) => (
                 <div className="dr-ficha-item" key={`${fc.id}-${i}`}>
                   <div className="dr-ficha-label">{r.label}</div>
-                  <div className="dr-ficha-valor">{r.valor}</div>
+                  <div className="dr-ficha-valor">{r.tipo === 'phone' && formatarTel ? formatarTel(r.valor) : r.valor}</div>
                 </div>
               )))}
             </div>

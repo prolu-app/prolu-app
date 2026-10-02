@@ -9,6 +9,7 @@ import { FmSwitch, FmConfirmar, TEXTO_EXCLUIR } from './Formularios.jsx'
 import { excluirFormulario } from '../services/formulariosAcoes.js'
 import IncorporarFormulario from './IncorporarFormulario.jsx'
 import { PainelEstilo, PainelPosEnvio, PainelApresentacao } from './FormularioAparencia.jsx'
+import PainelNotificacoes from './FormularioNotificacoes.jsx'
 import CampoTextoSalvo from '../components/CampoTextoSalvo.jsx'
 import './Formularios.css'
 
@@ -19,6 +20,7 @@ const ABAS = [
   { id: 'campos', label: 'Campos' },
   { id: 'envio', label: 'Depois do envio' },
   { id: 'estilo', label: 'Estilo' },
+  { id: 'notificacoes', label: 'Notificações' },
 ]
 
 const TIPOS = [
@@ -432,6 +434,10 @@ export default function FormularioEditor() {
 
       <section role="tabpanel" id="fm-painel-estilo" aria-labelledby="fm-aba-estilo" hidden={aba !== 'estilo'}>
         <PainelEstilo form={form} campos={campos} podeEditar={podeEditar} salvarForm={salvarForm} />
+      </section>
+
+      <section role="tabpanel" id="fm-painel-notificacoes" aria-labelledby="fm-aba-notificacoes" hidden={aba !== 'notificacoes'}>
+        <PainelNotificacoes form={form} podeEditar={podeEditar} salvarForm={salvarForm} />
       </section>
     </>
   )

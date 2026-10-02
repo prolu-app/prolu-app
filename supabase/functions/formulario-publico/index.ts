@@ -14,7 +14,8 @@
 //   crm_fichas  → campos extras (sem coluna no CRM), só visíveis no drawer
 // Tabelas/colunas: migrations 025, 026, 028 (estilo + após o envio), 029
 // (apresentação: logo, capa, introdução, vídeo; botão no agradecimento) e 030
-// (titulo_pagina) e 032 (o que exibir no topo).
+// (titulo_pagina), 032 (o que exibir no topo) e 034 (notificações: chama a
+// formulario-notificacao em segundo plano depois de gravar o envio).
 //
 // Também atende o embed (public/embed.js): o modo "cru" chama esta função
 // direto do site do escritório (CORS liberado, sem apikey — verify_jwt off).
@@ -259,6 +260,29 @@ Deno.serve(async (req) => {
       })
       if (cliErr) console.error('[formulario-publico] contato', cliErr) // não impede o registro no CRM
     }
+  }
+
+  // ── notificação (Fase 4): em segundo plano, sem atrasar a resposta ao visitante ──
+  // Só chama se o formulário tem e-mail ligado (a formulario-notificacao confere
+  // de novo). waitUntil mantém o fetch vivo depois da resposta — sem ele o
+  // runtime pode encerrar a função e cortar a chamada no meio.
+  if (form.notif_ativa === true && form.notif_email_ativa === true) {
+    const respostasNotif = campos
+      .filter(c => valores[c.id] !== undefined)
+      .map(c => ({ label: c.label || 'Pergunta', valor: valores[c.id], tipo: c.tipo }))
+    const tarefa = fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/formulario-notificacao`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+      },
+      body: JSON.stringify({ formulario_id: form.id, respostas: respostasNotif, crm_linha_id: nova.id }),
+    })
+      .then(async r => { if (!r.ok) console.error('[formulario-publico] notificação', r.status, await r.text()) })
+      .catch(e => console.error('[formulario-publico] notificação', e))
+    // deno-lint-ignore no-explicit-any
+    const runtime = (globalThis as any).EdgeRuntime
+    if (runtime?.waitUntil) runtime.waitUntil(tarefa)
   }
 
   return jsonResponse({ ok: true, ...aposEnvio(form) }, 200)

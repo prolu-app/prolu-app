@@ -46,6 +46,34 @@
 @media (hover: none) { .fm-acao { opacity: 1; } }
 .fm-confirmar-texto { font-size: 14px; line-height: 1.55; color: var(--ink-60); margin: -6px 0 0; }
 
+/* aba Notificações (FormularioNotificacoes.jsx) */
+.fm-notif-canais { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; transition: opacity 0.15s; }
+.fm-notif-canais.desligado { opacity: 0.5; pointer-events: none; }
+.fm-notif-canais .fm-publico { margin: 0; }
+.fm-notif-canal { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.fm-notif-whatsapp { opacity: 0.6; }
+.fm-notif-emails { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 6px; }
+.fm-tags {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 40px; cursor: text;
+  background: var(--cream); border-radius: 8px; padding: 6px 8px;
+}
+.fm-tags:focus-within { box-shadow: 0 0 0 1.5px var(--ink-divider); }
+.fm-tags.invalido { box-shadow: 0 0 0 1.5px var(--red); }
+.fm-tags input {
+  flex: 1; min-width: 160px; border: none; outline: none; background: transparent; padding: 4px;
+  font-family: inherit; font-size: 13.5px; color: var(--ink);
+}
+.fm-tag {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border-radius: 99px;
+  background: var(--white); box-shadow: 0 0 0 1px var(--ink-divider); font-size: 12.5px; color: var(--ink);
+}
+.fm-tag button {
+  width: 20px; height: 20px; border: none; border-radius: 50%; background: none; cursor: pointer;
+  font-size: 15px; line-height: 1; color: var(--ink-40);
+}
+.fm-tag button:hover { background: var(--gray-soft); color: var(--ink); }
+.fm-notif-acoes { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+
 /* rodapé da aba Geral: excluir, discreto */
 .fm-excluir-rodape { display: flex; justify-content: flex-start; margin: 36px 0 8px; }
 .fm-excluir-btn {
