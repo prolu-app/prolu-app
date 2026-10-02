@@ -93,7 +93,7 @@
   // ── modo cru: formulário no DOM do site ─────────────────────────────────
   var CSS_BASE = [
     ':where(.prolu-form){display:block}',
-    ':where(.prolu-form__descricao,.prolu-form__texto){white-space:pre-line}',
+    ':where(.prolu-form__texto){white-space:pre-line}',
     ':where(.prolu-form__campos){display:flex;flex-direction:column;gap:1em;margin:1em 0}',
     ':where(.prolu-form__campo){display:flex;flex-direction:column;gap:.35em}',
     ':where(.prolu-form__input){width:100%;box-sizing:border-box;font:inherit}',
@@ -196,12 +196,13 @@
     var ap = apresentacao(form)
     if (ap.capa) f.appendChild(imagem('prolu-form__capa', ap.capa, ''))
     if (ap.logo) f.appendChild(imagem('prolu-form__logo', ap.logo, form.escritorio ? 'Logo ' + form.escritorio : ''))
-    if (form.escritorio) f.appendChild(el('div', 'prolu-form__escritorio', form.escritorio))
-    f.appendChild(el('h2', 'prolu-form__titulo', form.nome))
-    if (form.descricao) f.appendChild(el('p', 'prolu-form__descricao', form.descricao))
-    if (ap.videoId && ap.videoAntes) f.appendChild(video(ap.videoId, form.nome))
+    // título visível: titulo_pagina ou nome do escritório (resolvido na função); nome/descrição são internos
+    var titulo = form.titulo || form.nome
+    if (form.escritorio && form.escritorio !== titulo) f.appendChild(el('div', 'prolu-form__escritorio', form.escritorio))
+    f.appendChild(el('h2', 'prolu-form__titulo', titulo))
+    if (ap.videoId && ap.videoAntes) f.appendChild(video(ap.videoId, titulo))
     if (ap.intro) f.appendChild(el('p', 'prolu-form__intro', ap.intro))
-    if (ap.videoId && !ap.videoAntes) f.appendChild(video(ap.videoId, form.nome))
+    if (ap.videoId && !ap.videoAntes) f.appendChild(video(ap.videoId, titulo))
 
     // honeypot — escondido por estilo inline (o CSS do site não deve revelá-lo)
     var hp = el('div', 'prolu-form__hp')

@@ -75,6 +75,8 @@ export default function FormularioPublico() {
   const paginaRef = useRef(null)
   const visual = estiloParaPagina(form?.estilo)
   const ap = form?.apresentacao // logo, capa, introdução, vídeo (migration_029)
+  // título visível: titulo_pagina || escritório (resolvido na função); nome é interno
+  const titulo = form?.titulo || form?.nome
 
   useEffect(() => {
     let vivo = true
@@ -84,7 +86,7 @@ export default function FormularioPublico() {
       setForm(data.formulario)
       setCampos(data.campos || [])
       setEstado('pronto')
-      document.title = data.formulario.nome
+      document.title = data.formulario.titulo || data.formulario.nome
     })
     return () => { vivo = false }
   }, [slug])
@@ -182,12 +184,12 @@ export default function FormularioPublico() {
 
         {estado === 'pronto' && (
           <form className="prolu-form__form" onSubmit={enviar} noValidate>
-            {form.escritorio && <div className="prolu-form__escritorio">{form.escritorio}</div>}
-            <h1 className="prolu-form__titulo">{form.nome}</h1>
-            {form.descricao && <p className="prolu-form__descricao">{form.descricao}</p>}
-            {ap?.video_id && ap.video_posicao === 'antes' && <Video id={ap.video_id} titulo={form.nome} />}
+            {/* nome do escritório em cima só quando o título é outro (senão repetiria) */}
+            {form.escritorio && form.escritorio !== titulo && <div className="prolu-form__escritorio">{form.escritorio}</div>}
+            <h1 className="prolu-form__titulo">{titulo}</h1>
+            {ap?.video_id && ap.video_posicao === 'antes' && <Video id={ap.video_id} titulo={titulo} />}
             {ap?.intro && <p className="prolu-form__intro">{ap.intro}</p>}
-            {ap?.video_id && ap.video_posicao !== 'antes' && <Video id={ap.video_id} titulo={form.nome} />}
+            {ap?.video_id && ap.video_posicao !== 'antes' && <Video id={ap.video_id} titulo={titulo} />}
 
             {/* honeypot: invisível pra pessoas; robôs que preenchem são descartados na função */}
             <div className="prolu-form__hp" aria-hidden="true">

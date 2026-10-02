@@ -439,7 +439,7 @@ export function PainelApresentacao({ form, podeEditar, salvarForm }) {
   return (
     <>
       <div className="fm-section-title fm-apresentacao-titulo">Apresentação</div>
-      <p className="fm-section-sub">Aparece no topo do formulário: no link público e nos dois modos de incorporação. Tudo opcional.</p>
+      <p className="fm-section-sub">O que o visitante vê no topo do formulário: no link público e nos dois modos de incorporação. Tudo opcional.</p>
       <div className="fm-publico">
         <Linha rotulo="Logo" dica="Circular. Sem logo, a página não mostra nenhum. Até 5 MB (JPG, PNG, WEBP ou GIF).">
           <UploadImagem form={form} coluna="logo_url" prefixo="logo" maxMb={5} redonda rotulo="Logo do formulário" off={off} salvarForm={salvarForm} />
@@ -447,9 +447,16 @@ export function PainelApresentacao({ form, podeEditar, salvarForm }) {
         <Linha rotulo="Capa" dica="Faixa no topo da página. Tamanho sugerido: 1200×400 px. Até 10 MB.">
           <UploadImagem form={form} coluna="capa_url" prefixo="capa" maxMb={10} rotulo="Imagem de capa" off={off} salvarForm={salvarForm} />
         </Linha>
+        <Linha rotulo="Título da página" dica="É o que o visitante verá no topo do formulário. Se vazio, usa o nome do escritório.">
+          <CampoTextoSalvo
+            className="fm-pos-input" valor={form.titulo_pagina || ''} disabled={off} maxLength={120}
+            placeholder={form.empresas?.nome || 'Nome do escritório'} aria-label="Título da página"
+            onSalvar={v => salvarForm({ titulo_pagina: v || null }).then(ok => ok && toast('Título salvo'))}
+          />
+        </Linha>
         <Linha rotulo="Introdução">
           <CampoTextoSalvo
-            multilinha rows={4} className="fm-pos-input" valor={form.intro_texto || ''} disabled={off} maxLength={5000}
+            multilinha rows={5} className="fm-pos-input fm-intro-input" valor={form.intro_texto || ''} disabled={off} maxLength={5000}
             placeholder="Texto que aparece antes dos campos — as quebras de linha são mantidas" aria-label="Texto de introdução"
             onSalvar={v => salvarForm({ intro_texto: v || null }).then(ok => ok && toast('Introdução salva'))}
           />

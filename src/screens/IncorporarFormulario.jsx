@@ -28,8 +28,7 @@ const MODOS = [
 const CLASSES = [
   ['.prolu-form', 'Caixa do formulário. data-estado = carregando | pronto | enviado | indisponivel'],
   ['.prolu-form__escritorio', 'Nome do escritório, acima do título'],
-  ['.prolu-form__titulo', 'Título (nome do formulário); também nas mensagens'],
-  ['.prolu-form__descricao', 'Descrição do formulário'],
+  ['.prolu-form__titulo', 'Título da página (ou nome do escritório); também nas mensagens'],
   ['.prolu-form__capa', 'Imagem de capa (se houver)'],
   ['.prolu-form__logo', 'Logo (se houver)'],
   ['.prolu-form__intro', 'Texto de introdução'],

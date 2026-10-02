@@ -12,8 +12,9 @@
 //                 + Origem padrão do formulário, e formulario_id (origem)
 //   clientes    → contato criado/vinculado quando há campo mapeado p/ Cliente
 //   crm_fichas  → campos extras (sem coluna no CRM), só visíveis no drawer
-// Tabelas/colunas: migrations 025, 026, 028 (estilo + após o envio) e 029
-// (apresentação: logo, capa, introdução, vídeo; botão no agradecimento).
+// Tabelas/colunas: migrations 025, 026, 028 (estilo + após o envio), 029
+// (apresentação: logo, capa, introdução, vídeo; botão no agradecimento) e 030
+// (titulo_pagina).
 //
 // Também atende o embed (public/embed.js): o modo "cru" chama esta função
 // direto do site do escritório (CORS liberado, sem apikey — verify_jwt off).
@@ -138,11 +139,13 @@ Deno.serve(async (req) => {
 
   // ── carregar ──
   if (body.acao === 'carregar') {
+    const escritorio = (form.empresas as { nome?: string } | null)?.nome || null
     return jsonResponse({
       formulario: {
-        nome: form.nome,
-        descricao: form.descricao,
-        escritorio: (form.empresas as { nome?: string } | null)?.nome || null,
+        // nome e descrição são internos (editor); o visitante vê o título da
+        // página (migration_030) ou, se vazio, o nome do escritório
+        titulo: textoOuNull(form.titulo_pagina) || escritorio || form.nome,
+        escritorio,
         // só a página /f/:slug (e o iframe) aplica; o embed cru ignora (CSS do site)
         estilo: form.estilo || null,
         apresentacao: apresentacao(form),

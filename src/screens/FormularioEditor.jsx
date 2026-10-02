@@ -103,7 +103,8 @@ export default function FormularioEditor() {
     if (!supabaseReady) { setLoading(false); return }
     setLoading(true)
     const [{ data: f, error: e1 }, { data: cs, error: e2 }] = await Promise.all([
-      supabase.from('formularios').select('*').eq('id', id).maybeSingle(),
+      // empresas(nome): placeholder do título da página (nome do escritório)
+      supabase.from('formularios').select('*, empresas(nome)').eq('id', id).maybeSingle(),
       supabase.from('formulario_campos').select('*').eq('formulario_id', id).order('ordem'),
     ])
     if (e1 || e2) { console.error('[formulario] carregar', e1 || e2); toast('Erro ao carregar formulário') }
@@ -264,7 +265,7 @@ export default function FormularioEditor() {
           <CampoTextoSalvo
             className="fm-pos-input"
             valor={form.nome}
-            placeholder="Nome do formulário"
+            placeholder="Nome interno do formulário"
             disabled={!podeEditar}
             obrigatorio
             maxLength={120}
@@ -279,7 +280,7 @@ export default function FormularioEditor() {
             rows={3}
             className="fm-pos-input"
             valor={form.descricao || ''}
-            placeholder="Opcional — aparece abaixo do título no formulário"
+            placeholder="Uso interno — não aparece no formulário"
             disabled={!podeEditar}
             aria-label="Descrição do formulário"
             onSalvar={descricao => salvarForm({ descricao: descricao || null })}

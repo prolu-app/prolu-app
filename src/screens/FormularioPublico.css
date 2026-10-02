@@ -26,9 +26,8 @@
   text-transform: uppercase; color: var(--ink-40); margin-bottom: 6px;
 }
 .prolu-form__titulo { font-family: 'Abhaya Libre', serif; font-size: 30px; font-weight: 600; line-height: 1.15; margin: 0 0 8px; color: var(--ink); }
-.prolu-form__descricao,
 .prolu-form__texto { color: var(--ink-60); font-size: 14.5px; line-height: 1.55; margin: 0; }
-.prolu-form__descricao, .prolu-form__texto { white-space: pre-line; }
+.prolu-form__texto { white-space: pre-line; }
 
 .prolu-form__hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
 
