@@ -5,7 +5,8 @@ import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { IconBack, IconPlus, IconTrash, IconGrip, IconClose, IconChevronDown, IconCopy, IconArrowUpRight, IconCode } from '../components/Icons.jsx'
 import { slugify, slugValido, urlPublica } from '../utils/slug.js'
-import { FmSwitch } from './Formularios.jsx'
+import { FmSwitch, FmConfirmar, TEXTO_EXCLUIR } from './Formularios.jsx'
+import { excluirFormulario } from '../services/formulariosAcoes.js'
 import IncorporarFormulario from './IncorporarFormulario.jsx'
 import { PainelEstilo, PainelPosEnvio, PainelApresentacao } from './FormularioAparencia.jsx'
 import CampoTextoSalvo from '../components/CampoTextoSalvo.jsx'
@@ -77,6 +78,8 @@ export default function FormularioEditor() {
   // (normalizado), e não o texto digitado quando era inválido ou já estava em uso
   const [slugVersao, setSlugVersao] = useState(0)
   const [incorporar, setIncorporar] = useState(false)
+  const [confirmarExcluir, setConfirmarExcluir] = useState(false)
+  const [excluindo, setExcluindo] = useState(false)
   // aba ativa na URL (?aba=estilo): recarregar ou voltar mantém a seção
   const [params, setParams] = useSearchParams()
   const aba = ABAS.some(a => a.id === params.get('aba')) ? params.get('aba') : 'geral'
@@ -141,6 +144,19 @@ export default function FormularioEditor() {
       return
     }
     toast('Endereço atualizado — o link anterior deixou de funcionar')
+  }
+
+  async function excluir() {
+    setExcluindo(true)
+    try {
+      await excluirFormulario(form)
+      toast('Formulário excluído')
+      navigate('/formularios')
+    } catch (e) {
+      console.error('[formulario] excluir', e)
+      toast('Não foi possível excluir o formulário')
+      setExcluindo(false)
+    }
   }
 
   async function copiarLink() {
@@ -346,9 +362,20 @@ export default function FormularioEditor() {
         })()}
       </div>
       <PainelApresentacao form={form} podeEditar={podeEditar} salvarForm={salvarForm} />
+      {podeEditar && (
+        <div className="fm-excluir-rodape">
+          <button type="button" className="fm-excluir-btn" onClick={() => setConfirmarExcluir(true)}><IconTrash /> Excluir formulário</button>
+        </div>
+      )}
       </section>
 
       {incorporar && <IncorporarFormulario form={form} campos={campos} onFechar={() => setIncorporar(false)} />}
+      {confirmarExcluir && (
+        <FmConfirmar
+          titulo="Excluir formulário?" texto={TEXTO_EXCLUIR} rotulo="Excluir" perigo
+          ocupado={excluindo} onConfirmar={excluir} onCancelar={() => setConfirmarExcluir(false)}
+        />
+      )}
 
       <section role="tabpanel" id="fm-painel-campos" aria-labelledby="fm-aba-campos" hidden={aba !== 'campos'}>
       {campos.length === 0 && (

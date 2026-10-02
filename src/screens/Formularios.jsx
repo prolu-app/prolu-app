@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
-import { IconPlus } from '../components/Icons.jsx'
+import { IconPlus, IconCopy, IconTrash } from '../components/Icons.jsx'
+import { excluirFormulario, duplicarFormulario } from '../services/formulariosAcoes.js'
 import { slugify, comSufixo } from '../utils/slug.js'
 import './Formularios.css'
 
@@ -33,6 +34,25 @@ export function FmSwitch({ ligado, onChange, disabled, rotulo }) {
   )
 }
 
+// Confirmação usada na listagem e no editor (mesmo visual dos outros modais do app)
+export const TEXTO_EXCLUIR = 'Esta ação não pode ser desfeita. Todos os campos e configurações do formulário serão perdidos.'
+export function FmConfirmar({ titulo, texto, rotulo, perigo, ocupado, onConfirmar, onCancelar }) {
+  return (
+    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget && !ocupado) onCancelar() }}>
+      <div className="modal" role="alertdialog" aria-modal="true" aria-labelledby="fm-confirmar-titulo" aria-describedby="fm-confirmar-texto">
+        <div className="modal-title" id="fm-confirmar-titulo">{titulo}</div>
+        <p className="fm-confirmar-texto" id="fm-confirmar-texto">{texto}</p>
+        <div className="modal-actions">
+          <button className="btn-cancel" onClick={onCancelar} disabled={ocupado}>Cancelar</button>
+          <button className={perigo ? 'btn-danger' : 'btn-confirm'} onClick={onConfirmar} disabled={ocupado} autoFocus>
+            {ocupado ? 'Aguarde…' : rotulo}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Formularios() {
   const { activeEmpresaId, user } = useAuth()
   const toast = useToast()
@@ -44,6 +64,8 @@ export default function Formularios() {
   const [nomeNovo, setNomeNovo] = useState('')
   const [descNovo, setDescNovo] = useState('')
   const [criando, setCriando] = useState(false)
+  const [confirmar, setConfirmar] = useState(null) // { tipo: 'duplicar' | 'excluir', form }
+  const [ocupado, setOcupado] = useState(false)
 
   // prolu_admin visitando outro escritório só lê (RLS da migration_025)
   const podeEditar = activeEmpresaId != null && activeEmpresaId === user?.empresaId
@@ -55,7 +77,7 @@ export default function Formularios() {
     setLoading(true)
     const { data, error } = await supabase
       .from('formularios')
-      .select('id, nome, descricao, slug, ativo, updated_at, formulario_campos(count)')
+      .select('id, empresa_id, nome, descricao, slug, ativo, updated_at, formulario_campos(count)')
       .eq('empresa_id', activeEmpresaId)
       .order('created_at', { ascending: true })
     if (error) { console.error('[formularios] carregar', error); toast('Erro ao carregar formulários') }
@@ -92,6 +114,32 @@ export default function Formularios() {
     setCriando(false)
     if (error || !data) { console.error('[formularios] criar', error); toast('Erro ao criar formulário'); return }
     navigate(`/formularios/${data.id}`)
+  }
+
+  async function confirmarAcao() {
+    const { tipo, form } = confirmar
+    setOcupado(true)
+    try {
+      if (tipo === 'excluir') {
+        await excluirFormulario(form)
+        setLista(prev => prev.filter(x => x.id !== form.id))
+        toast('Formulário excluído')
+      } else {
+        const copia = await duplicarFormulario(form.id)
+        // logo abaixo do original (a lista é por data de criação; recarregar põe no fim)
+        setLista(prev => {
+          const i = prev.findIndex(x => x.id === form.id)
+          return [...prev.slice(0, i + 1), copia, ...prev.slice(i + 1)]
+        })
+        toast('Formulário duplicado com sucesso')
+      }
+      setConfirmar(null)
+    } catch (e) {
+      console.error(`[formularios] ${tipo}`, e)
+      toast(tipo === 'excluir' ? 'Não foi possível excluir o formulário' : 'Não foi possível duplicar o formulário')
+    } finally {
+      setOcupado(false)
+    }
   }
 
   function fecharModal() {
@@ -141,6 +189,7 @@ export default function Formularios() {
                 <th>Campos</th>
                 <th>Atualizado em</th>
                 <th>Ativo</th>
+                {podeEditar && <th className="fm-acoes-th" aria-label="Ações" />}
               </tr>
             </thead>
             <tbody>
@@ -164,11 +213,35 @@ export default function Formularios() {
                       <span className={`pill ${f.ativo ? 'pill-green' : 'pill-gray'}`}>{f.ativo ? 'Ativo' : 'Inativo'}</span>
                     </div>
                   </td>
+                  {podeEditar && (
+                    // aparecem no hover/foco da linha; o espaço da coluna já existe (não desloca nada)
+                    <td className="fm-acoes" onClick={e => e.stopPropagation()}>
+                      <button type="button" className="fm-acao" title="Duplicar formulário" aria-label={`Duplicar formulário ${f.nome}`}
+                        onClick={() => setConfirmar({ tipo: 'duplicar', form: f })}><IconCopy /></button>
+                      <button type="button" className="fm-acao fm-acao-perigo" title="Excluir formulário" aria-label={`Excluir formulário ${f.nome}`}
+                        onClick={() => setConfirmar({ tipo: 'excluir', form: f })}><IconTrash /></button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {confirmar && (
+        <FmConfirmar
+          {...(confirmar.tipo === 'excluir'
+            ? { titulo: 'Excluir formulário?', texto: TEXTO_EXCLUIR, rotulo: 'Excluir', perigo: true }
+            : {
+                titulo: 'Duplicar formulário?',
+                texto: `Será criada uma cópia com o nome "${confirmar.form.nome} (cópia)". Os campos serão copiados mas as respostas não. A cópia começa inativa.`,
+                rotulo: 'Duplicar',
+              })}
+          ocupado={ocupado}
+          onConfirmar={confirmarAcao}
+          onCancelar={() => setConfirmar(null)}
+        />
       )}
 
       {modalNovo && (
