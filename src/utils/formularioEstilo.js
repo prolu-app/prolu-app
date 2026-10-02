@@ -19,6 +19,7 @@ export const ESTILO_PADRAO = {
   input_altura: 'media', // pequena | media | grande
   input_contorno: false,
   input_contorno_cor: '#d6d6cf',
+  input_contorno_largura: 1.5, // px (1 a 4)
   input_cor: '#f3f2ed',
   input_texto_cor: '#121210',
   input_raio: 10,
@@ -27,9 +28,20 @@ export const ESTILO_PADRAO = {
   botao_peso: 'negrito', // normal | negrito
   botao_raio: 30, // 30 = pílula na altura padrão do botão
   botao_texto: '',
+  botao_texto_cor: '', // '' = automático (claro/escuro pelo contraste com a cor do botão)
+  botao_borda_largura: 0, // px (0 = sem borda)
+  botao_borda_cor: '#121210',
+  label_cor: '#121210',
+  label_tamanho: 'normal', // pequeno 12px | normal 14px | grande 16px
+  label_peso: 'normal', // normal | negrito
+  cor_destaque: '#cbe921', // contorno do campo em foco (era o verde Prolu fixo)
 }
 
-// limites dos sliders de cantos arredondados (px)
+// limites dos sliders numéricos (px): [mín, máx, passo]
+export const LIMITES = {
+  card_raio: [0, 40, 1], input_raio: [0, 24, 1], botao_raio: [0, 30, 1],
+  input_contorno_largura: [1, 4, 0.5], botao_borda_largura: [0, 4, 1],
+}
 export const RAIO_MAX = { card_raio: 40, input_raio: 24, botao_raio: 30 }
 export const BOTAO_TEXTO_MAX = 40
 export const BOTAO_TEXTO_PADRAO = 'Enviar'
@@ -42,6 +54,8 @@ const OPCOES = {
   input_altura: ['pequena', 'media', 'grande'],
   botao: ['total', 'esquerda', 'direita'],
   botao_peso: ['normal', 'negrito'],
+  label_tamanho: ['pequeno', 'normal', 'grande'],
+  label_peso: ['normal', 'negrito'],
 }
 
 // Só aceita valores conhecidos (o JSON vem do banco; nada vira CSS cru)
@@ -51,7 +65,11 @@ export function normalizarEstilo(bruto) {
   for (const k of Object.keys(ESTILO_PADRAO)) {
     const v = bruto[k]
     if (OPCOES[k]) { if (OPCOES[k].includes(v)) e[k] = v }
-    else if (RAIO_MAX[k] !== undefined) { if (Number.isFinite(v)) e[k] = Math.min(RAIO_MAX[k], Math.max(0, Math.round(v))) }
+    else if (LIMITES[k]) {
+      const [min, max, passo] = LIMITES[k]
+      if (Number.isFinite(v)) e[k] = Math.min(max, Math.max(min, Math.round(v / passo) * passo))
+    }
+    else if (k === 'botao_texto_cor') { if (v === '' || (typeof v === 'string' && COR_RE.test(v))) e[k] = v.toLowerCase() }
     else if (k === 'botao_texto') { if (typeof v === 'string') e[k] = v.trim().slice(0, BOTAO_TEXTO_MAX) }
     else if (typeof ESTILO_PADRAO[k] === 'boolean') { if (typeof v === 'boolean') e[k] = v }
     else if (typeof v === 'string' && COR_RE.test(v)) e[k] = v.toLowerCase()
@@ -73,6 +91,7 @@ function corDoTextoSobre(hex) {
 
 const PADDING_INPUT = { pequena: '8px 12px', media: '12px 14px', grande: '16px 16px' }
 const LARGURA_BORDA = { fina: 1, media: 2, grossa: 4 }
+const LABEL_TAMANHO = { pequeno: '12px', normal: '14px', grande: '16px' }
 
 export function estiloParaPagina(bruto) {
   const e = normalizarEstilo(bruto)
@@ -86,11 +105,17 @@ export function estiloParaPagina(bruto) {
     '--pf-card-raio': `${e.card_raio}px`,
     '--pf-input-pad': PADDING_INPUT[e.input_altura],
     '--pf-input-contorno': e.input_contorno ? e.input_contorno_cor : 'transparent',
+    '--pf-input-contorno-largura': `${e.input_contorno_largura}px`,
     '--pf-input-bg': e.input_cor,
     '--pf-input-texto': e.input_texto_cor,
     '--pf-input-raio': `${e.input_raio}px`,
     '--pf-botao-bg': e.botao_cor,
-    '--pf-botao-texto': corDoTextoSobre(e.botao_cor),
+    '--pf-botao-texto': e.botao_texto_cor || corDoTextoSobre(e.botao_cor),
+    '--pf-botao-borda': e.botao_borda_largura ? `${e.botao_borda_largura}px solid ${e.botao_borda_cor}` : 'none',
+    '--pf-label-cor': e.label_cor,
+    '--pf-label-tamanho': LABEL_TAMANHO[e.label_tamanho],
+    '--pf-label-peso': e.label_peso === 'negrito' ? 700 : 500,
+    '--pf-destaque': e.cor_destaque,
     '--pf-botao-peso': e.botao_peso === 'negrito' ? 600 : 400,
     '--pf-botao-raio': `${e.botao_raio}px`,
   }

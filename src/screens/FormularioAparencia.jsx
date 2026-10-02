@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { useToast } from '../contexts/ToastContext.jsx'
 import CampoTextoSalvo from '../components/CampoTextoSalvo.jsx'
 import EditorIntro from '../components/EditorIntro.jsx'
-import { INTRO_MAX } from '../utils/introHtml.js'
+import { INTRO_MAX, introVazia } from '../utils/introHtml.js'
 import { FmSwitch } from './Formularios.jsx'
 import { supabase } from '../services/supabaseClient.js'
 import {
-  ESTILO_PADRAO, RAIO_MAX, BOTAO_TEXTO_MAX, BOTAO_TEXTO_PADRAO, normalizarEstilo, estiloParaPagina, textoDoBotao,
+  ESTILO_PADRAO, RAIO_MAX, LIMITES, BOTAO_TEXTO_MAX, BOTAO_TEXTO_PADRAO, normalizarEstilo, estiloParaPagina, textoDoBotao,
   SUCESSO_TITULO_PADRAO, URL_REDIRECT_RE, idDoYoutube,
 } from '../utils/formularioEstilo.js'
 import './FormularioPublico.css'
@@ -55,13 +55,16 @@ const ALTURA = [{ value: 'pequena', label: 'Pequena' }, { value: 'media', label:
 const LARGURA_BORDA = [{ value: 'fina', label: 'Fina' }, { value: 'media', label: 'Média' }, { value: 'grossa', label: 'Grossa' }]
 const BOTAO = [{ value: 'total', label: 'Largura total' }, { value: 'esquerda', label: 'À esquerda' }, { value: 'direita', label: 'À direita' }]
 const PESO = [{ value: 'normal', label: 'Normal' }, { value: 'negrito', label: 'Negrito' }]
+const LABEL_TAMANHO = [{ value: 'pequeno', label: 'Pequeno' }, { value: 'normal', label: 'Normal' }, { value: 'grande', label: 'Grande' }]
 
 // cantos arredondados: slider + valor em px
-function Raio({ valor, max, onChange, disabled, rotulo }) {
+// slider em px (cantos, larguras de borda); limites = [mín, máx, passo]
+function Raio({ valor, max, limites, onChange, disabled, rotulo }) {
+  const [min, maximo, passo] = limites || [0, max, 1]
   return (
     <div className="fm-raio">
-      <input type="range" min={0} max={max} step={1} value={valor} disabled={disabled} aria-label={rotulo} onChange={e => onChange(Number(e.target.value))} />
-      <span>{valor}px</span>
+      <input type="range" min={min} max={maximo} step={passo} value={valor} disabled={disabled} aria-label={rotulo} onChange={e => onChange(Number(e.target.value))} />
+      <span>{String(valor).replace('.', ',')}px</span>
     </div>
   )
 }
@@ -158,8 +161,28 @@ export function PainelEstilo({ form, campos, podeEditar, salvarForm }) {
               <FmSwitch ligado={estilo.input_contorno} disabled={off} rotulo="Contorno dos campos" onChange={v => mudar({ input_contorno: v })} />
               {estilo.input_contorno && <Cor rotulo="Cor do contorno" valor={estilo.input_contorno_cor} disabled={off} onChange={v => mudar({ input_contorno_cor: v })} />}
             </Linha>
+            {estilo.input_contorno && (
+              <Linha rotulo="Largura do contorno">
+                <Raio rotulo="Largura do contorno dos campos" valor={estilo.input_contorno_largura} limites={LIMITES.input_contorno_largura} disabled={off} onChange={v => mudar({ input_contorno_largura: v })} />
+              </Linha>
+            )}
+            <Linha rotulo="Cor de destaque" dica="Contorno do campo enquanto a pessoa digita nele.">
+              <Cor rotulo="Cor de destaque do campo em foco" valor={estilo.cor_destaque} disabled={off} onChange={v => mudar({ cor_destaque: v })} />
+            </Linha>
             <Linha rotulo="Cantos">
               <Raio rotulo="Cantos arredondados dos campos" valor={estilo.input_raio} max={RAIO_MAX.input_raio} disabled={off} onChange={v => mudar({ input_raio: v })} />
+            </Linha>
+          </Grupo>
+
+          <Grupo titulo="Rótulos dos campos">
+            <Linha rotulo="Cor">
+              <Cor rotulo="Cor do rótulo dos campos" valor={estilo.label_cor} disabled={off} onChange={v => mudar({ label_cor: v })} />
+            </Linha>
+            <Linha rotulo="Tamanho">
+              <Segmentos rotulo="Tamanho do rótulo" valor={estilo.label_tamanho} opcoes={LABEL_TAMANHO} disabled={off} onChange={v => mudar({ label_tamanho: v })} />
+            </Linha>
+            <Linha rotulo="Fonte">
+              <Segmentos rotulo="Peso da fonte do rótulo" valor={estilo.label_peso} opcoes={PESO} disabled={off} onChange={v => mudar({ label_peso: v })} />
             </Linha>
           </Grupo>
 
@@ -171,8 +194,18 @@ export function PainelEstilo({ form, campos, podeEditar, salvarForm }) {
                 onChange={e => mudar({ botao_texto: e.target.value })}
               />
             </Linha>
-            <Linha rotulo="Cor" dica="O texto do botão fica claro ou escuro automaticamente, para manter a leitura.">
+            <Linha rotulo="Cor">
               <Cor rotulo="Cor do botão" valor={estilo.botao_cor} disabled={off} onChange={v => mudar({ botao_cor: v })} />
+            </Linha>
+            <Linha rotulo="Cor do texto" dica={estilo.botao_texto_cor ? null : 'Automático: claro ou escuro conforme a cor do botão, para manter a leitura.'}>
+              <Cor rotulo="Cor do texto do botão" valor={estilo.botao_texto_cor || visual.vars['--pf-botao-texto']} disabled={off} onChange={v => mudar({ botao_texto_cor: v })} />
+              {estilo.botao_texto_cor
+                ? !off && <button type="button" className="fm-link-btn" onClick={() => mudar({ botao_texto_cor: '' })}>Voltar ao automático</button>
+                : <span className="fm-status-texto">Automático</span>}
+            </Linha>
+            <Linha rotulo="Borda">
+              <Raio rotulo="Largura da borda do botão" valor={estilo.botao_borda_largura} limites={LIMITES.botao_borda_largura} disabled={off} onChange={v => mudar({ botao_borda_largura: v })} />
+              {estilo.botao_borda_largura > 0 && <Cor rotulo="Cor da borda do botão" valor={estilo.botao_borda_cor} disabled={off} onChange={v => mudar({ botao_borda_cor: v })} />}
             </Linha>
             <Linha rotulo="Fonte">
               <Segmentos rotulo="Peso da fonte do botão" valor={estilo.botao_peso} opcoes={PESO} disabled={off} onChange={v => mudar({ botao_peso: v })} />
@@ -197,7 +230,8 @@ export function PainelEstilo({ form, campos, podeEditar, salvarForm }) {
                     <span className="prolu-form__label">
                       {c.label || 'Pergunta'}{c.obrigatorio && <span className="prolu-form__asterisco"> *</span>}
                     </span>
-                    <input className="prolu-form__input" readOnly tabIndex={-1} value={i === 0 ? 'Texto digitado' : ''} />
+                    {/* 2º campo da prévia mostra a cor de destaque (campo em foco) */}
+                    <input className={`prolu-form__input${i === 1 ? ' fm-previa-foco' : ''}`} readOnly tabIndex={-1} value={i === 0 ? 'Texto digitado' : ''} />
                   </div>
                 ))}
               </div>
@@ -493,6 +527,29 @@ export function PainelApresentacao({ form, podeEditar, salvarForm }) {
           </Linha>
         )}
       </div>
+
+      <div className="fm-section-title fm-apresentacao-titulo">O que exibir na página</div>
+      <p className="fm-section-sub">Cada item só aparece se estiver ligado e preenchido. Desligar esconde sem apagar o conteúdo.</p>
+      <div className="fm-publico">
+        {EXIBIR.map(x => (
+          <Linha key={x.coluna} rotulo={x.rotulo}>
+            <FmSwitch
+              ligado={form[x.coluna] !== false} disabled={off} rotulo={`Exibir ${x.rotulo.toLowerCase()}`}
+              onChange={v => salvarForm({ [x.coluna]: v }).then(ok => ok && toast(v ? `${x.rotulo}: exibir` : `${x.rotulo}: oculto`))}
+            />
+            <span className="fm-status-texto">{form[x.coluna] !== false ? 'Exibir' : 'Oculto'}{x.vazio(form) ? ' — ainda sem conteúdo' : ''}</span>
+          </Linha>
+        ))}
+      </div>
     </>
   )
 }
+
+// liga/desliga por elemento do topo (migration_032); ausente = ligado
+const EXIBIR = [
+  { coluna: 'exibir_nome_escritorio', rotulo: 'Nome do escritório', vazio: () => false },
+  { coluna: 'exibir_titulo', rotulo: 'Título da página', vazio: f => !f.titulo_pagina },
+  { coluna: 'exibir_logo', rotulo: 'Logo', vazio: f => !f.logo_url },
+  { coluna: 'exibir_capa', rotulo: 'Capa', vazio: f => !f.capa_url },
+  { coluna: 'exibir_introducao', rotulo: 'Introdução', vazio: f => introVazia(f.intro_texto) },
+]

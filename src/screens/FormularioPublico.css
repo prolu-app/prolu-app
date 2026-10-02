@@ -34,17 +34,18 @@
 /* sempre uma coluna: um campo por linha */
 .prolu-form__campos { display: flex; flex-direction: column; gap: 18px; margin: 26px 0 22px; }
 .prolu-form__campo { display: flex; flex-direction: column; gap: 6px; }
-.prolu-form__label { font-size: 14px; font-weight: 500; color: var(--ink); }
+.prolu-form__label { font-size: var(--pf-label-tamanho, 14px); font-weight: var(--pf-label-peso, 500); color: var(--pf-label-cor, var(--ink)); }
 .prolu-form__asterisco { color: var(--red); }
 .prolu-form__input {
   width: 100%; box-sizing: border-box; border: none; outline: none;
   background: var(--pf-input-bg, var(--cream)); border-radius: var(--pf-input-raio, 10px); padding: var(--pf-input-pad, 12px 14px);
   font-family: inherit; font-size: 15px; color: var(--pf-input-texto, var(--ink));
-  box-shadow: 0 0 0 1.5px var(--pf-input-contorno, transparent); transition: box-shadow 0.15s;
+  box-shadow: 0 0 0 var(--pf-input-contorno-largura, 1.5px) var(--pf-input-contorno, transparent); transition: box-shadow 0.15s;
 }
 textarea.prolu-form__input { resize: vertical; min-height: 96px; }
 select.prolu-form__input { cursor: pointer; }
-.prolu-form__input:focus { box-shadow: 0 0 0 2px var(--green); }
+/* foco: cor de destaque do estilo (padrão: verde Prolu), um pouco mais grossa que o contorno */
+.prolu-form__input:focus { box-shadow: 0 0 0 calc(var(--pf-input-contorno-largura, 1.5px) + 0.5px) var(--pf-destaque, var(--green)); }
 .prolu-form__input[aria-invalid="true"] { box-shadow: 0 0 0 1.5px var(--red); }
 .prolu-form__erro { font-size: 12.5px; color: var(--red); }
 .prolu-form__erro-geral { background: var(--red-soft); color: var(--red); border-radius: 10px; padding: 10px 14px; font-size: 13.5px; margin: 0 0 14px; }
@@ -52,7 +53,7 @@ select.prolu-form__input { cursor: pointer; }
 .prolu-form__enviar {
   display: block; width: 100%; border: none; cursor: pointer; border-radius: var(--pf-botao-raio, 99px); padding: 14px 20px;
   background: var(--pf-botao-bg, var(--green)); color: var(--pf-botao-texto, var(--ink));
-  font-family: inherit; font-size: 15px; font-weight: var(--pf-botao-peso, 600);
+  font-family: inherit; font-size: 15px; font-weight: var(--pf-botao-peso, 600); border: var(--pf-botao-borda, none);
   transition: box-shadow 0.15s, transform 0.15s;
 }
 .prolu-pagina--botao-esquerda .prolu-form__enviar,
@@ -120,7 +121,7 @@ html.prolu-embed body::before { display: none; }
 .prolu-form__obrigado-botao {
   display: inline-block; margin-top: 20px; padding: 12px 28px; text-decoration: none;
   border-radius: var(--pf-botao-raio, 99px); background: var(--pf-botao-bg, var(--green)); color: var(--pf-botao-texto, var(--ink));
-  font-size: 15px; font-weight: var(--pf-botao-peso, 600); transition: box-shadow 0.15s;
+  font-size: 15px; font-weight: var(--pf-botao-peso, 600); border: var(--pf-botao-borda, none); transition: box-shadow 0.15s;
 }
 .prolu-form__obrigado-botao:hover { box-shadow: 0 8px 24px color-mix(in srgb, var(--pf-botao-bg, var(--green)) 55%, transparent); }
 

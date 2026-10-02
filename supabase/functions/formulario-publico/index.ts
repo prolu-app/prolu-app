@@ -14,7 +14,7 @@
 //   crm_fichas  → campos extras (sem coluna no CRM), só visíveis no drawer
 // Tabelas/colunas: migrations 025, 026, 028 (estilo + após o envio), 029
 // (apresentação: logo, capa, introdução, vídeo; botão no agradecimento) e 030
-// (titulo_pagina).
+// (titulo_pagina) e 032 (o que exibir no topo).
 //
 // Também atende o embed (public/embed.js): o modo "cru" chama esta função
 // direto do site do escritório (CORS liberado, sem apikey — verify_jwt off).
@@ -88,13 +88,17 @@ function idDoYoutube(url: unknown): string | null {
   return m ? m[1] : null
 }
 
-// Elementos de apresentação (migration_029) — imagens só https
+// Liga/desliga de exibição (migration_032): ausente (antes da migration) = exibe
+const exibe = (form: Record<string, unknown>, coluna: string) => form[coluna] !== false
+
+// Elementos de apresentação (migration_029) — imagens só https; o que estiver
+// desligado em "O que exibir na página" (032) já sai nulo daqui
 function apresentacao(form: Record<string, unknown>) {
   const img = (v: unknown) => { const s = textoOuNull(v); return s && /^https:\/\/[^\s]+$/i.test(s) ? s : null }
   return {
-    logo: img(form.logo_url),
-    capa: img(form.capa_url),
-    intro: textoOuNull(form.intro_texto),
+    logo: exibe(form, 'exibir_logo') ? img(form.logo_url) : null,
+    capa: exibe(form, 'exibir_capa') ? img(form.capa_url) : null,
+    intro: exibe(form, 'exibir_introducao') ? textoOuNull(form.intro_texto) : null,
     video_id: idDoYoutube(form.intro_video_youtube),
     video_posicao: form.intro_video_posicao === 'antes' ? 'antes' : 'depois',
   }
@@ -143,9 +147,10 @@ Deno.serve(async (req) => {
     return jsonResponse({
       formulario: {
         // nome e descrição são internos (editor). No topo o visitante vê o nome
-        // do escritório (sempre) e, abaixo, o título da página (migration_030)
-        titulo: textoOuNull(form.titulo_pagina), // opcional, sem reserva: o nome do escritório já aparece sempre
-        escritorio,
+        // do escritório e, abaixo, o título da página (030) — cada um pode ser desligado (032)
+        titulo: exibe(form, 'exibir_titulo') ? textoOuNull(form.titulo_pagina) : null, // sem reserva
+        escritorio, // também usado no texto padrão do agradecimento e no alt do logo
+        mostrar_escritorio: exibe(form, 'exibir_nome_escritorio'), // migration_032
         // só a página /f/:slug (e o iframe) aplica; o embed cru ignora (CSS do site)
         estilo: form.estilo || null,
         apresentacao: apresentacao(form),

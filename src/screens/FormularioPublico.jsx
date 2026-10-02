@@ -78,9 +78,10 @@ export default function FormularioPublico() {
   const ap = form?.apresentacao // logo, capa, introdução, vídeo (migration_029)
   const introHtml = useMemo(() => (ap?.intro ? sanitizarIntro(ap.intro) : ''), [ap?.intro])
   // título visível: titulo_pagina || escritório (resolvido na função); nome é interno
-  // topo: nome do escritório (sempre) + título da página (opcional, sem reserva); nome/descrição são internos.
+  // topo: nome do escritório + título da página (opcional, sem reserva), cada um com liga/desliga; nome/descrição são internos.
   // Título igual ao nome do escritório não se repete (e cobre a função antiga, que usava o escritório como reserva).
-  const titulo = form?.titulo && form.titulo !== form.escritorio ? form.titulo : null
+  const mostrarEscritorio = !!form?.escritorio && form.mostrar_escritorio !== false // liga/desliga (migration_032)
+  const titulo = form?.titulo && !(mostrarEscritorio && form.titulo === form.escritorio) ? form.titulo : null
 
   useEffect(() => {
     let vivo = true
@@ -189,7 +190,7 @@ export default function FormularioPublico() {
         {estado === 'pronto' && (
           <form className="prolu-form__form" onSubmit={enviar} noValidate>
             {/* nome do escritório sempre; título da página em destaque abaixo, se houver */}
-            {form.escritorio && <div className="prolu-form__escritorio">{form.escritorio}</div>}
+            {mostrarEscritorio && <div className="prolu-form__escritorio">{form.escritorio}</div>}
             {titulo && <h1 className="prolu-form__titulo">{titulo}</h1>}
             {ap?.video_id && ap.video_posicao === 'antes' && <Video id={ap.video_id} titulo={titulo || form.escritorio || 'formulário'} />}
             {/* HTML do editor rico, sempre limpo antes de entrar na página (utils/introHtml.js) */}

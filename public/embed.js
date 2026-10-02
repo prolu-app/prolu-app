@@ -228,9 +228,10 @@
     var ap = apresentacao(form)
     if (ap.capa) f.appendChild(imagem('prolu-form__capa', ap.capa, ''))
     if (ap.logo) f.appendChild(imagem('prolu-form__logo', ap.logo, form.escritorio ? 'Logo ' + form.escritorio : ''))
-    // topo: nome do escritório (sempre) + título da página (opcional); nome/descrição do formulário são internos
-    var titulo = form.titulo && form.titulo !== form.escritorio ? form.titulo : null
-    if (form.escritorio) f.appendChild(el('div', 'prolu-form__escritorio', form.escritorio))
+    // topo: nome do escritório + título da página (opcional), cada um com liga/desliga; nome/descrição do formulário são internos
+    var mostrarEscritorio = !!form.escritorio && form.mostrar_escritorio !== false // liga/desliga (migration_032)
+    var titulo = form.titulo && !(mostrarEscritorio && form.titulo === form.escritorio) ? form.titulo : null
+    if (mostrarEscritorio) f.appendChild(el('div', 'prolu-form__escritorio', form.escritorio))
     if (titulo) f.appendChild(el('h2', 'prolu-form__titulo', titulo))
     if (ap.videoId && ap.videoAntes) f.appendChild(video(ap.videoId, titulo || form.escritorio || 'formulário'))
     if (ap.intro) f.appendChild(introSegura(ap.intro))

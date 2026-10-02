@@ -203,6 +203,7 @@ section[role="tabpanel"] > .fm-publico:first-child { margin-top: 0; }
 .fm-previa .prolu-form { padding: 20px 18px; }
 .fm-previa .prolu-form__titulo { font-size: 21px; }
 .fm-previa .prolu-form__campos { gap: 12px; margin: 16px 0; }
+.fm-previa .fm-previa-foco { box-shadow: 0 0 0 calc(var(--pf-input-contorno-largura, 1.5px) + 0.5px) var(--pf-destaque, var(--green)); }
 .fm-pos-input {
   flex: 1; min-width: 220px; border: none; outline: none; resize: vertical;
   background: var(--cream); border-radius: 8px; padding: 9px 12px;
