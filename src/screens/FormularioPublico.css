@@ -48,6 +48,74 @@ select.prolu-form__input { cursor: pointer; }
 .prolu-form__input:focus { box-shadow: 0 0 0 calc(var(--pf-input-contorno-largura, 1.5px) + 0.5px) var(--pf-destaque, var(--green)); }
 .prolu-form__input[aria-invalid="true"] { box-shadow: 0 0 0 1.5px var(--red); }
 .prolu-form__erro { font-size: 12.5px; color: var(--red); }
+
+/* seleção própria (components/FormSelectField.jsx): o botão é um
+   .prolu-form__input (fundo, texto, contorno, cantos, foco e erro vêm de lá) */
+.prolu-form__select { position: relative; }
+.prolu-form__select-botao {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  text-align: left; cursor: pointer; line-height: inherit;
+}
+.prolu-form__select-valor { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prolu-form__select-valor--vazio { opacity: 0.55; }
+.prolu-form__select-seta {
+  width: 16px; height: 16px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round; opacity: 0.6; transition: transform 0.15s;
+}
+.prolu-form__select--aberto .prolu-form__select-seta { transform: rotate(180deg); }
+.prolu-form__select--aberto .prolu-form__select-botao { box-shadow: 0 0 0 calc(var(--pf-input-contorno-largura, 1.5px) + 0.5px) var(--pf-destaque, var(--green)); }
+
+.prolu-form__opcoes {
+  position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; right: 0;
+  max-height: 240px; overflow-y: auto; margin: 0; padding: 6px; list-style: none;
+  background: var(--pf-input-bg, var(--cream)); color: var(--pf-input-texto, var(--ink));
+  border-radius: var(--pf-input-raio, 10px);
+  box-shadow: 0 0 0 1px rgba(18, 18, 16, 0.08), 0 12px 32px rgba(18, 18, 16, 0.16);
+}
+/* no iframe: no fluxo da página (o iframe cresce para mostrar a lista) */
+.prolu-form__opcoes--inline { position: static; margin-top: 6px; }
+.prolu-form__opcao {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 12px; border-radius: max(0px, calc(var(--pf-input-raio, 10px) - 4px));
+  font-size: 15px; cursor: pointer; user-select: none;
+}
+.prolu-form__opcao--ativa { background: color-mix(in srgb, var(--pf-destaque, var(--green)) 24%, var(--pf-input-bg, var(--cream))); }
+.prolu-form__opcao--selecionada { font-weight: 600; }
+.prolu-form__opcao--vazia { opacity: 0.6; font-style: italic; }
+.prolu-form__opcao svg {
+  width: 16px; height: 16px; flex-shrink: 0; fill: none; stroke: var(--pf-destaque, var(--green)); stroke-width: 2.6;
+  stroke-linecap: round; stroke-linejoin: round;
+  /* destaque claro sobre fundo claro some: contorno escuro fino por baixo */
+  filter: drop-shadow(0 0 0.5px rgba(18, 18, 16, 0.6));
+}
+
+/* celular: folha que sobe de baixo, com as cores do formulário */
+.prolu-form__folha-fundo {
+  position: fixed; inset: 0; z-index: 1000; background: rgba(18, 18, 16, 0.45);
+  display: flex; align-items: flex-end; animation: prolu-fundo-in 0.18s ease-out;
+}
+.prolu-form__folha {
+  width: 100%; max-height: 70vh; display: flex; flex-direction: column;
+  background: var(--pf-input-bg, var(--cream)); color: var(--pf-input-texto, var(--ink));
+  border-radius: 18px 18px 0 0; padding: 8px 8px calc(12px + env(safe-area-inset-bottom));
+  animation: prolu-folha-in 0.22s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.prolu-form__folha::before {
+  content: ''; width: 36px; height: 4px; border-radius: 99px; background: currentColor; opacity: 0.25;
+  margin: 2px auto 10px; flex-shrink: 0;
+}
+.prolu-form__folha-titulo { font-size: 14px; font-weight: 600; padding: 0 12px 8px; opacity: 0.8; }
+.prolu-form__opcoes--folha {
+  position: static; max-height: none; overflow-y: auto; box-shadow: none; background: transparent; padding: 0; outline: none;
+}
+.prolu-form__opcoes--folha .prolu-form__opcao { padding: 14px 12px; font-size: 16px; }
+.prolu-form__opcoes--folha .prolu-form__opcao--ativa { background: none; }
+.prolu-form__opcoes--folha .prolu-form__opcao--selecionada {
+  background: color-mix(in srgb, var(--pf-destaque, var(--green)) 24%, var(--pf-input-bg, var(--cream)));
+}
+.prolu-form__opcoes--folha:focus-visible .prolu-form__opcao--ativa:not(.prolu-form__opcao--selecionada) { outline: 2px solid var(--pf-destaque, var(--green)); outline-offset: -2px; }
+@keyframes prolu-fundo-in { from { opacity: 0; } }
+@keyframes prolu-folha-in { from { transform: translateY(100%); } }
 .prolu-form__erro-geral { background: var(--red-soft); color: var(--red); border-radius: 10px; padding: 10px 14px; font-size: 13.5px; margin: 0 0 14px; }
 
 .prolu-form__enviar {

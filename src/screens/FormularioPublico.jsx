@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../services/supabaseClient.js'
 import { estiloParaPagina, textoDoBotao, SUCESSO_TITULO_PADRAO, sucessoTextoPadrao, URL_REDIRECT_RE, embedDoYoutube } from '../utils/formularioEstilo.js'
 import { sanitizarIntro } from '../utils/introHtml.js'
+import FormSelectField from '../components/FormSelectField.jsx'
 import './FormularioPublico.css'
 
 // Página pública /f/:slug — sem login. Carrega e envia SEMPRE pela Edge
@@ -227,10 +228,12 @@ export default function FormularioPublico() {
                     {c.tipo === 'textarea' ? (
                       <textarea rows={4} maxLength={5000} {...comum} />
                     ) : c.tipo === 'select' ? (
-                      <select {...comum}>
-                        <option value="">Selecione…</option>
-                        {c.opcoes.map(o => <option key={o} value={o}>{o}</option>)}
-                      </select>
+                      <FormSelectField
+                        id={id} valor={valores[c.id] || ''} opcoes={c.opcoes} obrigatorio={c.obrigatorio}
+                        rotulo={c.label || 'Pergunta'} inline={embed}
+                        invalido={!!erros[c.id]} describedBy={erros[c.id] ? `${id}-erro` : undefined}
+                        onChange={v => alterar(c.id, v)} botaoRef={el => { refs.current[c.id] = el }}
+                      />
                     ) : (
                       <input
                         {...comum}
