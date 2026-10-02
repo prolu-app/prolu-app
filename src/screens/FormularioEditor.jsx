@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
@@ -12,6 +12,14 @@ import CampoTextoSalvo from '../components/CampoTextoSalvo.jsx'
 import './Formularios.css'
 
 // Códigos em inglês no banco (igual crm_colunas.tipo), rótulo em português aqui.
+// Abas do editor
+const ABAS = [
+  { id: 'geral', label: 'Geral' },
+  { id: 'campos', label: 'Campos' },
+  { id: 'envio', label: 'Depois do envio' },
+  { id: 'estilo', label: 'Estilo' },
+]
+
 const TIPOS = [
   { value: 'text', label: 'Texto curto' },
   { value: 'textarea', label: 'Texto longo' },
@@ -69,6 +77,12 @@ export default function FormularioEditor() {
   // (normalizado), e não o texto digitado quando era inválido ou já estava em uso
   const [slugVersao, setSlugVersao] = useState(0)
   const [incorporar, setIncorporar] = useState(false)
+  // aba ativa na URL (?aba=estilo): recarregar ou voltar mantém a seção
+  const [params, setParams] = useSearchParams()
+  const aba = ABAS.some(a => a.id === params.get('aba')) ? params.get('aba') : 'geral'
+  function trocarAba(id) {
+    setParams(p => { const n = new URLSearchParams(p); if (id === 'geral') n.delete('aba'); else n.set('aba', id); return n }, { replace: true })
+  }
 
   // prolu_admin visitando outro escritório só lê (RLS da migration_025)
   const podeEditar = !!form && form.empresa_id === user?.empresaId
@@ -224,32 +238,64 @@ export default function FormularioEditor() {
       {!podeEditar && <p className="fm-readonly-note">Formulário de outro escritório — somente leitura.</p>}
 
       <div className="fm-editor-head">
-        <div className="fm-editor-head-main">
+        <div className="fm-editor-titulo">{form.nome}</div>
+        <span className={`pill ${form.ativo ? 'pill-green' : 'pill-gray'}`}>{form.ativo ? 'Ativo' : 'Inativo'}</span>
+      </div>
+
+      {/* Abas ficam todas montadas (só escondidas): trocar de aba não perde
+          nada digitado — os campos gravam no blur, que acontece antes do clique */}
+      <div className="fm-abas" role="tablist" aria-label="Seções do formulário">
+        {ABAS.map(a => (
+          <button
+            key={a.id} type="button" role="tab" id={`fm-aba-${a.id}`}
+            aria-selected={aba === a.id} aria-controls={`fm-painel-${a.id}`}
+            className={`fm-aba${aba === a.id ? ' on' : ''}`}
+            onClick={() => trocarAba(a.id)}
+          >
+            {a.label}{a.id === 'campos' && <span className="fm-count">{campos.length}</span>}
+          </button>
+        ))}
+      </div>
+
+      <section role="tabpanel" id="fm-painel-geral" aria-labelledby="fm-aba-geral" hidden={aba !== 'geral'}>
+      <div className="fm-publico fm-geral">
+        <div className="fm-publico-row">
+          <span className="fm-publico-label">Nome</span>
           <CampoTextoSalvo
-            className="fm-title-input"
+            className="fm-pos-input"
             valor={form.nome}
             placeholder="Nome do formulário"
             disabled={!podeEditar}
             obrigatorio
+            maxLength={120}
+            aria-label="Nome do formulário"
             onSalvar={nome => salvarForm({ nome })}
           />
+        </div>
+        <div className="fm-publico-row fm-row-topo">
+          <span className="fm-publico-label">Descrição</span>
           <CampoTextoSalvo
             multilinha
-            className="fm-desc-input"
+            rows={3}
+            className="fm-pos-input"
             valor={form.descricao || ''}
-            placeholder="Descrição (opcional)"
+            placeholder="Opcional — aparece abaixo do título no formulário"
             disabled={!podeEditar}
+            aria-label="Descrição do formulário"
             onSalvar={descricao => salvarForm({ descricao: descricao || null })}
           />
         </div>
-        <div className="fm-status fm-editor-status">
-          <FmSwitch
-            ligado={form.ativo}
-            onChange={ativo => salvarForm({ ativo }).then(ok => ok && toast(ativo ? 'Formulário ativado' : 'Formulário desativado'))}
-            disabled={!podeEditar}
-            rotulo={form.ativo ? 'Desativar formulário' : 'Ativar formulário'}
-          />
-          <span className={`pill ${form.ativo ? 'pill-green' : 'pill-gray'}`}>{form.ativo ? 'Ativo' : 'Inativo'}</span>
+        <div className="fm-publico-row">
+          <span className="fm-publico-label">Status</span>
+          <div className="fm-status">
+            <FmSwitch
+              ligado={form.ativo}
+              onChange={ativo => salvarForm({ ativo }).then(ok => ok && toast(ativo ? 'Formulário ativado' : 'Formulário desativado'))}
+              disabled={!podeEditar}
+              rotulo={form.ativo ? 'Desativar formulário' : 'Ativar formulário'}
+            />
+            <span className="fm-status-texto">{form.ativo ? 'Ativo — recebendo respostas' : 'Inativo — não recebe respostas'}</span>
+          </div>
         </div>
       </div>
 
@@ -299,13 +345,11 @@ export default function FormularioEditor() {
           )
         })()}
       </div>
+      </section>
 
       {incorporar && <IncorporarFormulario form={form} campos={campos} onFechar={() => setIncorporar(false)} />}
 
-      <div className="fm-section-title">
-        Campos <span className="fm-count">{campos.length}</span>
-      </div>
-
+      <section role="tabpanel" id="fm-painel-campos" aria-labelledby="fm-aba-campos" hidden={aba !== 'campos'}>
       {campos.length === 0 && (
         <p className="fm-empty fm-empty-inline">Nenhum campo ainda. {podeEditar && 'Adicione a primeira pergunta do formulário.'}</p>
       )}
@@ -352,9 +396,15 @@ export default function FormularioEditor() {
           <IconPlus /> {adicionando ? 'Adicionando…' : 'Adicionar campo'}
         </button>
       )}
+      </section>
 
-      <PainelPosEnvio form={form} podeEditar={podeEditar} salvarForm={salvarForm} />
-      <PainelEstilo form={form} campos={campos} podeEditar={podeEditar} salvarForm={salvarForm} />
+      <section role="tabpanel" id="fm-painel-envio" aria-labelledby="fm-aba-envio" hidden={aba !== 'envio'}>
+        <PainelPosEnvio form={form} podeEditar={podeEditar} salvarForm={salvarForm} />
+      </section>
+
+      <section role="tabpanel" id="fm-painel-estilo" aria-labelledby="fm-aba-estilo" hidden={aba !== 'estilo'}>
+        <PainelEstilo form={form} campos={campos} podeEditar={podeEditar} salvarForm={salvarForm} />
+      </section>
     </>
   )
 }

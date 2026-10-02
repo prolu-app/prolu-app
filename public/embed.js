@@ -211,7 +211,10 @@
     var erroGeral = el('p', 'prolu-form__erro-geral')
     erroGeral.setAttribute('role', 'alert')
 
-    var botao = el('button', 'prolu-form__enviar', 'Enviar')
+    // texto do botão configurável (estilo.botao_texto — conteúdo; as cores do painel Estilo não valem aqui)
+    var est = form.estilo && typeof form.estilo === 'object' ? form.estilo : {}
+    var textoBotao = (typeof est.botao_texto === 'string' && est.botao_texto.trim().slice(0, 40)) || 'Enviar'
+    var botao = el('button', 'prolu-form__enviar', textoBotao)
     botao.type = 'submit'
     f.appendChild(botao)
     f.appendChild(el('p', 'prolu-form__legenda', '* campos obrigatórios'))
@@ -263,7 +266,7 @@
       chamar(api, { acao: 'enviar', slug: slug, respostas: respostas, _site: hpInput.value }).then(function (res) {
         enviando = false
         botao.disabled = false
-        botao.textContent = 'Enviar'
+        botao.textContent = textoBotao
         if (res.error) {
           if (res.error.erros) aplicarErros(res.error.erros)
           erroGeral.textContent = res.error.error || 'Não foi possível enviar. Tente novamente.'

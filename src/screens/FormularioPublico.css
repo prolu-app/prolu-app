@@ -14,7 +14,7 @@
 .prolu-form {
   width: 100%; max-width: var(--prolu-largura, 560px); box-sizing: border-box;
   background: var(--pf-card-bg, var(--white)); border: var(--pf-card-borda, none);
-  border-radius: var(--r-lg); box-shadow: var(--shadow-rest);
+  border-radius: var(--pf-card-raio, var(--r-lg)); box-shadow: var(--shadow-rest);
   padding: 32px 28px;
 }
 .prolu-pagina--card-transparente .prolu-form { box-shadow: none; }
@@ -38,8 +38,8 @@
 .prolu-form__asterisco { color: var(--red); }
 .prolu-form__input {
   width: 100%; box-sizing: border-box; border: none; outline: none;
-  background: var(--pf-input-bg, var(--cream)); border-radius: 10px; padding: var(--pf-input-pad, 12px 14px);
-  font-family: inherit; font-size: 15px; color: var(--ink);
+  background: var(--pf-input-bg, var(--cream)); border-radius: var(--pf-input-raio, 10px); padding: var(--pf-input-pad, 12px 14px);
+  font-family: inherit; font-size: 15px; color: var(--pf-input-texto, var(--ink));
   box-shadow: 0 0 0 1.5px var(--pf-input-contorno, transparent); transition: box-shadow 0.15s;
 }
 textarea.prolu-form__input { resize: vertical; min-height: 96px; }
@@ -50,8 +50,9 @@ select.prolu-form__input { cursor: pointer; }
 .prolu-form__erro-geral { background: var(--red-soft); color: var(--red); border-radius: 10px; padding: 10px 14px; font-size: 13.5px; margin: 0 0 14px; }
 
 .prolu-form__enviar {
-  display: block; width: 100%; border: none; cursor: pointer; border-radius: 99px; padding: 14px 20px;
-  background: var(--green); color: var(--ink); font-family: inherit; font-size: 15px; font-weight: 600;
+  display: block; width: 100%; border: none; cursor: pointer; border-radius: var(--pf-botao-raio, 99px); padding: 14px 20px;
+  background: var(--pf-botao-bg, var(--green)); color: var(--pf-botao-texto, var(--ink));
+  font-family: inherit; font-size: 15px; font-weight: var(--pf-botao-peso, 600);
   transition: box-shadow 0.15s, transform 0.15s;
 }
 .prolu-pagina--botao-esquerda .prolu-form__enviar,
@@ -59,7 +60,7 @@ select.prolu-form__input { cursor: pointer; }
 .prolu-pagina--botao-direita .prolu-form__enviar { margin-left: auto; }
 .prolu-pagina--botao-esquerda .prolu-form__legenda { text-align: left; }
 .prolu-pagina--botao-direita .prolu-form__legenda { text-align: right; }
-.prolu-form__enviar:hover:not(:disabled) { box-shadow: 0 8px 24px rgba(184, 212, 15, 0.55); }
+.prolu-form__enviar:hover:not(:disabled) { box-shadow: 0 8px 24px color-mix(in srgb, var(--pf-botao-bg, var(--green)) 55%, transparent); }
 .prolu-form__enviar:disabled { opacity: 0.6; cursor: wait; }
 .prolu-form__legenda { text-align: center; font-size: 12px; color: var(--ink-40); margin: 12px 0 0; }
 

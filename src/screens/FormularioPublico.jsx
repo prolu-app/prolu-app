@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../services/supabaseClient.js'
-import { estiloParaPagina, SUCESSO_TITULO_PADRAO, sucessoTextoPadrao, URL_REDIRECT_RE } from '../utils/formularioEstilo.js'
+import { estiloParaPagina, textoDoBotao, SUCESSO_TITULO_PADRAO, sucessoTextoPadrao, URL_REDIRECT_RE } from '../utils/formularioEstilo.js'
 import './FormularioPublico.css'
 
 // Página pública /f/:slug — sem login. Carrega e envia SEMPRE pela Edge
@@ -218,7 +218,7 @@ export default function FormularioPublico() {
             {erroGeral && <p className="prolu-form__erro-geral" role="alert">{erroGeral}</p>}
 
             <button type="submit" className="prolu-form__enviar" disabled={enviando}>
-              {enviando ? 'Enviando…' : 'Enviar'}
+              {enviando ? 'Enviando…' : textoDoBotao(form.estilo)}
             </button>
             <p className="prolu-form__legenda">* campos obrigatórios</p>
           </form>

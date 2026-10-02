@@ -3,7 +3,7 @@ import { useToast } from '../contexts/ToastContext.jsx'
 import CampoTextoSalvo from '../components/CampoTextoSalvo.jsx'
 import { FmSwitch } from './Formularios.jsx'
 import {
-  ESTILO_PADRAO, normalizarEstilo, estiloParaPagina,
+  ESTILO_PADRAO, RAIO_MAX, BOTAO_TEXTO_MAX, BOTAO_TEXTO_PADRAO, normalizarEstilo, estiloParaPagina, textoDoBotao,
   SUCESSO_TITULO_PADRAO, URL_REDIRECT_RE,
 } from '../utils/formularioEstilo.js'
 import './FormularioPublico.css'
@@ -48,7 +48,28 @@ function Linha({ rotulo, dica, children }) {
 
 const FUNDO = [{ value: 'transparente', label: 'Transparente' }, { value: 'cor', label: 'Cor' }]
 const ALTURA = [{ value: 'pequena', label: 'Pequena' }, { value: 'media', label: 'Média' }, { value: 'grande', label: 'Grande' }]
+const LARGURA_BORDA = [{ value: 'fina', label: 'Fina' }, { value: 'media', label: 'Média' }, { value: 'grossa', label: 'Grossa' }]
 const BOTAO = [{ value: 'total', label: 'Largura total' }, { value: 'esquerda', label: 'À esquerda' }, { value: 'direita', label: 'À direita' }]
+const PESO = [{ value: 'normal', label: 'Normal' }, { value: 'negrito', label: 'Negrito' }]
+
+// cantos arredondados: slider + valor em px
+function Raio({ valor, max, onChange, disabled, rotulo }) {
+  return (
+    <div className="fm-raio">
+      <input type="range" min={0} max={max} step={1} value={valor} disabled={disabled} aria-label={rotulo} onChange={e => onChange(Number(e.target.value))} />
+      <span>{valor}px</span>
+    </div>
+  )
+}
+
+function Grupo({ titulo, children }) {
+  return (
+    <div className="fm-estilo-grupo">
+      <div className="fm-estilo-grupo-titulo">{titulo}</div>
+      {children}
+    </div>
+  )
+}
 
 export function PainelEstilo({ form, campos, podeEditar, salvarForm }) {
   const toast = useToast()
@@ -57,7 +78,7 @@ export function PainelEstilo({ form, campos, podeEditar, salvarForm }) {
   const salvarRef = useRef(salvarForm)
   salvarRef.current = salvarForm
 
-  // seletor de cor dispara a cada movimento: grava 600 ms depois da última mudança
+  // seletor de cor/slider/texto disparam a cada movimento: grava 600 ms depois da última mudança
   function mudar(patch) {
     const novo = { ...estilo, ...patch }
     setEstilo(novo)
@@ -66,59 +87,99 @@ export function PainelEstilo({ form, campos, podeEditar, salvarForm }) {
       valor: novo,
       timer: setTimeout(() => {
         pendente.current = null
-        salvarRef.current({ estilo: novo }).then(ok => { if (!ok) toast('Não foi possível salvar o estilo') })
+        salvarRef.current({ estilo: normalizarEstilo(novo) }).then(ok => { if (!ok) toast('Não foi possível salvar o estilo') })
       }, 600),
     }
   }
 
-  // saiu da tela com mudança pendente: grava na hora
+  // saiu do editor com mudança pendente: grava na hora
   useEffect(() => () => {
     if (!pendente.current) return
     clearTimeout(pendente.current.timer)
-    salvarRef.current({ estilo: pendente.current.valor })
+    salvarRef.current({ estilo: normalizarEstilo(pendente.current.valor) })
   }, [])
 
   const off = !podeEditar
   const visual = estiloParaPagina(estilo)
   const amostra = campos.length ? campos.slice(0, 2) : [{ id: 'a', label: 'Nome', obrigatorio: true }, { id: 'b', label: 'E-mail' }]
-  const padrao = JSON.stringify(estilo) === JSON.stringify(ESTILO_PADRAO)
+  const padrao = JSON.stringify(normalizarEstilo(estilo)) === JSON.stringify(ESTILO_PADRAO)
 
   return (
     <>
-      <div className="fm-section-title fm-section-gap">
-        Estilo
+      <div className="fm-painel-topo">
+        <p className="fm-section-sub">Vale para o link público e para o modo "Com estilo do Prolu" da incorporação. Os campos ficam sempre um por linha.</p>
         {podeEditar && !padrao && (
-          <button type="button" className="fm-link-btn fm-section-acao" onClick={() => mudar(ESTILO_PADRAO)}>Restaurar padrão</button>
+          <button type="button" className="fm-link-btn" onClick={() => mudar(ESTILO_PADRAO)}>Restaurar padrão</button>
         )}
       </div>
-      <p className="fm-section-sub">Vale para o link público e para o modo "Com estilo do Prolu" da incorporação. Os campos ficam sempre um por linha.</p>
       <div className="fm-estilo">
         <div className="fm-publico fm-estilo-painel">
-          <Linha rotulo="Fundo da página" dica="Transparente: fundo padrão no link público e o fundo do seu site quando incorporado.">
-            <Segmentos rotulo="Fundo da página" valor={estilo.pagina_fundo} opcoes={FUNDO} disabled={off} onChange={v => mudar({ pagina_fundo: v })} />
-            {estilo.pagina_fundo === 'cor' && <Cor rotulo="Cor do fundo da página" valor={estilo.pagina_cor} disabled={off} onChange={v => mudar({ pagina_cor: v })} />}
-          </Linha>
-          <Linha rotulo="Fundo do formulário">
-            <Segmentos rotulo="Fundo do formulário" valor={estilo.card_fundo} opcoes={FUNDO} disabled={off} onChange={v => mudar({ card_fundo: v })} />
-            {estilo.card_fundo === 'cor' && <Cor rotulo="Cor do fundo do formulário" valor={estilo.card_cor} disabled={off} onChange={v => mudar({ card_cor: v })} />}
-          </Linha>
-          <Linha rotulo="Borda do formulário">
-            <FmSwitch ligado={estilo.borda} disabled={off} rotulo="Borda do formulário" onChange={v => mudar({ borda: v })} />
-            {estilo.borda && <Cor rotulo="Cor da borda" valor={estilo.borda_cor} disabled={off} onChange={v => mudar({ borda_cor: v })} />}
-          </Linha>
-          <Linha rotulo="Altura dos campos">
-            <Segmentos rotulo="Altura dos campos" valor={estilo.input_altura} opcoes={ALTURA} disabled={off} onChange={v => mudar({ input_altura: v })} />
-          </Linha>
-          <Linha rotulo="Contorno dos campos">
-            <FmSwitch ligado={estilo.input_contorno} disabled={off} rotulo="Contorno dos campos" onChange={v => mudar({ input_contorno: v })} />
-            {estilo.input_contorno && <Cor rotulo="Cor do contorno" valor={estilo.input_contorno_cor} disabled={off} onChange={v => mudar({ input_contorno_cor: v })} />}
-          </Linha>
-          <Linha rotulo="Fundo dos campos">
-            <Cor rotulo="Cor do fundo dos campos" valor={estilo.input_cor} disabled={off} onChange={v => mudar({ input_cor: v })} />
-          </Linha>
-          <Linha rotulo="Botão Enviar">
-            <Segmentos rotulo="Botão Enviar" valor={estilo.botao} opcoes={BOTAO} disabled={off} onChange={v => mudar({ botao: v })} />
-          </Linha>
+          <Grupo titulo="Página">
+            <Linha rotulo="Fundo" dica="Transparente: fundo padrão no link público e o fundo do seu site quando incorporado.">
+              <Segmentos rotulo="Fundo da página" valor={estilo.pagina_fundo} opcoes={FUNDO} disabled={off} onChange={v => mudar({ pagina_fundo: v })} />
+              {estilo.pagina_fundo === 'cor' && <Cor rotulo="Cor do fundo da página" valor={estilo.pagina_cor} disabled={off} onChange={v => mudar({ pagina_cor: v })} />}
+            </Linha>
+          </Grupo>
+
+          <Grupo titulo="Formulário">
+            <Linha rotulo="Fundo">
+              <Segmentos rotulo="Fundo do formulário" valor={estilo.card_fundo} opcoes={FUNDO} disabled={off} onChange={v => mudar({ card_fundo: v })} />
+              {estilo.card_fundo === 'cor' && <Cor rotulo="Cor do fundo do formulário" valor={estilo.card_cor} disabled={off} onChange={v => mudar({ card_cor: v })} />}
+            </Linha>
+            <Linha rotulo="Borda">
+              <FmSwitch ligado={estilo.borda} disabled={off} rotulo="Borda do formulário" onChange={v => mudar({ borda: v })} />
+              {estilo.borda && <Cor rotulo="Cor da borda" valor={estilo.borda_cor} disabled={off} onChange={v => mudar({ borda_cor: v })} />}
+            </Linha>
+            {estilo.borda && (
+              <Linha rotulo="Largura da borda">
+                <Segmentos rotulo="Largura da borda" valor={estilo.borda_largura} opcoes={LARGURA_BORDA} disabled={off} onChange={v => mudar({ borda_largura: v })} />
+              </Linha>
+            )}
+            <Linha rotulo="Cantos">
+              <Raio rotulo="Cantos arredondados do formulário" valor={estilo.card_raio} max={RAIO_MAX.card_raio} disabled={off} onChange={v => mudar({ card_raio: v })} />
+            </Linha>
+          </Grupo>
+
+          <Grupo titulo="Campos">
+            <Linha rotulo="Altura">
+              <Segmentos rotulo="Altura dos campos" valor={estilo.input_altura} opcoes={ALTURA} disabled={off} onChange={v => mudar({ input_altura: v })} />
+            </Linha>
+            <Linha rotulo="Fundo">
+              <Cor rotulo="Cor do fundo dos campos" valor={estilo.input_cor} disabled={off} onChange={v => mudar({ input_cor: v })} />
+            </Linha>
+            <Linha rotulo="Texto digitado">
+              <Cor rotulo="Cor do texto digitado nos campos" valor={estilo.input_texto_cor} disabled={off} onChange={v => mudar({ input_texto_cor: v })} />
+            </Linha>
+            <Linha rotulo="Contorno">
+              <FmSwitch ligado={estilo.input_contorno} disabled={off} rotulo="Contorno dos campos" onChange={v => mudar({ input_contorno: v })} />
+              {estilo.input_contorno && <Cor rotulo="Cor do contorno" valor={estilo.input_contorno_cor} disabled={off} onChange={v => mudar({ input_contorno_cor: v })} />}
+            </Linha>
+            <Linha rotulo="Cantos">
+              <Raio rotulo="Cantos arredondados dos campos" valor={estilo.input_raio} max={RAIO_MAX.input_raio} disabled={off} onChange={v => mudar({ input_raio: v })} />
+            </Linha>
+          </Grupo>
+
+          <Grupo titulo="Botão">
+            <Linha rotulo="Texto">
+              <input
+                className="fm-pos-input" value={estilo.botao_texto} disabled={off} maxLength={BOTAO_TEXTO_MAX}
+                placeholder={BOTAO_TEXTO_PADRAO} aria-label="Texto do botão de envio"
+                onChange={e => mudar({ botao_texto: e.target.value })}
+              />
+            </Linha>
+            <Linha rotulo="Cor" dica="O texto do botão fica claro ou escuro automaticamente, para manter a leitura.">
+              <Cor rotulo="Cor do botão" valor={estilo.botao_cor} disabled={off} onChange={v => mudar({ botao_cor: v })} />
+            </Linha>
+            <Linha rotulo="Fonte">
+              <Segmentos rotulo="Peso da fonte do botão" valor={estilo.botao_peso} opcoes={PESO} disabled={off} onChange={v => mudar({ botao_peso: v })} />
+            </Linha>
+            <Linha rotulo="Posição">
+              <Segmentos rotulo="Posição do botão" valor={estilo.botao} opcoes={BOTAO} disabled={off} onChange={v => mudar({ botao: v })} />
+            </Linha>
+            <Linha rotulo="Cantos">
+              <Raio rotulo="Cantos arredondados do botão" valor={estilo.botao_raio} max={RAIO_MAX.botao_raio} disabled={off} onChange={v => mudar({ botao_raio: v })} />
+            </Linha>
+          </Grupo>
         </div>
 
         {/* prévia com as mesmas classes/variáveis da página pública */}
@@ -127,16 +188,16 @@ export function PainelEstilo({ form, campos, podeEditar, salvarForm }) {
             <div className="prolu-form">
               <div className="prolu-form__titulo">{form.nome}</div>
               <div className="prolu-form__campos">
-                {amostra.map(c => (
+                {amostra.map((c, i) => (
                   <div className="prolu-form__campo" key={c.id}>
                     <span className="prolu-form__label">
                       {c.label || 'Pergunta'}{c.obrigatorio && <span className="prolu-form__asterisco"> *</span>}
                     </span>
-                    <input className="prolu-form__input" readOnly tabIndex={-1} />
+                    <input className="prolu-form__input" readOnly tabIndex={-1} value={i === 0 ? 'Texto digitado' : ''} />
                   </div>
                 ))}
               </div>
-              <button type="button" className="prolu-form__enviar" tabIndex={-1}>Enviar</button>
+              <button type="button" className="prolu-form__enviar" tabIndex={-1}>{textoDoBotao(estilo)}</button>
             </div>
           </div>
         </div>
@@ -177,8 +238,9 @@ export function PainelPosEnvio({ form, podeEditar, salvarForm }) {
   const off = !podeEditar
   return (
     <>
-      <div className="fm-section-title fm-section-gap">Depois do envio</div>
-      <p className="fm-section-sub">Vale para o link público e para os dois modos de incorporação.</p>
+      <div className="fm-painel-topo">
+        <p className="fm-section-sub">Vale para o link público e para os dois modos de incorporação.</p>
+      </div>
       <div className="fm-publico">
         <Linha rotulo="Ao enviar">
           <Segmentos
