@@ -53,6 +53,39 @@
     return box
   }
 
+  // Introdução: HTML do editor rico. Reconstruída nó a nó só com as marcações
+  // que o editor gera (mesma lista de src/utils/introHtml.js) e, de atributo,
+  // só o alinhamento. O DOMParser cria um documento inerte (nada executa);
+  // marcações fora da lista são desembrulhadas, e script/style/iframe… descartados.
+  var INTRO_TAGS = { P: 1, BR: 1, STRONG: 1, B: 1, EM: 1, I: 1, U: 1, S: 1, H1: 1, H2: 1, UL: 1, OL: 1, LI: 1 }
+  var INTRO_DESCARTA = { SCRIPT: 1, STYLE: 1, IFRAME: 1, OBJECT: 1, EMBED: 1, TEMPLATE: 1, NOSCRIPT: 1, SVG: 1, MATH: 1, TEXTAREA: 1, SELECT: 1 }
+  var ALINHAMENTOS = { left: 1, center: 1, right: 1, justify: 1 }
+
+  function copiarIntro(origem, destino) {
+    for (var n = origem.firstChild; n; n = n.nextSibling) {
+      if (n.nodeType === 3) { destino.appendChild(document.createTextNode(n.nodeValue)); continue }
+      if (n.nodeType !== 1 || INTRO_DESCARTA[n.tagName]) continue
+      if (!INTRO_TAGS[n.tagName]) { copiarIntro(n, destino); continue }
+      var novo = document.createElement(n.tagName.toLowerCase())
+      var alinhamento = n.style && n.style.textAlign
+      if (ALINHAMENTOS[alinhamento]) novo.style.textAlign = alinhamento
+      copiarIntro(n, novo)
+      destino.appendChild(novo)
+    }
+  }
+
+  function introSegura(valor) {
+    var box = el('div', 'prolu-form__intro')
+    var v = valor.trim()
+    // introduções antigas eram texto puro: um parágrafo por linha
+    if (!/<\/?[a-z][^>]*>/i.test(v)) {
+      v.split(/\r?\n/).forEach(function (linha) { box.appendChild(el('p', null, linha)) })
+      return box
+    }
+    copiarIntro(new DOMParser().parseFromString(v, 'text/html').body, box)
+    return box
+  }
+
   function imagem(classe, src, alt) {
     var img = el('img', classe)
     img.src = src
@@ -105,7 +138,6 @@
     ':where(.prolu-form__enviar:disabled){opacity:.6;cursor:wait}',
     ':where(.prolu-form__capa){display:block;width:100%;height:auto;max-height:320px;object-fit:cover}',
     ':where(.prolu-form__logo){display:block;width:80px;height:80px;border-radius:50%;object-fit:cover;margin:1em auto}',
-    ':where(.prolu-form__intro){white-space:pre-line}',
     ':where(.prolu-form__video){aspect-ratio:16/9;width:100%;margin:1em 0}',
     ':where(.prolu-form__video iframe){display:block;width:100%;height:100%;border:0}',
     ':where(.prolu-form__obrigado-botao){display:inline-block;margin-top:1em}'
@@ -201,7 +233,7 @@
     if (form.escritorio) f.appendChild(el('div', 'prolu-form__escritorio', form.escritorio))
     if (titulo) f.appendChild(el('h2', 'prolu-form__titulo', titulo))
     if (ap.videoId && ap.videoAntes) f.appendChild(video(ap.videoId, titulo || form.escritorio || 'formulário'))
-    if (ap.intro) f.appendChild(el('p', 'prolu-form__intro', ap.intro))
+    if (ap.intro) f.appendChild(introSegura(ap.intro))
     if (ap.videoId && !ap.videoAntes) f.appendChild(video(ap.videoId, titulo || form.escritorio || 'formulário'))
 
     // honeypot — escondido por estilo inline (o CSS do site não deve revelá-lo)

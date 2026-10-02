@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useToast } from '../contexts/ToastContext.jsx'
 import CampoTextoSalvo from '../components/CampoTextoSalvo.jsx'
+import EditorIntro from '../components/EditorIntro.jsx'
+import { INTRO_MAX } from '../utils/introHtml.js'
 import { FmSwitch } from './Formularios.jsx'
 import { supabase } from '../services/supabaseClient.js'
 import {
@@ -455,11 +457,16 @@ export function PainelApresentacao({ form, podeEditar, salvarForm }) {
           />
         </Linha>
         <Linha rotulo="Introdução">
-          <CampoTextoSalvo
-            multilinha rows={5} className="fm-pos-input fm-intro-input" valor={form.intro_texto || ''} disabled={off} maxLength={5000}
-            placeholder="Texto que aparece antes dos campos — as quebras de linha são mantidas" aria-label="Texto de introdução"
-            onSalvar={v => salvarForm({ intro_texto: v || null }).then(ok => ok && toast('Introdução salva'))}
-          />
+          <div className="fm-intro-box">
+            <EditorIntro
+              valor={form.intro_texto || ''} disabled={off}
+              placeholder="Texto que aparece antes dos campos"
+              onSalvar={html => {
+                if (html.length > INTRO_MAX) { toast('Introdução muito longa — encurte o texto para salvar'); return }
+                salvarForm({ intro_texto: html || null }).then(ok => ok && toast('Introdução salva'))
+              }}
+            />
+          </div>
         </Linha>
         <Linha rotulo="Vídeo do YouTube">
           <CampoTextoSalvo

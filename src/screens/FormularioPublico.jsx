@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../services/supabaseClient.js'
 import { estiloParaPagina, textoDoBotao, SUCESSO_TITULO_PADRAO, sucessoTextoPadrao, URL_REDIRECT_RE, embedDoYoutube } from '../utils/formularioEstilo.js'
+import { sanitizarIntro } from '../utils/introHtml.js'
 import './FormularioPublico.css'
 
 // Página pública /f/:slug — sem login. Carrega e envia SEMPRE pela Edge
@@ -75,6 +76,7 @@ export default function FormularioPublico() {
   const paginaRef = useRef(null)
   const visual = estiloParaPagina(form?.estilo)
   const ap = form?.apresentacao // logo, capa, introdução, vídeo (migration_029)
+  const introHtml = useMemo(() => (ap?.intro ? sanitizarIntro(ap.intro) : ''), [ap?.intro])
   // título visível: titulo_pagina || escritório (resolvido na função); nome é interno
   // topo: nome do escritório (sempre) + título da página (opcional, sem reserva); nome/descrição são internos.
   // Título igual ao nome do escritório não se repete (e cobre a função antiga, que usava o escritório como reserva).
@@ -190,7 +192,8 @@ export default function FormularioPublico() {
             {form.escritorio && <div className="prolu-form__escritorio">{form.escritorio}</div>}
             {titulo && <h1 className="prolu-form__titulo">{titulo}</h1>}
             {ap?.video_id && ap.video_posicao === 'antes' && <Video id={ap.video_id} titulo={titulo || form.escritorio || 'formulário'} />}
-            {ap?.intro && <p className="prolu-form__intro">{ap.intro}</p>}
+            {/* HTML do editor rico, sempre limpo antes de entrar na página (utils/introHtml.js) */}
+            {introHtml && <div className="prolu-form__intro" dangerouslySetInnerHTML={{ __html: introHtml }} />}
             {ap?.video_id && ap.video_posicao !== 'antes' && <Video id={ap.video_id} titulo={titulo || form.escritorio || 'formulário'} />}
 
             {/* honeypot: invisível pra pessoas; robôs que preenchem são descartados na função */}

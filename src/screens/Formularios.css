@@ -225,7 +225,24 @@ section[role="tabpanel"] > .fm-publico:first-child { margin-top: 0; }
 .fm-upload-previa.redonda { width: 64px; height: 64px; border-radius: 50%; }
 .fm-upload-previa img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .fm-upload-acoes { display: flex; align-items: center; gap: 12px; }
-.fm-intro-input { min-height: 120px; }
+/* editor rico da introdução (components/EditorIntro.jsx, sobre RichEditor.css) */
+.fm-intro-box { flex: 1; min-width: 220px; }
+.fm-intro-editor .rich-editor-toolbar { align-items: center; position: static; }
+.fm-intro-editor .rich-editor-content .ProseMirror { min-height: 150px; position: relative; }
+.fm-intro-editor .rich-editor-content.vazio .ProseMirror::before {
+  content: attr(data-placeholder); position: absolute; top: 0; left: 0; color: var(--ink-40); pointer-events: none;
+}
+.fm-intro-editor .ProseMirror h1 { font-size: 20px; font-weight: 600; margin: 10px 0 6px; }
+.fm-intro-editor .ProseMirror h2 { font-size: 16px; font-weight: 600; margin: 10px 0 4px; }
+.fm-intro-editor .ProseMirror ol { padding-left: 22px; margin: 0 0 8px; }
+.fm-intro-editor .ProseMirror li p { margin: 0; }
+.fm-intro-bloco {
+  height: 30px; border: none; border-radius: 7px; padding: 0 8px; cursor: pointer;
+  background: var(--gray-soft); color: var(--ink-60); font-family: inherit; font-size: 12.5px;
+}
+.fm-intro-sep { width: 1px; height: 18px; background: var(--ink-divider); margin: 0 4px; }
+.fm-intro-ico { width: 15px; height: 15px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; vertical-align: middle; }
+.fm-intro-editor.off { opacity: 0.85; }
 .fm-video-ok { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--green-ink); }
 .fm-video-ok img { width: 64px; height: 36px; object-fit: cover; border-radius: 4px; }
 

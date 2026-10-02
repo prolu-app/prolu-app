@@ -96,7 +96,24 @@ html.prolu-embed body::before { display: none; }
 }
 .prolu-pagina--com-capa .prolu-form__logo { margin-top: -72px; box-shadow: 0 0 0 4px var(--pf-card-bg, var(--white)); }
 .prolu-pagina--com-capa.prolu-pagina--card-transparente .prolu-form__logo { margin-top: 0; box-shadow: none; }
-.prolu-form__intro { white-space: pre-line; color: var(--ink-80); font-size: 15px; line-height: 1.6; margin: 18px 0 0; }
+/* introdução: HTML do editor rico (só p, h1, h2, listas, negrito/itálico/
+   sublinhado, alinhamento). Reset local para não herdar estilos globais. */
+.prolu-form__intro { color: var(--ink-80); font-size: 15px; line-height: 1.6; margin: 18px 0 0; overflow-wrap: anywhere; }
+.prolu-form__intro > :first-child { margin-top: 0; }
+.prolu-form__intro > :last-child { margin-bottom: 0; }
+.prolu-form__intro p { margin: 0 0 0.7em; }
+.prolu-form__intro p:empty::before { content: '\00a0'; } /* linha em branco do editor mantém altura */
+.prolu-form__intro h1, .prolu-form__intro h2 { font-family: inherit; font-weight: 600; line-height: 1.3; color: var(--ink); margin: 1em 0 0.4em; }
+.prolu-form__intro h1 { font-size: 21px; }
+.prolu-form__intro h2 { font-size: 17px; }
+.prolu-form__intro ul, .prolu-form__intro ol { margin: 0 0 0.7em; padding-left: 1.4em; }
+.prolu-form__intro ul { list-style: disc; }
+.prolu-form__intro ol { list-style: decimal; }
+.prolu-form__intro li { margin: 0 0 0.25em; }
+.prolu-form__intro li p { margin: 0; }
+.prolu-form__intro strong, .prolu-form__intro b { font-weight: 600; }
+.prolu-form__intro em, .prolu-form__intro i { font-style: italic; }
+.prolu-form__intro u { text-decoration: underline; }
 .prolu-form__video { aspect-ratio: 16 / 9; width: 100%; margin: 18px 0 0; border-radius: 12px; overflow: hidden; background: #000; }
 .prolu-form__video iframe { display: block; width: 100%; height: 100%; border: 0; }
 /* botão opcional da mensagem de agradecimento: mesmas cores/cantos do botão Enviar */
