@@ -142,9 +142,9 @@ Deno.serve(async (req) => {
     const escritorio = (form.empresas as { nome?: string } | null)?.nome || null
     return jsonResponse({
       formulario: {
-        // nome e descrição são internos (editor); o visitante vê o título da
-        // página (migration_030) ou, se vazio, o nome do escritório
-        titulo: textoOuNull(form.titulo_pagina) || escritorio || form.nome,
+        // nome e descrição são internos (editor). No topo o visitante vê o nome
+        // do escritório (sempre) e, abaixo, o título da página (migration_030)
+        titulo: textoOuNull(form.titulo_pagina), // opcional, sem reserva: o nome do escritório já aparece sempre
         escritorio,
         // só a página /f/:slug (e o iframe) aplica; o embed cru ignora (CSS do site)
         estilo: form.estilo || null,

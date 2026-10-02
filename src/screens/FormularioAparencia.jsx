@@ -447,10 +447,10 @@ export function PainelApresentacao({ form, podeEditar, salvarForm }) {
         <Linha rotulo="Capa" dica="Faixa no topo da página. Tamanho sugerido: 1200×400 px. Até 10 MB.">
           <UploadImagem form={form} coluna="capa_url" prefixo="capa" maxMb={10} rotulo="Imagem de capa" off={off} salvarForm={salvarForm} />
         </Linha>
-        <Linha rotulo="Título da página" dica="É o que o visitante verá no topo do formulário. Se vazio, usa o nome do escritório.">
+        <Linha rotulo="Título da página" dica="Aparece como destaque abaixo do nome do escritório. Opcional.">
           <CampoTextoSalvo
             className="fm-pos-input" valor={form.titulo_pagina || ''} disabled={off} maxLength={120}
-            placeholder={form.empresas?.nome || 'Nome do escritório'} aria-label="Título da página"
+            placeholder="Ex: Solicite seu orçamento" aria-label="Título da página"
             onSalvar={v => salvarForm({ titulo_pagina: v || null }).then(ok => ok && toast('Título salvo'))}
           />
         </Linha>

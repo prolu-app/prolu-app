@@ -76,7 +76,9 @@ export default function FormularioPublico() {
   const visual = estiloParaPagina(form?.estilo)
   const ap = form?.apresentacao // logo, capa, introdução, vídeo (migration_029)
   // título visível: titulo_pagina || escritório (resolvido na função); nome é interno
-  const titulo = form?.titulo || form?.nome
+  // topo: nome do escritório (sempre) + título da página (opcional, sem reserva); nome/descrição são internos.
+  // Título igual ao nome do escritório não se repete (e cobre a função antiga, que usava o escritório como reserva).
+  const titulo = form?.titulo && form.titulo !== form.escritorio ? form.titulo : null
 
   useEffect(() => {
     let vivo = true
@@ -86,7 +88,7 @@ export default function FormularioPublico() {
       setForm(data.formulario)
       setCampos(data.campos || [])
       setEstado('pronto')
-      document.title = data.formulario.titulo || data.formulario.nome
+      document.title = [...new Set([data.formulario.titulo, data.formulario.escritorio].filter(Boolean))].join(' · ') || 'Formulário'
     })
     return () => { vivo = false }
   }, [slug])
@@ -184,12 +186,12 @@ export default function FormularioPublico() {
 
         {estado === 'pronto' && (
           <form className="prolu-form__form" onSubmit={enviar} noValidate>
-            {/* nome do escritório em cima só quando o título é outro (senão repetiria) */}
-            {form.escritorio && form.escritorio !== titulo && <div className="prolu-form__escritorio">{form.escritorio}</div>}
-            <h1 className="prolu-form__titulo">{titulo}</h1>
-            {ap?.video_id && ap.video_posicao === 'antes' && <Video id={ap.video_id} titulo={titulo} />}
+            {/* nome do escritório sempre; título da página em destaque abaixo, se houver */}
+            {form.escritorio && <div className="prolu-form__escritorio">{form.escritorio}</div>}
+            {titulo && <h1 className="prolu-form__titulo">{titulo}</h1>}
+            {ap?.video_id && ap.video_posicao === 'antes' && <Video id={ap.video_id} titulo={titulo || form.escritorio || 'formulário'} />}
             {ap?.intro && <p className="prolu-form__intro">{ap.intro}</p>}
-            {ap?.video_id && ap.video_posicao !== 'antes' && <Video id={ap.video_id} titulo={titulo} />}
+            {ap?.video_id && ap.video_posicao !== 'antes' && <Video id={ap.video_id} titulo={titulo || form.escritorio || 'formulário'} />}
 
             {/* honeypot: invisível pra pessoas; robôs que preenchem são descartados na função */}
             <div className="prolu-form__hp" aria-hidden="true">

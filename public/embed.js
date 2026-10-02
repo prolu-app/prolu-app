@@ -196,13 +196,13 @@
     var ap = apresentacao(form)
     if (ap.capa) f.appendChild(imagem('prolu-form__capa', ap.capa, ''))
     if (ap.logo) f.appendChild(imagem('prolu-form__logo', ap.logo, form.escritorio ? 'Logo ' + form.escritorio : ''))
-    // título visível: titulo_pagina ou nome do escritório (resolvido na função); nome/descrição são internos
-    var titulo = form.titulo || form.nome
-    if (form.escritorio && form.escritorio !== titulo) f.appendChild(el('div', 'prolu-form__escritorio', form.escritorio))
-    f.appendChild(el('h2', 'prolu-form__titulo', titulo))
-    if (ap.videoId && ap.videoAntes) f.appendChild(video(ap.videoId, titulo))
+    // topo: nome do escritório (sempre) + título da página (opcional); nome/descrição do formulário são internos
+    var titulo = form.titulo && form.titulo !== form.escritorio ? form.titulo : null
+    if (form.escritorio) f.appendChild(el('div', 'prolu-form__escritorio', form.escritorio))
+    if (titulo) f.appendChild(el('h2', 'prolu-form__titulo', titulo))
+    if (ap.videoId && ap.videoAntes) f.appendChild(video(ap.videoId, titulo || form.escritorio || 'formulário'))
     if (ap.intro) f.appendChild(el('p', 'prolu-form__intro', ap.intro))
-    if (ap.videoId && !ap.videoAntes) f.appendChild(video(ap.videoId, titulo))
+    if (ap.videoId && !ap.videoAntes) f.appendChild(video(ap.videoId, titulo || form.escritorio || 'formulário'))
 
     // honeypot — escondido por estilo inline (o CSS do site não deve revelá-lo)
     var hp = el('div', 'prolu-form__hp')

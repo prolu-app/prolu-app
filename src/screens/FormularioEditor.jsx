@@ -103,8 +103,7 @@ export default function FormularioEditor() {
     if (!supabaseReady) { setLoading(false); return }
     setLoading(true)
     const [{ data: f, error: e1 }, { data: cs, error: e2 }] = await Promise.all([
-      // empresas(nome): placeholder do título da página (nome do escritório)
-      supabase.from('formularios').select('*, empresas(nome)').eq('id', id).maybeSingle(),
+      supabase.from('formularios').select('*').eq('id', id).maybeSingle(),
       supabase.from('formulario_campos').select('*').eq('formulario_id', id).order('ordem'),
     ])
     if (e1 || e2) { console.error('[formulario] carregar', e1 || e2); toast('Erro ao carregar formulário') }
