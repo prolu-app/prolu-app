@@ -11,6 +11,7 @@ import IncorporarFormulario from './IncorporarFormulario.jsx'
 import { PainelEstilo, PainelPosEnvio, PainelApresentacao } from './FormularioAparencia.jsx'
 import PainelNotificacoes from './FormularioNotificacoes.jsx'
 import CampoTextoSalvo from '../components/CampoTextoSalvo.jsx'
+import ConfirmarSlugModal from '../components/ConfirmarSlugModal.jsx'
 import './Formularios.css'
 
 // Códigos em inglês no banco (igual crm_colunas.tipo), rótulo em português aqui.
@@ -79,7 +80,12 @@ export default function FormularioEditor() {
   const [colunasCrm, setColunasCrm] = useState([])
   // remonta o input do endereço após cada tentativa: mostra sempre o slug salvo
   // (normalizado), e não o texto digitado quando era inválido ou já estava em uso
-  const [slugVersao, setSlugVersao] = useState(0)
+  const [avancadoAberto, setAvancadoAberto] = useState(false)
+  const [editandoSlug, setEditandoSlug] = useState(false)
+  const [slugDigitado, setSlugDigitado] = useState('')
+  const [confirmandoSlug, setConfirmandoSlug] = useState(false)
+  const [salvandoSlug, setSalvandoSlug] = useState(false)
+  const [erroSlug, setErroSlug] = useState(null)
   const [incorporar, setIncorporar] = useState(false)
   const [confirmarExcluir, setConfirmarExcluir] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
@@ -135,19 +141,30 @@ export default function FormularioEditor() {
     return true
   }
 
-  async function salvarSlug(digitado) {
-    setSlugVersao(v => v + 1)
-    const novo = slugify(digitado)
-    if (!slugValido(novo) || novo === form.slug) return
-    const anterior = form.slug
-    setForm(prev => ({ ...prev, slug: novo }))
-    const { error } = await supabase.from('formularios').update({ slug: novo }).eq('id', id)
-    if (error) {
-      setForm(prev => ({ ...prev, slug: anterior }))
-      toast(error.code === '23505' ? 'Esse endereço já está em uso — escolha outro' : 'Não foi possível salvar o endereço')
+  // ── endereço do formulário (Configurações avançadas) ──
+  // Trocar derruba o link público e os embeds: campo travado, "Alterar" para
+  // destravar e confirmação digitada (ConfirmarSlugModal) antes de gravar.
+  const novoSlug = slugify(slugDigitado)
+  function pedirConfirmacaoSlug() {
+    if (novoSlug === form.slug) { setEditandoSlug(false); return }
+    if (!slugValido(novoSlug)) { setErroSlug('Use letras minúsculas, números e hífens (3 a 60 caracteres).'); return }
+    setErroSlug(null)
+    setConfirmandoSlug(true)
+  }
+  async function salvarSlug() {
+    setSalvandoSlug(true)
+    // .select(): com RLS bloqueando, o update não dá erro — só não muda nada
+    const { data, error } = await supabase.from('formularios').update({ slug: novoSlug }).eq('id', id).select('slug')
+    setSalvandoSlug(false)
+    if (error || !data?.length) {
+      setErroSlug(error?.code === '23505' ? 'Esse endereço já está em uso neste escritório — escolha outro.' : 'Não foi possível salvar o endereço.')
+      setConfirmandoSlug(false)
       return
     }
-    toast('Endereço atualizado — o link anterior deixou de funcionar')
+    setForm(prev => ({ ...prev, slug: novoSlug }))
+    setConfirmandoSlug(false)
+    setEditandoSlug(false)
+    toast('Endereço alterado — o link anterior deixou de funcionar')
   }
 
   async function excluir() {
@@ -324,15 +341,8 @@ export default function FormularioEditor() {
           <span className="fm-publico-label">Link público</span>
           <div className="fm-publico-link">
             <span className="fm-publico-prefixo">{window.location.host}/e/{form.empresas?.slug}/</span>
-            <CampoTextoSalvo
-              key={slugVersao}
-              className="fm-slug-input"
-              valor={form.slug}
-              disabled={!podeEditar}
-              obrigatorio
-              aria-label="Endereço do formulário"
-              onSalvar={salvarSlug}
-            />
+            {/* só leitura: trocar o endereço fica em Configurações avançadas */}
+            <span className="fm-slug-input fm-slug-texto">{form.slug}</span>
           </div>
           <div className="fm-publico-acoes">
             <button type="button" className="fm-icon-btn" onClick={copiarLink} title="Copiar link" aria-label="Copiar link"><IconCopy /></button>
@@ -366,6 +376,67 @@ export default function FormularioEditor() {
         })()}
       </div>
       <PainelApresentacao form={form} podeEditar={podeEditar} salvarForm={salvarForm} />
+
+      {/* Configurações avançadas (fechada por padrão): endereço do formulário. Só
+          quem edita o formulário vê (master/prolu_admin do escritório). */}
+      {podeEditar && (
+        <div className="fm-avancado">
+          <button type="button" className="fm-avancado-toggle" aria-expanded={avancadoAberto} aria-controls="fm-avancado"
+            onClick={() => setAvancadoAberto(a => !a)}>
+            <IconChevronDown /> Configurações avançadas
+          </button>
+          {avancadoAberto && (
+            <div className="fm-publico" id="fm-avancado">
+              <div className="fm-publico-row">
+                <span className="fm-publico-label">Endereço do formulário</span>
+                <div className={`fm-publico-link${editandoSlug ? '' : ' travado'}${erroSlug ? ' invalido' : ''}`}>
+                  <span className="fm-publico-prefixo">{window.location.host}/e/{form.empresas?.slug}/</span>
+                  <input
+                    className="fm-slug-input"
+                    value={editandoSlug ? slugDigitado : form.slug}
+                    disabled={!editandoSlug}
+                    maxLength={60}
+                    spellCheck={false}
+                    autoComplete="off"
+                    aria-label="Endereço do formulário"
+                    aria-invalid={!!erroSlug}
+                    onChange={e => { setSlugDigitado(e.target.value.toLowerCase()); setErroSlug(null) }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') pedirConfirmacaoSlug()
+                      if (e.key === 'Escape') { setEditandoSlug(false); setErroSlug(null) }
+                    }}
+                  />
+                </div>
+                {!editandoSlug ? (
+                  <button type="button" className="fm-embed-btn" onClick={() => { setSlugDigitado(form.slug); setEditandoSlug(true) }}>Alterar</button>
+                ) : (
+                  <div className="fm-publico-acoes">
+                    <button type="button" className="fm-embed-btn" onClick={() => { setEditandoSlug(false); setErroSlug(null) }}>Cancelar</button>
+                    <button type="button" className="fm-embed-btn fm-embed-btn-forte" onClick={pedirConfirmacaoSlug} disabled={!slugDigitado.trim()}>Alterar endereço</button>
+                  </div>
+                )}
+              </div>
+              {erroSlug && <p className="fm-pos-erro" role="alert">{erroSlug}</p>}
+              {editandoSlug && !erroSlug && novoSlug !== slugDigitado.trim() && slugDigitado.trim() && (
+                <p className="fm-publico-dica">Vai ficar: <strong>{novoSlug}</strong></p>
+              )}
+              <p className="fm-publico-aviso">⚠️ Alterar o endereço faz o link público e os formulários incorporados pararem de funcionar com o endereço atual.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {confirmandoSlug && (
+        <ConfirmarSlugModal
+          titulo="Tem certeza que quer alterar o endereço do formulário?"
+          texto="O link público e os formulários incorporados vão parar de funcionar com o endereço atual."
+          novoSlug={novoSlug}
+          salvando={salvandoSlug}
+          onConfirmar={salvarSlug}
+          onCancelar={() => setConfirmandoSlug(false)}
+        />
+      )}
+
       {podeEditar && (
         <div className="fm-excluir-rodape">
           <button type="button" className="fm-excluir-btn" onClick={() => setConfirmarExcluir(true)}><IconTrash /> Excluir formulário</button>

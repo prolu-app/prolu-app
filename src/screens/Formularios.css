@@ -74,6 +74,25 @@
 .fm-tag button:hover { background: var(--gray-soft); color: var(--ink); }
 .fm-notif-acoes { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
 
+/* Configurações avançadas (aba Geral): endereço do formulário, fechada por padrão */
+.fm-slug-texto { padding: 9px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fm-avancado { margin-top: 28px; }
+.fm-avancado-toggle {
+  display: inline-flex; align-items: center; gap: 6px; background: none; border: none; padding: 4px 0; cursor: pointer;
+  font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase;
+  color: var(--ink-40);
+}
+.fm-avancado-toggle:hover { color: var(--ink); }
+.fm-avancado-toggle svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2.2; fill: none; transform: rotate(-90deg); transition: transform 0.15s; }
+.fm-avancado-toggle[aria-expanded="true"] svg { transform: none; }
+.fm-avancado .fm-publico { margin-top: 10px; }
+.fm-publico-link.travado { background: var(--gray-soft); }
+.fm-publico-link.travado .fm-slug-input { color: var(--ink-60); cursor: not-allowed; }
+.fm-publico-link.invalido { box-shadow: 0 0 0 1.5px var(--red); }
+.fm-embed-btn-forte { background: var(--ink); color: var(--white); }
+.fm-embed-btn-forte:hover { background: var(--ink-80); color: var(--white); }
+.fm-embed-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
 /* rodapé da aba Geral: excluir, discreto */
 .fm-excluir-rodape { display: flex; justify-content: flex-start; margin: 36px 0 8px; }
 .fm-excluir-btn {

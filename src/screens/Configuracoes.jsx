@@ -6,6 +6,7 @@ import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { IconPlus, IconTrash, IconClose } from '../components/Icons.jsx'
 import { slugValido } from '../utils/slug.js'
+import ConfirmarSlugModal from '../components/ConfirmarSlugModal.jsx'
 import './Configuracoes.css'
 
 const ROLE_LABEL = { prolu_admin: 'Prolu', master: 'Master', gestor: 'Gestor', comum: 'Colaborador' }
@@ -31,9 +32,9 @@ export default function Configuracoes() {
   const tabs = useMemo(() => ([
     { key: 'conta', label: 'Conta', show: true },
     { key: 'equipe', label: 'Equipe', show: isGestorOuSuperior },
-    // gestor também entra: edita o endereço (slug); o nome continua só do master
-    { key: 'escritorio', label: 'Escritório', show: isGestorOuSuperior },
-  ].filter((t) => t.show)), [isGestorOuSuperior])
+    // nome e endereço (slug) do escritório: só o master (migration_037)
+    { key: 'escritorio', label: 'Escritório', show: isEmpresaMaster },
+  ].filter((t) => t.show)), [isGestorOuSuperior, isEmpresaMaster])
 
   const requested = searchParams.get('tab')
   const tab = tabs.some((t) => t.key === requested) ? requested : 'conta'
@@ -71,8 +72,8 @@ export default function Configuracoes() {
           toast={toast}
         />
       )}
-      {tab === 'escritorio' && isGestorOuSuperior && (
-        <AbaEscritorio user={user} isEmpresaMaster={isEmpresaMaster} activeEmpresaId={activeEmpresaId} refreshUser={refreshUser} toast={toast} />
+      {tab === 'escritorio' && isEmpresaMaster && (
+        <AbaEscritorio user={user} activeEmpresaId={activeEmpresaId} refreshUser={refreshUser} toast={toast} />
       )}
     </>
   )
@@ -459,7 +460,7 @@ function UsuarioDrawer({ usuario, isSelf, options, canEditRole, canRemove, onClo
 
 // ───────────────────────── Aba Escritório ─────────────────────────
 
-function AbaEscritorio({ user, isEmpresaMaster, activeEmpresaId, refreshUser, toast }) {
+function AbaEscritorio({ user, activeEmpresaId, refreshUser, toast }) {
   const [empresaNome, setEmpresaNome] = useState(user?.empresa || '')
 
   useEffect(() => { setEmpresaNome(user?.empresa || '') }, [user?.empresa])
@@ -486,12 +487,10 @@ function AbaEscritorio({ user, isEmpresaMaster, activeEmpresaId, refreshUser, to
         <input
           className="cfg-input"
           value={empresaNome}
-          disabled={!isEmpresaMaster}
           onChange={(e) => setEmpresaNome(e.target.value)}
           onBlur={salvarEmpresa}
           onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
         />
-        {!isEmpresaMaster && <div className="cfg-hint">Somente o Master pode alterar o nome do escritório.</div>}
       </div>
       <EnderecoEscritorio
         activeEmpresaId={activeEmpresaId}
@@ -505,12 +504,16 @@ function AbaEscritorio({ user, isEmpresaMaster, activeEmpresaId, refreshUser, to
   )
 }
 
-// Endereço do escritório (empresas.slug, migration_036): primeira parte do link
-// público dos formulários, /e/<endereço>/<formulário>. Grava pela função
-// empresa_atualizar_slug (master e gestor; troca só esta coluna).
+// Endereço do escritório (empresas.slug, migrations 036/037): primeira parte
+// do link público dos formulários, /e/<endereço>/<formulário>. Trocar derruba
+// todos os links e embeds do escritório, então: campo travado, "Alterar" para
+// destravar, botão próprio (nada de salvar junto com o resto da página) e
+// confirmação digitada. Grava pela função empresa_atualizar_slug (só master).
 function EnderecoEscritorio({ activeEmpresaId, podeEditar, toast }) {
   const [salvo, setSalvo] = useState('')
   const [valor, setValor] = useState('')
+  const [editando, setEditando] = useState(false)
+  const [confirmando, setConfirmando] = useState(false)
   const [erro, setErro] = useState(null)
   const [salvando, setSalvando] = useState(false)
 
@@ -529,53 +532,82 @@ function EnderecoEscritorio({ activeEmpresaId, podeEditar, toast }) {
   const invalido = limpo !== '' && !slugValido(limpo)
   const alterado = limpo !== salvo
 
-  async function salvar() {
-    if (!alterado || salvando) return
-    if (!slugValido(limpo)) { setErro('Use só letras minúsculas, números e hífens (entre 3 e 60 caracteres).'); return }
+  function cancelarEdicao() {
+    setValor(salvo)
+    setEditando(false)
+    setErro(null)
+  }
+
+  function pedirConfirmacao() {
+    if (!alterado) return
+    if (!slugValido(limpo)) { setErro(MSG_FORMATO); return }
+    setErro(null)
+    setConfirmando(true)
+  }
+
+  async function confirmar() {
     setSalvando(true)
     const { data, error } = await supabase.rpc('empresa_atualizar_slug', { p_slug: limpo })
     setSalvando(false)
     if (error) {
       setErro(error.code === '23505' ? 'Este endereço já está em uso. Escolha outro.'
-        : error.code === '42501' ? 'Sem permissão para alterar o endereço do escritório.'
+        : error.code === '42501' ? 'Somente o Master pode alterar o endereço do escritório.'
         : 'Não foi possível salvar o endereço.')
+      setConfirmando(false)
       return
     }
-    setSalvo(data || limpo)
-    setValor(data || limpo)
-    setErro(null)
-    toast('Endereço do escritório atualizado')
+    const novo = data || limpo
+    setSalvo(novo)
+    setValor(novo)
+    setConfirmando(false)
+    setEditando(false)
+    toast('Endereço do escritório alterado')
   }
 
   return (
     <div className="cfg-field cfg-endereco">
       <label className="modal-label" htmlFor="cfg-slug">Endereço do escritório (slug)</label>
       <div className="cfg-endereco-linha">
-        <div className={`cfg-endereco-campo${erro || invalido ? ' invalido' : ''}`}>
+        <div className={`cfg-endereco-campo${editando ? '' : ' travado'}${erro || invalido ? ' invalido' : ''}`}>
           <span className="cfg-endereco-prefixo">{window.location.host}/e/</span>
           <input
             id="cfg-slug"
             value={valor}
-            disabled={!podeEditar}
+            disabled={!editando}
             spellCheck={false}
             autoComplete="off"
             maxLength={60}
             aria-invalid={!!erro || invalido}
             aria-describedby="cfg-slug-aviso"
             onChange={(e) => { setValor(e.target.value.toLowerCase().replace(/\s+/g, '-')); setErro(null) }}
-            onKeyDown={(e) => { if (e.key === 'Enter') salvar() }}
+            onKeyDown={(e) => { if (e.key === 'Enter') pedirConfirmacao(); if (e.key === 'Escape') cancelarEdicao() }}
           />
         </div>
-        {podeEditar && (
-          <button className="btn-primary" onClick={salvar} disabled={!alterado || invalido || salvando || !limpo}>
-            {salvando ? 'Salvando…' : 'Salvar'}
-          </button>
+        {podeEditar && !editando && (
+          <button className="btn-cancel cfg-endereco-alterar" onClick={() => setEditando(true)}>Alterar</button>
+        )}
+        {editando && (
+          <>
+            <button className="btn-cancel" onClick={cancelarEdicao}>Cancelar</button>
+            <button className="btn-primary" onClick={pedirConfirmacao} disabled={!alterado || invalido || !limpo}>Alterar endereço</button>
+          </>
         )}
       </div>
-      {(erro || invalido) && (
-        <div className="cfg-endereco-erro" role="alert">{erro || 'Use só letras minúsculas, números e hífens (entre 3 e 60 caracteres).'}</div>
-      )}
+      {(erro || invalido) && <div className="cfg-endereco-erro" role="alert">{erro || MSG_FORMATO}</div>}
       <div className="cfg-endereco-aviso" id="cfg-slug-aviso">⚠️ Alterar este endereço derruba todos os links e embeds existentes do seu escritório.</div>
+
+      {confirmando && (
+        <ConfirmarSlugModal
+          titulo="Tem certeza que quer alterar o endereço?"
+          texto="Esta ação vai quebrar todos os links públicos e formulários incorporados deste escritório. Quem tiver o link antigo salvo não vai mais conseguir acessar."
+          novoSlug={limpo}
+          salvando={salvando}
+          onConfirmar={confirmar}
+          onCancelar={() => setConfirmando(false)}
+        />
+      )}
     </div>
   )
 }
+
+const MSG_FORMATO = 'Use só letras minúsculas, números e hífens (entre 3 e 60 caracteres).'
