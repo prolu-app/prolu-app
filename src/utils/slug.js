@@ -1,6 +1,7 @@
-// Endereço público de formulário (/f/:slug). Mesmo formato exigido pela
-// constraint formularios_slug_formato (migration_026): minúsculas, números e
-// hífens simples, 3 a 60 caracteres.
+// Slugs de URL: formulário (formularios.slug, migration_026) e escritório
+// (empresas.slug, migration_036) — mesmo formato: minúsculas, números e
+// hífens simples, 3 a 60 caracteres. O do formulário é único dentro do
+// escritório; o do escritório, no sistema todo.
 export const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/
 
 export function slugify(texto) {
@@ -23,6 +24,7 @@ export function comSufixo(base) {
   return `${base.slice(0, 54)}-${Math.random().toString(36).slice(2, 6)}`
 }
 
-export function urlPublica(slug) {
-  return `${window.location.origin}/f/${slug}`
+// link público: /e/<slug do escritório>/<slug do formulário>
+export function urlPublica(slugEscritorio, slugFormulario) {
+  return `${window.location.origin}/e/${slugEscritorio}/${slugFormulario}`
 }

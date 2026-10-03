@@ -109,7 +109,8 @@ export default function FormularioEditor() {
     if (!supabaseReady) { setLoading(false); return }
     setLoading(true)
     const [{ data: f, error: e1 }, { data: cs, error: e2 }] = await Promise.all([
-      supabase.from('formularios').select('*').eq('id', id).maybeSingle(),
+      // empresas(slug): o link público é /e/<escritório>/<formulário> (migration_036)
+      supabase.from('formularios').select('*, empresas(slug)').eq('id', id).maybeSingle(),
       supabase.from('formulario_campos').select('*').eq('formulario_id', id).order('ordem'),
     ])
     if (e1 || e2) { console.error('[formulario] carregar', e1 || e2); toast('Erro ao carregar formulário') }
@@ -164,7 +165,7 @@ export default function FormularioEditor() {
 
   async function copiarLink() {
     try {
-      await navigator.clipboard.writeText(urlPublica(form.slug))
+      await navigator.clipboard.writeText(urlPublica(form.empresas?.slug, form.slug))
       toast('Link copiado')
     } catch {
       toast('Não foi possível copiar — selecione o link e copie manualmente')
@@ -322,7 +323,7 @@ export default function FormularioEditor() {
         <div className="fm-publico-row">
           <span className="fm-publico-label">Link público</span>
           <div className="fm-publico-link">
-            <span className="fm-publico-prefixo">{window.location.host}/f/</span>
+            <span className="fm-publico-prefixo">{window.location.host}/e/{form.empresas?.slug}/</span>
             <CampoTextoSalvo
               key={slugVersao}
               className="fm-slug-input"
@@ -335,7 +336,7 @@ export default function FormularioEditor() {
           </div>
           <div className="fm-publico-acoes">
             <button type="button" className="fm-icon-btn" onClick={copiarLink} title="Copiar link" aria-label="Copiar link"><IconCopy /></button>
-            <a className="fm-icon-btn" href={urlPublica(form.slug)} target="_blank" rel="noreferrer" title="Abrir formulário" aria-label="Abrir formulário"><IconArrowUpRight /></a>
+            <a className="fm-icon-btn" href={urlPublica(form.empresas?.slug, form.slug)} target="_blank" rel="noreferrer" title="Abrir formulário" aria-label="Abrir formulário"><IconArrowUpRight /></a>
             <button type="button" className="fm-embed-btn" onClick={() => setIncorporar(true)}><IconCode /> Incorporar</button>
           </div>
         </div>

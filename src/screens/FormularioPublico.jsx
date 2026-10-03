@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '../services/supabaseClient.js'
 import { estiloParaPagina, textoDoBotao, SUCESSO_TITULO_PADRAO, sucessoTextoPadrao, URL_REDIRECT_RE, embedDoYoutube } from '../utils/formularioEstilo.js'
 import { sanitizarIntro } from '../utils/introHtml.js'
@@ -10,7 +11,7 @@ import './FormularioPublico.css'
 const FormTelefoneField = lazy(() => import('../components/FormTelefoneField.jsx'))
 const carregarTelefone = () => import('react-phone-number-input')
 
-// Página pública /f/:slug — sem login. Carrega e envia SEMPRE pela Edge
+// Página pública /e/:slugEscritorio/:slugFormulario — sem login. Carrega e envia SEMPRE pela Edge
 // Function `formulario-publico` (nenhuma tabela tem acesso anon). A
 // validação aqui é só conforto: a função valida de novo antes de gravar.
 //
@@ -69,7 +70,10 @@ function avisarSite(tipo, dados) {
 }
 
 export default function FormularioPublico() {
-  const slug = decodeURIComponent(window.location.pathname.replace(/^\/f\//, '').split('/')[0] || '')
+  // o slug do formulário é único só dentro do escritório (migration_036): a função busca pelo par
+  const { slugEscritorio = '', slugFormulario = '' } = useParams()
+  const slug = slugFormulario // identifica o formulário nas mensagens para o embed.js
+  const slugs = { slug_escritorio: slugEscritorio, slug_formulario: slugFormulario }
   const embed = new URLSearchParams(window.location.search).get('embed') === '1'
   const [estado, setEstado] = useState('carregando') // carregando | pronto | indisponivel | redirecionando | enviado
   const [form, setForm] = useState(null)
@@ -93,7 +97,7 @@ export default function FormularioPublico() {
 
   useEffect(() => {
     let vivo = true
-    chamar({ acao: 'carregar', slug }).then(({ data, error }) => {
+    chamar({ acao: 'carregar', ...slugs }).then(({ data, error }) => {
       if (!vivo) return
       if (error || !data?.formulario) { setEstado('indisponivel'); return }
       setForm(data.formulario)
@@ -102,7 +106,7 @@ export default function FormularioPublico() {
       document.title = [...new Set([data.formulario.titulo, data.formulario.escritorio].filter(Boolean))].join(' · ') || 'Formulário'
     })
     return () => { vivo = false }
-  }, [slug])
+  }, [slugEscritorio, slugFormulario]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // embed: body/#root transparentes (index.css pinta o body) e altura para o site
   useEffect(() => {
@@ -134,7 +138,7 @@ export default function FormularioPublico() {
     if (Object.keys(novosErros).length) { focarPrimeiroErro(novosErros); return }
 
     setEnviando(true)
-    const { data, error } = await chamar({ acao: 'enviar', slug, respostas: valores, _site: honeypot })
+    const { data, error } = await chamar({ acao: 'enviar', ...slugs, respostas: valores, _site: honeypot })
     setEnviando(false)
     if (error) {
       if (error.erros) { setErros(error.erros); focarPrimeiroErro(error.erros) }

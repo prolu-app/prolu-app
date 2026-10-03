@@ -4,12 +4,13 @@
  *
  * Dois modos, mesmo formulário e mesma Edge Function `formulario-publico`:
  *
- *  1. Com estilo do Prolu — <iframe data-prolu-form src=".../f/:slug?embed=1">
+ *  1. Com estilo do Prolu — <iframe data-prolu-form src=".../e/:escritorio/:formulario?embed=1">
  *     Este script ajusta a altura do iframe (mensagens prolu-form:altura da
  *     página), traz o formulário para a tela depois do envio e, se o
  *     formulário redireciona após o envio, troca a página do site pela URL.
  *
- *  2. Cru — <div data-prolu-form="slug" data-api="https://.../functions/v1/formulario-publico">
+ *  2. Cru — <div data-prolu-form="<slug do formulário>" data-escritorio="<slug do escritório>"
+ *               data-api="https://.../functions/v1/formulario-publico">
  *     Este script monta o formulário direto no DOM do site, com as mesmas
  *     classes prolu-form__* da página pública, e envia pela Edge Function.
  *     Estilo base mínimo com :where() (especificidade zero: qualquer CSS do
@@ -199,9 +200,12 @@
   }
 
   function montarCru(host) {
+    // o formulário é achado pelo par escritório + formulário (o slug do formulário é único só no escritório)
     var slug = (host.getAttribute('data-prolu-form') || '').trim().toLowerCase()
+    var escritorio = (host.getAttribute('data-escritorio') || '').trim().toLowerCase()
     var api = host.getAttribute('data-api')
-    if (!slug || !api) { console.warn('[Prolu] data-prolu-form e data-api são obrigatórios'); return }
+    if (!slug || !escritorio || !api) { console.warn('[Prolu] data-prolu-form, data-escritorio e data-api são obrigatórios'); return }
+    var slugs = { slug_escritorio: escritorio, slug_formulario: slug }
     if (host.getAttribute('data-estilo-base') !== 'nao') estiloBase()
 
     var raiz = el('div', 'prolu-form')
@@ -210,16 +214,16 @@
     host.textContent = ''
     host.appendChild(raiz)
 
-    chamar(api, { acao: 'carregar', slug: slug }).then(function (res) {
+    chamar(api, { acao: 'carregar', slug_escritorio: slugs.slug_escritorio, slug_formulario: slugs.slug_formulario }).then(function (res) {
       if (res.error || !res.data || !res.data.formulario) {
         mensagem(raiz, 'indisponivel', 'Formulário indisponível', 'Este formulário não existe ou não está mais recebendo respostas.')
         return
       }
-      renderizar(raiz, api, slug, res.data.formulario, res.data.campos || [])
+      renderizar(raiz, api, slugs, res.data.formulario, res.data.campos || [])
     })
   }
 
-  function renderizar(raiz, api, slug, form, campos) {
+  function renderizar(raiz, api, slugs, form, campos) {
     raiz.textContent = ''
     raiz.setAttribute('data-estado', 'pronto')
     var f = el('form', 'prolu-form__form')
@@ -252,7 +256,7 @@
     var lista = el('div', 'prolu-form__campos')
     var itens = {} // campo.id → { campo, wrap, input, erro }
     campos.forEach(function (c) {
-      var id = 'prolu-' + slug + '-' + c.id
+      var id = 'prolu-' + slugs.slug_escritorio + '-' + slugs.slug_formulario + '-' + c.id
       var wrap = el('div', 'prolu-form__campo prolu-form__campo--' + c.tipo + (c.obrigatorio ? ' prolu-form__campo--obrigatorio' : ''))
       wrap.setAttribute('data-campo', c.id)
       wrap.setAttribute('data-tipo', c.tipo)
@@ -351,7 +355,7 @@
       enviando = true
       botao.disabled = true
       botao.textContent = 'Enviando…'
-      chamar(api, { acao: 'enviar', slug: slug, respostas: respostas, _site: hpInput.value }).then(function (res) {
+      chamar(api, { acao: 'enviar', slug_escritorio: slugs.slug_escritorio, slug_formulario: slugs.slug_formulario, respostas: respostas, _site: hpInput.value }).then(function (res) {
         enviando = false
         botao.disabled = false
         botao.textContent = textoBotao

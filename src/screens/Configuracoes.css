@@ -149,3 +149,21 @@
 .cfgd-confirm .modal-actions { margin-top: 12px; }
 
 .cfgd-remove-btn { width: 100%; margin-top: 20px; }
+
+/* Endereço do escritório (slug — migration_036) */
+.cfg-endereco { margin-top: 18px; }
+.cfg-endereco-linha { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cfg-endereco-campo {
+  flex: 1; min-width: 240px; display: flex; align-items: center;
+  background: var(--cream); border-radius: var(--r-sm); padding: 0 4px 0 12px;
+}
+.cfg-endereco-campo:focus-within { box-shadow: 0 0 0 2px var(--green); }
+.cfg-endereco-campo.invalido { box-shadow: 0 0 0 1.5px var(--red); }
+.cfg-endereco-prefixo { color: var(--ink-40); font-size: 13.5px; white-space: nowrap; }
+.cfg-endereco-campo input {
+  flex: 1; min-width: 0; border: none; outline: none; background: transparent; padding: 11px 4px;
+  font-family: inherit; font-size: 13.5px; font-weight: 500; color: var(--ink);
+}
+.cfg-endereco-campo input:disabled { -webkit-text-fill-color: currentColor; }
+.cfg-endereco-erro { font-size: 12.5px; color: var(--red); margin-top: 6px; }
+.cfg-endereco-aviso { font-size: 12.5px; color: var(--orange-ink); margin-top: 8px; }

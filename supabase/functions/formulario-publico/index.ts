@@ -1,7 +1,9 @@
 // Edge Function: formulario-publico
-// Única porta de entrada da página pública /f/:slug (sem login). Duas ações:
-//   { acao: 'carregar', slug }                     → formulário ativo + campos
-//   { acao: 'enviar', slug, respostas, _site }     → valida e grava no CRM
+// Única porta de entrada da página pública /e/:slugEscritorio/:slugFormulario
+// (sem login) e dos embeds. O formulário é achado pelo par de slugs — o do
+// formulário é único só dentro do escritório (migration_036). Duas ações:
+//   { acao: 'carregar', slug_escritorio, slug_formulario }                  → formulário ativo + campos
+//   { acao: 'enviar', slug_escritorio, slug_formulario, respostas, _site } → valida e grava no CRM
 //
 // Roda com a service role key (ignora RLS) — por isso NÃO existe nenhuma
 // policy anon nas tabelas: toda a validação acontece aqui antes de gravar
@@ -116,8 +118,13 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Corpo da requisição inválido.' }, 400)
   }
 
-  const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : ''
-  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug) || slug.length > 60) {
+  const lerSlug = (v: unknown) => {
+    const s = typeof v === 'string' ? v.trim().toLowerCase() : ''
+    return /^[a-z0-9]+(-[a-z0-9]+)*$/.test(s) && s.length <= 60 ? s : null
+  }
+  const slugEscritorio = lerSlug(body.slug_escritorio)
+  const slugFormulario = lerSlug(body.slug_formulario)
+  if (!slugEscritorio || !slugFormulario) {
     return jsonResponse({ error: 'Formulário não encontrado.' }, 404)
   }
 
@@ -127,8 +134,10 @@ Deno.serve(async (req) => {
     .from('formularios')
     // '*' (e não lista de colunas): a função continua de pé mesmo durante uma
     // migration que crie/remova colunas de configuração (ex.: 028)
-    .select('*, empresas(nome)')
-    .eq('slug', slug)
+    // !inner: o filtro pelo slug do escritório vale para a linha (não só para o join)
+    .select('*, empresas!inner(id, nome, slug)')
+    .eq('slug', slugFormulario)
+    .eq('empresas.slug', slugEscritorio)
     .maybeSingle()
   // formulário inativo responde igual a inexistente: não revela que existe
   if (!form || !form.ativo) return jsonResponse({ error: 'Este formulário não está disponível.' }, 404)
@@ -152,7 +161,7 @@ Deno.serve(async (req) => {
         titulo: exibe(form, 'exibir_titulo') ? textoOuNull(form.titulo_pagina) : null, // sem reserva
         escritorio, // também usado no texto padrão do agradecimento e no alt do logo
         mostrar_escritorio: exibe(form, 'exibir_nome_escritorio'), // migration_032
-        // só a página /f/:slug (e o iframe) aplica; o embed cru ignora (CSS do site)
+        // só a página pública (e o iframe) aplica; o embed cru ignora (CSS do site)
         estilo: form.estilo || null,
         apresentacao: apresentacao(form),
       },

@@ -13,7 +13,7 @@ import './FormularioPublico.css'
 
 // Editor do formulário — "Apresentação" (aba Geral, migration_029), "Depois do
 // envio" e "Estilo" (migration_028).
-// Estilo vale para /f/:slug e para o embed "Com estilo do Prolu" (iframe);
+// Estilo vale para a página pública e para o embed "Com estilo do Prolu" (iframe);
 // o embed cru continua estilizado só pelo CSS do site. Depois do envio vale
 // para a página e para os dois modos de embed.
 

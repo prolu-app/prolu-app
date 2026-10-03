@@ -3,7 +3,7 @@ import flags from 'react-phone-number-input/flags'
 import ptBR from 'react-phone-number-input/locale/pt-BR'
 import 'react-phone-number-input/style.css'
 
-// Telefone da página pública /f/:slug (Fase 4): país padrão Brasil, seletor
+// Telefone da página pública /e/:escritorio/:formulario (Fase 4): país padrão Brasil, seletor
 // com bandeira + DDI (+55, +1…), máscara enquanto digita e valor em E.164
 // (+5511998765432). Bandeiras embutidas no bundle (sem buscar imagens em CDN
 // externa). O wrapper é um .prolu-form__input — fundo, contorno, cantos e

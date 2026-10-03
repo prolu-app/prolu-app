@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-// Campo de seleção da página pública /f/:slug (no lugar do <select> nativo,
+// Campo de seleção da página pública /e/:escritorio/:formulario (no lugar do <select> nativo,
 // que ignora o estilo do formulário). Usa as variáveis --pf-* do estilo.
 //
 // Três apresentações:

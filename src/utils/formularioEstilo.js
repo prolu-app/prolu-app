@@ -1,5 +1,5 @@
 // Estilo visual do formulário (formularios.estilo, migration_028) — vale para
-// a página pública /f/:slug e para o embed "Com estilo do Prolu" (iframe).
+// a página pública /e/:escritorio/:formulario e para o embed "Com estilo do Prolu" (iframe).
 // O embed cru (public/embed.js) não usa as cores/medidas — só o texto do
 // botão (conteúdo, não estilo): quem estiliza lá é o CSS do site.
 //

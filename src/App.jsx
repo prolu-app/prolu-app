@@ -57,9 +57,17 @@ export default function App() {
   // (needsOnboarding) tentaria te mandar pro cadastro normal em vez da
   // tela de aceite do convite.
   if (location.pathname === '/aceitar-convite') return <AceitarConvite />
-  // Formulário público (/f/:slug): sem login, fora do AppLayout — carrega e
-  // envia pela Edge Function formulario-publico.
-  if (location.pathname.startsWith('/f/')) return <FormularioPublico />
+  // Formulário público (/e/:slugEscritorio/:slugFormulario): sem login, fora
+  // do AppLayout — carrega e envia pela Edge Function formulario-publico.
+  // Endereço incompleto cai no mesmo componente, que mostra "indisponível".
+  if (location.pathname.startsWith('/e/')) {
+    return (
+      <Routes>
+        <Route path="/e/:slugEscritorio/:slugFormulario" element={<FormularioPublico />} />
+        <Route path="*" element={<FormularioPublico />} />
+      </Routes>
+    )
+  }
 
   if (loading) {
     return (

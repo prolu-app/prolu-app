@@ -1,7 +1,7 @@
 import DOMPurify from 'dompurify'
 
 // Introdução do formulário (formularios.intro_texto): HTML do Tiptap
-// (EditorIntro.jsx). A página pública /f/:slug é aberta por qualquer
+// (EditorIntro.jsx). A página pública /e/:escritorio/:formulario é aberta por qualquer
 // visitante no domínio do app, então o HTML é sempre limpo antes de ir para
 // dangerouslySetInnerHTML — vale mesmo se a coluna for alterada fora do
 // editor. Só as marcações que a barra do editor gera; de atributo, só o

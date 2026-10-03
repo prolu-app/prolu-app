@@ -8,7 +8,8 @@ import { excluirFormulario, duplicarFormulario } from '../services/formulariosAc
 import { slugify, comSufixo } from '../utils/slug.js'
 import './Formularios.css'
 
-// Formulários do escritório: builder (Fase 1) + link público /f/:slug (Fase 2).
+// Formulários do escritório: builder (Fase 1) + link público (Fase 2),
+// hoje em /e/:slugEscritorio/:slugFormulario (migration_036).
 // Tabelas formularios / formulario_campos — migrations 025 e 026.
 
 function fmtData(iso) {
@@ -77,7 +78,7 @@ export default function Formularios() {
     setLoading(true)
     const { data, error } = await supabase
       .from('formularios')
-      .select('id, empresa_id, nome, descricao, slug, ativo, updated_at, formulario_campos(count)')
+      .select('id, empresa_id, nome, descricao, slug, ativo, updated_at, empresas(slug), formulario_campos(count)')
       .eq('empresa_id', activeEmpresaId)
       .order('created_at', { ascending: true })
     if (error) { console.error('[formularios] carregar', error); toast('Erro ao carregar formulários') }
@@ -125,7 +126,7 @@ export default function Formularios() {
         setLista(prev => prev.filter(x => x.id !== form.id))
         toast('Formulário excluído')
       } else {
-        const copia = await duplicarFormulario(form.id)
+        const copia = { ...(await duplicarFormulario(form.id)), empresas: form.empresas }
         // logo abaixo do original (a lista é por data de criação; recarregar põe no fim)
         setLista(prev => {
           const i = prev.findIndex(x => x.id === form.id)
@@ -198,7 +199,7 @@ export default function Formularios() {
                   <td>
                     <div className="fm-nome">{f.nome}</div>
                     {f.descricao && <div className="fm-desc">{f.descricao}</div>}
-                    <div className="fm-slug">/f/{f.slug}</div>
+                    <div className="fm-slug">/e/{f.empresas?.slug}/{f.slug}</div>
                   </td>
                   <td className="fm-meta">{f.qtdCampos} {f.qtdCampos === 1 ? 'campo' : 'campos'}</td>
                   <td className="fm-meta">{fmtData(f.updated_at)}</td>

@@ -5,6 +5,7 @@ import { useAuth, roleValido } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { IconPlus, IconTrash, IconClose } from '../components/Icons.jsx'
+import { slugValido } from '../utils/slug.js'
 import './Configuracoes.css'
 
 const ROLE_LABEL = { prolu_admin: 'Prolu', master: 'Master', gestor: 'Gestor', comum: 'Colaborador' }
@@ -30,8 +31,9 @@ export default function Configuracoes() {
   const tabs = useMemo(() => ([
     { key: 'conta', label: 'Conta', show: true },
     { key: 'equipe', label: 'Equipe', show: isGestorOuSuperior },
-    { key: 'escritorio', label: 'Escritório', show: isEmpresaMaster },
-  ].filter((t) => t.show)), [isGestorOuSuperior, isEmpresaMaster])
+    // gestor também entra: edita o endereço (slug); o nome continua só do master
+    { key: 'escritorio', label: 'Escritório', show: isGestorOuSuperior },
+  ].filter((t) => t.show)), [isGestorOuSuperior])
 
   const requested = searchParams.get('tab')
   const tab = tabs.some((t) => t.key === requested) ? requested : 'conta'
@@ -69,8 +71,8 @@ export default function Configuracoes() {
           toast={toast}
         />
       )}
-      {tab === 'escritorio' && isEmpresaMaster && (
-        <AbaEscritorio user={user} activeEmpresaId={activeEmpresaId} refreshUser={refreshUser} toast={toast} />
+      {tab === 'escritorio' && isGestorOuSuperior && (
+        <AbaEscritorio user={user} isEmpresaMaster={isEmpresaMaster} activeEmpresaId={activeEmpresaId} refreshUser={refreshUser} toast={toast} />
       )}
     </>
   )
@@ -457,7 +459,7 @@ function UsuarioDrawer({ usuario, isSelf, options, canEditRole, canRemove, onClo
 
 // ───────────────────────── Aba Escritório ─────────────────────────
 
-function AbaEscritorio({ user, activeEmpresaId, refreshUser, toast }) {
+function AbaEscritorio({ user, isEmpresaMaster, activeEmpresaId, refreshUser, toast }) {
   const [empresaNome, setEmpresaNome] = useState(user?.empresa || '')
 
   useEffect(() => { setEmpresaNome(user?.empresa || '') }, [user?.empresa])
@@ -484,12 +486,96 @@ function AbaEscritorio({ user, activeEmpresaId, refreshUser, toast }) {
         <input
           className="cfg-input"
           value={empresaNome}
+          disabled={!isEmpresaMaster}
           onChange={(e) => setEmpresaNome(e.target.value)}
           onBlur={salvarEmpresa}
           onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
         />
+        {!isEmpresaMaster && <div className="cfg-hint">Somente o Master pode alterar o nome do escritório.</div>}
       </div>
+      <EnderecoEscritorio
+        activeEmpresaId={activeEmpresaId}
+        // a função do banco troca o slug do escritório do próprio usuário: prolu_admin
+        // visitando outro escritório só vê
+        podeEditar={!!activeEmpresaId && activeEmpresaId === user?.empresaId}
+        toast={toast}
+      />
       <div className="cfg-hint">Logo, cores e outras configurações avançadas chegam em breve.</div>
+    </div>
+  )
+}
+
+// Endereço do escritório (empresas.slug, migration_036): primeira parte do link
+// público dos formulários, /e/<endereço>/<formulário>. Grava pela função
+// empresa_atualizar_slug (master e gestor; troca só esta coluna).
+function EnderecoEscritorio({ activeEmpresaId, podeEditar, toast }) {
+  const [salvo, setSalvo] = useState('')
+  const [valor, setValor] = useState('')
+  const [erro, setErro] = useState(null)
+  const [salvando, setSalvando] = useState(false)
+
+  useEffect(() => {
+    if (!supabaseReady || !activeEmpresaId) return
+    let vivo = true
+    supabase.from('empresas').select('slug').eq('id', activeEmpresaId).maybeSingle().then(({ data }) => {
+      if (!vivo || !data) return
+      setSalvo(data.slug || '')
+      setValor(data.slug || '')
+    })
+    return () => { vivo = false }
+  }, [activeEmpresaId])
+
+  const limpo = valor.trim().toLowerCase()
+  const invalido = limpo !== '' && !slugValido(limpo)
+  const alterado = limpo !== salvo
+
+  async function salvar() {
+    if (!alterado || salvando) return
+    if (!slugValido(limpo)) { setErro('Use só letras minúsculas, números e hífens (entre 3 e 60 caracteres).'); return }
+    setSalvando(true)
+    const { data, error } = await supabase.rpc('empresa_atualizar_slug', { p_slug: limpo })
+    setSalvando(false)
+    if (error) {
+      setErro(error.code === '23505' ? 'Este endereço já está em uso. Escolha outro.'
+        : error.code === '42501' ? 'Sem permissão para alterar o endereço do escritório.'
+        : 'Não foi possível salvar o endereço.')
+      return
+    }
+    setSalvo(data || limpo)
+    setValor(data || limpo)
+    setErro(null)
+    toast('Endereço do escritório atualizado')
+  }
+
+  return (
+    <div className="cfg-field cfg-endereco">
+      <label className="modal-label" htmlFor="cfg-slug">Endereço do escritório (slug)</label>
+      <div className="cfg-endereco-linha">
+        <div className={`cfg-endereco-campo${erro || invalido ? ' invalido' : ''}`}>
+          <span className="cfg-endereco-prefixo">{window.location.host}/e/</span>
+          <input
+            id="cfg-slug"
+            value={valor}
+            disabled={!podeEditar}
+            spellCheck={false}
+            autoComplete="off"
+            maxLength={60}
+            aria-invalid={!!erro || invalido}
+            aria-describedby="cfg-slug-aviso"
+            onChange={(e) => { setValor(e.target.value.toLowerCase().replace(/\s+/g, '-')); setErro(null) }}
+            onKeyDown={(e) => { if (e.key === 'Enter') salvar() }}
+          />
+        </div>
+        {podeEditar && (
+          <button className="btn-primary" onClick={salvar} disabled={!alterado || invalido || salvando || !limpo}>
+            {salvando ? 'Salvando…' : 'Salvar'}
+          </button>
+        )}
+      </div>
+      {(erro || invalido) && (
+        <div className="cfg-endereco-erro" role="alert">{erro || 'Use só letras minúsculas, números e hífens (entre 3 e 60 caracteres).'}</div>
+      )}
+      <div className="cfg-endereco-aviso" id="cfg-slug-aviso">⚠️ Alterar este endereço derruba todos os links e embeds existentes do seu escritório.</div>
     </div>
   )
 }

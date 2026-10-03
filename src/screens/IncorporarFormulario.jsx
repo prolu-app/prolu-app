@@ -4,7 +4,7 @@ import { IconCopy } from '../components/Icons.jsx'
 
 // Tela "Incorporar" do formulário (Fase 3): gera o código para o escritório
 // colar no próprio site. Dois modos, mesmo formulário e mesma Edge Function:
-//   iframe → /f/:slug?embed=1, isolado do site; aparência pelo painel
+//   iframe → /e/:slugEscritorio/:slugFormulario?embed=1, isolado do site; aparência pelo painel
 //            Estilo do editor (formularios.estilo)
 //   cru    → public/embed.js monta o formulário direto no DOM do site, sem
 //            isolamento; aparência pelo CSS do próprio site
@@ -60,8 +60,8 @@ export default function IncorporarFormulario({ form, campos, onFechar }) {
   const origem = window.location.origin
 
   const codigo = modo === 'iframe'
-    ? `<iframe src="${origem}/f/${form.slug}?embed=1" data-prolu-form title="${attr(form.nome)}" loading="lazy" style="width:100%;height:720px;border:0"></iframe>\n<script src="${origem}/embed.js" async></script>`
-    : `<div data-prolu-form="${form.slug}" data-api="${API}"></div>\n<script src="${origem}/embed.js" async></script>`
+    ? `<iframe src="${origem}/e/${form.empresas?.slug}/${form.slug}?embed=1" data-prolu-form title="${attr(form.nome)}" loading="lazy" style="width:100%;height:720px;border:0"></iframe>\n<script src="${origem}/embed.js" async></script>`
+    : `<div data-prolu-form="${form.slug}" data-escritorio="${form.empresas?.slug}" data-api="${API}"></div>\n<script src="${origem}/embed.js" async></script>`
 
   const exemplo = `.prolu-form__input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; }\n.prolu-form__enviar { background: #1d3557; color: #fff; border: 0; padding: 12px 24px; }`
 
