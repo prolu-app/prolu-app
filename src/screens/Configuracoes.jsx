@@ -7,6 +7,7 @@ import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { IconPlus, IconTrash, IconClose } from '../components/Icons.jsx'
 import { slugValido } from '../utils/slug.js'
 import ConfirmarSlugModal from '../components/ConfirmarSlugModal.jsx'
+import { formatarTelefone, mascaraTelefone, telefoneParaSalvar } from '../utils/telefone.js'
 import './Configuracoes.css'
 
 const ROLE_LABEL = { prolu_admin: 'Prolu', master: 'Master', gestor: 'Gestor', comum: 'Colaborador' }
@@ -32,8 +33,9 @@ export default function Configuracoes() {
   const tabs = useMemo(() => ([
     { key: 'conta', label: 'Conta', show: true },
     { key: 'equipe', label: 'Equipe', show: isGestorOuSuperior },
-    // nome e endereço (slug) do escritório: só o master (migration_037)
-    { key: 'escritorio', label: 'Escritório', show: isEmpresaMaster },
+    // gestor entra só pela seção WhatsApp (migration_038); nome e endereço
+    // (slug) continuam só do master (migration_037)
+    { key: 'escritorio', label: 'Escritório', show: isGestorOuSuperior },
   ].filter((t) => t.show)), [isGestorOuSuperior, isEmpresaMaster])
 
   const requested = searchParams.get('tab')
@@ -72,8 +74,8 @@ export default function Configuracoes() {
           toast={toast}
         />
       )}
-      {tab === 'escritorio' && isEmpresaMaster && (
-        <AbaEscritorio user={user} activeEmpresaId={activeEmpresaId} refreshUser={refreshUser} toast={toast} />
+      {tab === 'escritorio' && isGestorOuSuperior && (
+        <AbaEscritorio user={user} isEmpresaMaster={isEmpresaMaster} activeEmpresaId={activeEmpresaId} refreshUser={refreshUser} toast={toast} />
       )}
     </>
   )
@@ -460,7 +462,7 @@ function UsuarioDrawer({ usuario, isSelf, options, canEditRole, canRemove, onClo
 
 // ───────────────────────── Aba Escritório ─────────────────────────
 
-function AbaEscritorio({ user, activeEmpresaId, refreshUser, toast }) {
+function AbaEscritorio({ user, isEmpresaMaster, activeEmpresaId, refreshUser, toast }) {
   const [empresaNome, setEmpresaNome] = useState(user?.empresa || '')
 
   useEffect(() => { setEmpresaNome(user?.empresa || '') }, [user?.empresa])
@@ -480,7 +482,12 @@ function AbaEscritorio({ user, activeEmpresaId, refreshUser, toast }) {
     refreshUser()
   }
 
+  // as funções do banco (endereço, WhatsApp) mexem no escritório do próprio
+  // usuário: prolu_admin visitando outro escritório só vê
+  const proprio = !!activeEmpresaId && activeEmpresaId === user?.empresaId
   return (
+    <>
+    {isEmpresaMaster && (
     <div className="card cfg-card">
       <div className="cfg-field">
         <label className="modal-label">Nome do escritório</label>
@@ -492,15 +499,12 @@ function AbaEscritorio({ user, activeEmpresaId, refreshUser, toast }) {
           onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
         />
       </div>
-      <EnderecoEscritorio
-        activeEmpresaId={activeEmpresaId}
-        // a função do banco troca o slug do escritório do próprio usuário: prolu_admin
-        // visitando outro escritório só vê
-        podeEditar={!!activeEmpresaId && activeEmpresaId === user?.empresaId}
-        toast={toast}
-      />
+      <EnderecoEscritorio activeEmpresaId={activeEmpresaId} podeEditar={proprio} toast={toast} />
       <div className="cfg-hint">Logo, cores e outras configurações avançadas chegam em breve.</div>
     </div>
+    )}
+    <WhatsAppEscritorio activeEmpresaId={activeEmpresaId} podeEditar={proprio} toast={toast} />
+    </>
   )
 }
 
@@ -611,3 +615,87 @@ function EnderecoEscritorio({ activeEmpresaId, podeEditar, toast }) {
 }
 
 const MSG_FORMATO = 'Use só letras minúsculas, números e hífens (entre 3 e 60 caracteres).'
+
+// Notificações por WhatsApp (migration_038): número do escritório que recebe
+// os avisos de novos leads (mensagem enviada pelo número da Prolu) e o
+// consentimento. Master e gestor; grava pela função empresa_atualizar_whatsapp
+// (mexe só nestes campos). Botão Salvar próprio.
+function WhatsAppEscritorio({ activeEmpresaId, podeEditar, toast }) {
+  const [salvo, setSalvo] = useState({ numero: '', optin: false, optinEm: null })
+  const [texto, setTexto] = useState('')
+  const [optin, setOptin] = useState(false)
+  const [erro, setErro] = useState(null)
+  const [salvando, setSalvando] = useState(false)
+
+  useEffect(() => {
+    if (!supabaseReady || !activeEmpresaId) return
+    let vivo = true
+    supabase.from('empresas').select('whatsapp_numero, whatsapp_optin, whatsapp_optin_em').eq('id', activeEmpresaId).maybeSingle().then(({ data }) => {
+      if (!vivo || !data) return
+      const d = { numero: data.whatsapp_numero || '', optin: !!data.whatsapp_optin, optinEm: data.whatsapp_optin_em || null }
+      setSalvo(d)
+      setTexto(formatarTelefone(d.numero))
+      setOptin(d.optin)
+    })
+    return () => { vivo = false }
+  }, [activeEmpresaId])
+
+  const numero = telefoneParaSalvar(texto) || ''
+  // E.164 com pelo menos 10 dígitos depois do DDI (Brasil: DDD + 8 ou 9)
+  const numeroValido = /^\+55\d{10,11}$/.test(numero) || /^\+(?!55)\d{11,15}$/.test(numero)
+  const alterado = numero !== salvo.numero || optin !== salvo.optin
+
+  async function salvar() {
+    if (numero && !numeroValido) { setErro('Número inválido: informe DDD e número (ex.: (43) 99999-8888).'); return }
+    if (optin && !numero) { setErro('Informe o número antes de aceitar receber notificações.'); return }
+    setSalvando(true)
+    const { data, error } = await supabase.rpc('empresa_atualizar_whatsapp', { p_numero: numero || null, p_optin: optin })
+    setSalvando(false)
+    if (error) {
+      setErro(error.code === '42501' ? 'Sem permissão para alterar as notificações do escritório.' : 'Não foi possível salvar.')
+      return
+    }
+    const linha = Array.isArray(data) ? data[0] : data
+    const d = { numero: linha?.whatsapp_numero || '', optin: !!linha?.whatsapp_optin, optinEm: linha?.whatsapp_optin_em || null }
+    setSalvo(d)
+    setTexto(formatarTelefone(d.numero))
+    setOptin(d.optin)
+    setErro(null)
+    toast('Notificações por WhatsApp salvas')
+  }
+
+  return (
+    <div className="card cfg-card cfg-whatsapp">
+      <div className="cfg-secao-titulo">Notificações por WhatsApp</div>
+      <div className="cfg-hint cfg-whatsapp-intro">Avisos de novos leads dos formulários chegam neste número, enviados pelo WhatsApp da Prolu. Em cada formulário, ligue o WhatsApp na aba Notificações.</div>
+      <div className="cfg-field">
+        <label className="modal-label" htmlFor="cfg-wpp-numero">Número para receber notificações</label>
+        <input
+          id="cfg-wpp-numero"
+          className={`cfg-input${erro ? ' invalido' : ''}`}
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder="(43) 99999-8888"
+          value={texto}
+          disabled={!podeEditar}
+          aria-invalid={!!erro}
+          onChange={(e) => { setTexto(mascaraTelefone(e.target.value)); setErro(null) }}
+        />
+      </div>
+      <label className="cfg-optin">
+        <input type="checkbox" checked={optin} disabled={!podeEditar} onChange={(e) => { setOptin(e.target.checked); setErro(null) }} />
+        <span>Aceito receber notificações de novos leads via WhatsApp neste número.</span>
+      </label>
+      {salvo.optin && salvo.optinEm && (
+        <div className="cfg-hint">Aceito em {new Date(salvo.optinEm).toLocaleDateString('pt-BR')}.</div>
+      )}
+      {erro && <div className="cfg-endereco-erro" role="alert">{erro}</div>}
+      {podeEditar && (
+        <div className="cfg-whatsapp-acoes">
+          <button className="btn-primary" onClick={salvar} disabled={!alterado || salvando}>{salvando ? 'Salvando…' : 'Salvar'}</button>
+        </div>
+      )}
+    </div>
+  )
+}

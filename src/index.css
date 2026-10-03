@@ -127,6 +127,7 @@ input, textarea, button { font-family: inherit; }
 }
 .btn-primary:hover { box-shadow: 0 8px 24px rgba(184, 212, 15, 0.55); transform: translateY(-1px); }
 .btn-primary:active { transform: scale(0.97); }
+.btn-primary:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; transform: none; }
 .btn-primary svg { width: 14px; height: 14px; stroke: var(--ink); stroke-width: 2.6; fill: none; }
 
 .btn-cancel {

@@ -1,23 +1,29 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { FmSwitch } from './Formularios.jsx'
 
 // Aba "Notificações" do editor (Fase 4, migration_034). Diferente das outras
 // abas, grava só no botão "Salvar notificações" (lista de e-mails se edita
-// aos poucos). Quem envia é a Edge Function formulario-notificacao, chamada
-// pela formulario-publico a cada envio aceito. WhatsApp: só a interface.
+// aos poucos). Quem envia são as Edge Functions formulario-notificacao
+// (e-mail) e formulario-whatsapp (migration_038), chamadas pela
+// formulario-publico a cada envio aceito.
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MAX_DESTINATARIOS = 10 // constraint formularios_notif_valida
+const MAX_CAMPOS_WHATSAPP = 5 // parâmetros 2 a 6 do template (constraint formularios_whatsapp_campos_max)
 
 const iguais = (a, b) => JSON.stringify(a) === JSON.stringify(b)
 
-export default function PainelNotificacoes({ form, podeEditar, salvarForm }) {
+export default function PainelNotificacoes({ form, campos = [], podeEditar, salvarForm }) {
   const toast = useToast()
   const doBanco = () => ({
     notif_ativa: !!form.notif_ativa,
     notif_email_ativa: !!form.notif_email_ativa,
     notif_email_destinatarios: Array.isArray(form.notif_email_destinatarios) ? form.notif_email_destinatarios : [],
+    notif_whatsapp_ativa: !!form.notif_whatsapp_ativa,
+    // só ids de campos que ainda existem
+    notif_whatsapp_campos: (Array.isArray(form.notif_whatsapp_campos) ? form.notif_whatsapp_campos : []).filter(id => campos.some(c => c.id === id)),
   })
   const [salvo, setSalvo] = useState(doBanco)
   const [cfg, setCfg] = useState(doBanco)
@@ -57,7 +63,7 @@ export default function PainelNotificacoes({ form, podeEditar, salvarForm }) {
     const lista = adicionar()
     if (lista === null) return
     if (cfg.notif_ativa && cfg.notif_email_ativa && !lista.length) { setErro('Adicione pelo menos um e-mail para receber as notificações.'); return }
-    const patch = { ...cfg, notif_email_destinatarios: lista.length ? lista : null, notif_whatsapp_ativa: false }
+    const patch = { ...cfg, notif_email_destinatarios: lista.length ? lista : null }
     setSalvando(true)
     const ok = await salvarForm(patch)
     setSalvando(false)
@@ -122,18 +128,7 @@ export default function PainelNotificacoes({ form, podeEditar, salvarForm }) {
           </div>
         </div>
 
-        <div className="fm-publico fm-notif-whatsapp">
-          <div className="fm-notif-canal"><span aria-hidden="true">💬</span> WhatsApp <span className="pill pill-gray">Em breve</span></div>
-          <div className="fm-publico-row">
-            <span className="fm-publico-label">Notificar</span>
-            <FmSwitch ligado={false} disabled rotulo="Notificar por WhatsApp (em breve)" onChange={() => {}} />
-            <span className="fm-status-texto">Notificar por WhatsApp</span>
-          </div>
-          <div className="fm-publico-row">
-            <span className="fm-publico-label">Número</span>
-            <input className="fm-pos-input" disabled placeholder="(11) 99999-9999" aria-label="Número de WhatsApp (em breve)" />
-          </div>
-        </div>
+        <CanalWhatsApp form={form} campos={campos} cfg={cfg} setCfg={setCfg} off={off || desligado} toast={toast} />
       </div>
 
       {podeEditar && (
@@ -145,5 +140,113 @@ export default function PainelNotificacoes({ form, podeEditar, salvarForm }) {
         </div>
       )}
     </>
+  )
+}
+
+// ── WhatsApp (migration_038) ──
+// Número único da Prolu, template aprovado "novo_lead_formulario": nome do
+// formulário + até 5 campos ("Pergunta: resposta") + link wa.me do telefone do
+// lead. O número que recebe e o consentimento (opt-in) são do escritório, em
+// Configurações → Escritório.
+function CanalWhatsApp({ form, campos, cfg, setCfg, off, toast }) {
+  const empresa = form.empresas || {}
+  const configurado = !!empresa.whatsapp_numero && empresa.whatsapp_optin === true
+  const sel = cfg.notif_whatsapp_campos
+  const telefones = campos.filter(c => c.tipo === 'phone')
+
+  function ligar(v) {
+    setCfg(c => ({
+      ...c,
+      notif_whatsapp_ativa: v,
+      // ao ligar sem nada escolhido: telefones já marcados
+      notif_whatsapp_campos: v && !c.notif_whatsapp_campos.length
+        ? telefones.slice(0, MAX_CAMPOS_WHATSAPP).map(t => t.id)
+        : c.notif_whatsapp_campos,
+    }))
+  }
+  function alternar(id) {
+    if (sel.includes(id)) { setCfg(c => ({ ...c, notif_whatsapp_campos: c.notif_whatsapp_campos.filter(x => x !== id) })); return }
+    if (sel.length >= MAX_CAMPOS_WHATSAPP) { toast('Máximo de 5 campos por notificação'); return }
+    setCfg(c => ({ ...c, notif_whatsapp_campos: [...c.notif_whatsapp_campos, id] }))
+  }
+  function mover(id, delta) {
+    setCfg(c => {
+      const l = [...c.notif_whatsapp_campos]
+      const i = l.indexOf(id), j = i + delta
+      if (i < 0 || j < 0 || j >= l.length) return c
+      ;[l[i], l[j]] = [l[j], l[i]]
+      return { ...c, notif_whatsapp_campos: l }
+    })
+  }
+
+  // lista: escolhidos primeiro (na ordem da mensagem), depois os demais
+  const porId = new Map(campos.map(c => [c.id, c]))
+  const ordenados = [...sel.map(id => porId.get(id)).filter(Boolean), ...campos.filter(c => !sel.includes(c.id))]
+  // prévia: mesma regra da Edge Function (sem escolha → 5 primeiros)
+  const daMensagem = sel.length ? sel.map(id => porId.get(id)).filter(Boolean) : campos.slice(0, MAX_CAMPOS_WHATSAPP)
+  const previa = [
+    form.nome,
+    ...[0, 1, 2, 3, 4].map(i => (daMensagem[i] ? `${daMensagem[i].label || 'Pergunta'}: (resposta)` : '-')),
+    telefones.length ? 'https://wa.me/55… (telefone do lead)' : '-',
+  ]
+
+  return (
+    <div className="fm-publico fm-notif-whatsapp">
+      <div className="fm-notif-canal"><span aria-hidden="true">💬</span> WhatsApp</div>
+      <div className="fm-publico-row">
+        <span className="fm-publico-label">Notificar</span>
+        <FmSwitch ligado={cfg.notif_whatsapp_ativa} disabled={off} rotulo="Ativar notificação por WhatsApp" onChange={ligar} />
+        <span className="fm-status-texto">Ativar notificação por WhatsApp</span>
+      </div>
+
+      {cfg.notif_whatsapp_ativa && (
+        <>
+          {!configurado && (
+            <p className="fm-notif-aviso" role="status">
+              Configure o número do WhatsApp nas <Link to="/configuracoes?tab=escritorio">Configurações do escritório</Link>.
+            </p>
+          )}
+          <div className="fm-publico-row fm-row-topo">
+            <span className="fm-publico-label">Campos</span>
+            <div className="fm-wpp-campos">
+              <span className="fm-status-texto">Quais informações incluir na mensagem? Até {MAX_CAMPOS_WHATSAPP}, nesta ordem.</span>
+              {campos.length === 0 && <span className="fm-publico-dica">O formulário ainda não tem campos.</span>}
+              <ul className="fm-wpp-lista">
+                {ordenados.map(c => {
+                  const pos = sel.indexOf(c.id)
+                  const marcado = pos >= 0
+                  return (
+                    <li key={c.id} className={`fm-wpp-item${marcado ? ' marcado' : ''}`}>
+                      <label>
+                        <input type="checkbox" checked={marcado} disabled={off} onChange={() => alternar(c.id)} />
+                        {marcado && <span className="fm-wpp-pos">{pos + 1}</span>}
+                        <span>{c.label || 'Pergunta'}</span>
+                        {c.tipo === 'phone' && <span className="fm-wpp-tel">(telefone — sempre incluído no link WhatsApp)</span>}
+                      </label>
+                      {marcado && !off && (
+                        <span className="fm-wpp-mover">
+                          <button type="button" aria-label={`Subir ${c.label || 'campo'}`} disabled={pos === 0} onClick={() => mover(c.id, -1)}>↑</button>
+                          <button type="button" aria-label={`Descer ${c.label || 'campo'}`} disabled={pos === sel.length - 1} onClick={() => mover(c.id, 1)}>↓</button>
+                        </span>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+              {!sel.length && campos.length > 0 && (
+                <span className="fm-publico-dica">Nenhum campo escolhido: vão os {Math.min(MAX_CAMPOS_WHATSAPP, campos.length)} primeiros do formulário.</span>
+              )}
+            </div>
+          </div>
+          <div className="fm-publico-row fm-row-topo">
+            <span className="fm-publico-label">Prévia</span>
+            <div className="fm-wpp-previa" aria-label="Prévia dos dados da mensagem">
+              {previa.map((linha, i) => <div key={i} className={i === 0 ? 'fm-wpp-previa-titulo' : undefined}>{linha}</div>)}
+              <span className="fm-wpp-previa-nota">O texto fixo em volta destes dados vem do template aprovado na Meta.</span>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   )
 }

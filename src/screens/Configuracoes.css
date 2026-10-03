@@ -170,3 +170,12 @@
 .cfg-endereco-campo.travado { background: var(--gray-soft); }
 .cfg-endereco-campo.travado input { color: var(--ink-60); cursor: not-allowed; }
 .cfg-endereco-alterar { flex: none; }
+
+/* Notificações por WhatsApp (migration_038) */
+.cfg-whatsapp { margin-top: 16px; }
+.cfg-secao-titulo { font-family: 'Abhaya Libre', serif; font-size: 19px; font-weight: 600; margin-bottom: 4px; }
+.cfg-whatsapp-intro { margin: 0 0 14px; }
+.cfg-input.invalido { box-shadow: 0 0 0 1.5px var(--red); }
+.cfg-optin { display: flex; align-items: flex-start; gap: 8px; font-size: 13.5px; line-height: 1.45; cursor: pointer; }
+.cfg-optin input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--ink); flex-shrink: 0; }
+.cfg-whatsapp-acoes { margin-top: 14px; }

@@ -115,8 +115,9 @@ export default function FormularioEditor() {
     if (!supabaseReady) { setLoading(false); return }
     setLoading(true)
     const [{ data: f, error: e1 }, { data: cs, error: e2 }] = await Promise.all([
-      // empresas(slug): o link público é /e/<escritório>/<formulário> (migration_036)
-      supabase.from('formularios').select('*, empresas(slug)').eq('id', id).maybeSingle(),
+      // empresas: slug do link público /e/<escritório>/<formulário> (migration_036) e
+      // número/opt-in do WhatsApp para o aviso da aba Notificações (migration_038)
+      supabase.from('formularios').select('*, empresas(slug, whatsapp_numero, whatsapp_optin)').eq('id', id).maybeSingle(),
       supabase.from('formulario_campos').select('*').eq('formulario_id', id).order('ordem'),
     ])
     if (e1 || e2) { console.error('[formulario] carregar', e1 || e2); toast('Erro ao carregar formulário') }
@@ -510,7 +511,7 @@ export default function FormularioEditor() {
       </section>
 
       <section role="tabpanel" id="fm-painel-notificacoes" aria-labelledby="fm-aba-notificacoes" hidden={aba !== 'notificacoes'}>
-        <PainelNotificacoes form={form} podeEditar={podeEditar} salvarForm={salvarForm} />
+        <PainelNotificacoes form={form} campos={campos} podeEditar={podeEditar} salvarForm={salvarForm} />
       </section>
     </>
   )

@@ -16,8 +16,8 @@
 //   crm_fichas  → campos extras (sem coluna no CRM), só visíveis no drawer
 // Tabelas/colunas: migrations 025, 026, 028 (estilo + após o envio), 029
 // (apresentação: logo, capa, introdução, vídeo; botão no agradecimento) e 030
-// (titulo_pagina), 032 (o que exibir no topo) e 034 (notificações: chama a
-// formulario-notificacao em segundo plano depois de gravar o envio).
+// (titulo_pagina), 032 (o que exibir no topo), 034 e 038 (notificações: chama
+// formulario-notificacao e formulario-whatsapp em segundo plano depois de gravar).
 //
 // Também atende o embed (public/embed.js): o modo "cru" chama esta função
 // direto do site do escritório (CORS liberado, sem apikey — verify_jwt off).
@@ -271,27 +271,36 @@ Deno.serve(async (req) => {
     }
   }
 
-  // ── notificação (Fase 4): em segundo plano, sem atrasar a resposta ao visitante ──
-  // Só chama se o formulário tem e-mail ligado (a formulario-notificacao confere
-  // de novo). waitUntil mantém o fetch vivo depois da resposta — sem ele o
-  // runtime pode encerrar a função e cortar a chamada no meio.
-  if (form.notif_ativa === true && form.notif_email_ativa === true) {
-    const respostasNotif = campos
-      .filter(c => valores[c.id] !== undefined)
-      .map(c => ({ label: c.label || 'Pergunta', valor: valores[c.id], tipo: c.tipo }))
-    const tarefa = fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/formulario-notificacao`, {
+  // ── notificações: em segundo plano, sem atrasar a resposta ao visitante ──
+  // Cada canal só é chamado se estiver ligado no formulário (a função do canal
+  // confere de novo). waitUntil mantém o fetch vivo depois da resposta — sem
+  // ele o runtime pode encerrar a função e cortar a chamada no meio. Falha em
+  // qualquer canal só vai para o log: o lead já está gravado.
+  const respostasNotif = campos
+    .filter(c => valores[c.id] !== undefined)
+    .map(c => ({ label: c.label || 'Pergunta', valor: valores[c.id], tipo: c.tipo, campo_id: c.id }))
+  const emSegundoPlano = (funcao: string, payload: unknown) => {
+    const tarefa = fetch(`${(Deno.env.get('SUPABASE_URL') || '').replace(/\/+$/, '')}/functions/v1/${funcao}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
       },
-      body: JSON.stringify({ formulario_id: form.id, respostas: respostasNotif, crm_linha_id: nova.id }),
+      body: JSON.stringify(payload),
     })
-      .then(async r => { if (!r.ok) console.error('[formulario-publico] notificação', r.status, await r.text()) })
-      .catch(e => console.error('[formulario-publico] notificação', e))
+      .then(async r => { if (!r.ok) console.error(`[formulario-publico] ${funcao}`, r.status, await r.text()) })
+      .catch(e => console.error(`[formulario-publico] ${funcao}`, e))
     // deno-lint-ignore no-explicit-any
     const runtime = (globalThis as any).EdgeRuntime
     if (runtime?.waitUntil) runtime.waitUntil(tarefa)
+  }
+  // e-mail (Fase 4, migration_034)
+  if (form.notif_ativa === true && form.notif_email_ativa === true) {
+    emSegundoPlano('formulario-notificacao', { formulario_id: form.id, respostas: respostasNotif, crm_linha_id: nova.id })
+  }
+  // WhatsApp (migration_038): template da Prolu para o número do escritório
+  if (form.notif_ativa === true && form.notif_whatsapp_ativa === true) {
+    emSegundoPlano('formulario-whatsapp', { formulario_id: form.id, crm_linha_id: nova.id, respostas: respostasNotif })
   }
 
   return jsonResponse({ ok: true, ...aposEnvio(form) }, 200)
