@@ -67,6 +67,18 @@ select.prolu-form__input { cursor: pointer; }
   font: inherit; color: inherit;
 }
 .prolu-form__telefone .PhoneInputCountry { margin: 0; }
+/* seletor de país: bandeira à esquerda, DDI (+55, +1…) alinhado à direita,
+   seta; separado do número por um traço fino. O <select> invisível da lib
+   cobre a caixa toda, então clicar em qualquer parte abre a lista. */
+.prolu-form__pais {
+  min-width: 72px; gap: 6px; padding-right: 10px; align-self: stretch;
+  border-right: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+}
+.prolu-form__ddi {
+  flex: 1; text-align: right; font-size: 13px; line-height: 1; white-space: nowrap;
+  color: currentColor; opacity: 0.6; font-variant-numeric: tabular-nums;
+}
+.prolu-form__pais .PhoneInputCountrySelectArrow { margin-left: 2px; }
 
 /* seleção própria (components/FormSelectField.jsx): o botão é um
    .prolu-form__input (fundo, texto, contorno, cantos, foco e erro vêm de lá) */

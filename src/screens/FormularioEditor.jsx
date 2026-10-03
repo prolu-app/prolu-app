@@ -41,6 +41,7 @@ const CAMPO_ACEITA = {
   number: ['number'],
   money: ['number'],
   select: ['select'],
+  phone: ['phone'], // coluna fixa Telefone (migration_035): recebe o campo de telefone (E.164)
 }
 const SLUGS_AUTOMATICOS = ['status']
 function tipoPadraoPara(colTipo) { return CAMPO_ACEITA[colTipo]?.[0] || 'text' }

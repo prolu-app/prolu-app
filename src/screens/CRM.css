@@ -456,6 +456,9 @@ body.crm-col-resizing { cursor: col-resize; user-select: none; }
   max-height: 360px;
   overflow-y: auto;
 }
+/* Painel "Colunas": mais alto, para caber a lista sem tanta rolagem (os
+   filtros de coluna, que usam a mesma classe, seguem com 360px) */
+.crm-col-vis-dropdown:not(.crm-colfilter-portal) { max-height: 70vh; min-width: 240px; }
 /* Filtros de coluna: portal em document.body, posição vem de top/right inline (JS) */
 .crm-col-vis-dropdown.crm-colfilter-portal { position: fixed; }
 .crm-col-vis-title {
@@ -524,6 +527,18 @@ body.crm-col-resizing { cursor: col-resize; user-select: none; }
 }
 .crm-col-vis-eye svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
 .crm-colpanel-row.hidden-col .crm-col-vis-eye { opacity: 0.5; }
+/* excluir coluna personalizada: só no hover/foco da linha; fixas guardam o
+   mesmo espaço vazio, para os olhos ficarem alinhados */
+.crm-col-vis-del, .crm-col-vis-del-espaco { width: 22px; height: 22px; flex-shrink: 0; }
+.crm-col-vis-del {
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: none; padding: 0; cursor: pointer; border-radius: 6px;
+  color: var(--ink-40); opacity: 0; transition: opacity 0.12s, color 0.12s, background 0.12s;
+}
+.crm-col-vis-del svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
+.crm-colpanel-row:hover .crm-col-vis-del, .crm-colpanel-row:focus-within .crm-col-vis-del { opacity: 1; }
+.crm-col-vis-del:hover { color: var(--red); background: var(--white); }
+@media (hover: none) { .crm-col-vis-del { opacity: 1; } }
 .crm-col-vis-reset {
   margin-top: 6px;
   border-top: 1px solid var(--ink-divider);

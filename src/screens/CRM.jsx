@@ -6,7 +6,8 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import { supabase, supabaseReady, fetchAllRows } from '../services/supabaseClient.js'
 import { resumoFechamentos, fechamentosLocais, somarFechamentos, isoLocal, FECHAMENTOS_VAZIO } from '../services/fechamentos.js'
 import { CRM_COLUMNS, CRM_ROWS } from '../data/seed.js'
-import { IconPlus, IconSearch, IconEdit, IconClose, IconGrip, IconEye, IconEyeOff, IconFilter, IconDensityCompact, IconDensityDefault } from '../components/Icons.jsx'
+import { IconPlus, IconSearch, IconEdit, IconClose, IconGrip, IconEye, IconEyeOff, IconFilter, IconDensityCompact, IconDensityDefault, IconTrash } from '../components/Icons.jsx'
+import { formatarTelefone, mascaraTelefone, telefoneParaSalvar } from '../utils/telefone.js'
 import { SelectDropdown } from '../components/SelectDropdown.jsx'
 import { DatePicker } from '../components/DatePicker.jsx'
 import CRMDrawer from './CRMDrawer.jsx'
@@ -61,6 +62,8 @@ const FIXED_COLS_DEF = [
     { value: 'Perdido',             color: 'gray'   },
   ]},
   { nome: 'Data de fechamento', tipo: 'date',  slug: 'data_fechamento', ordem: 10 },
+  // fixa desde a migration_035 (antes cada escritório criava a sua, como texto)
+  { nome: 'Telefone',          tipo: 'phone',  slug: 'telefone',        ordem: 11 },
 ]
 
 // data local (toISOString é UTC: depois das 21h no Brasil gravaria o dia seguinte)
@@ -123,6 +126,7 @@ function renderCellValue(row, col) {
   const v = row[col.id]
   if (col.type === 'money') return v ? fmtMoney(v) : <span className="cell-empty">—</span>
   if (col.type === 'date')  return v ? fmtDate(v)  : <span className="cell-empty">—</span>
+  if (col.type === 'phone') return v ? formatarTelefone(v) : <span className="cell-empty">—</span>
   if (col.type === 'tags') {
     const tags = Array.isArray(v) ? v : []
     if (!tags.length) return <span className="cell-empty">—</span>
@@ -207,7 +211,7 @@ function InlineCell({ row, col, isEditing, onActivate, onCommit, onSaveImmediate
   const [localVal, setLocalVal] = useState('')
 
   useEffect(() => {
-    if (isEditing) setLocalVal(row[col.id] ?? '') // eslint-disable-line react-hooks/exhaustive-deps
+    if (isEditing) setLocalVal(col.type === 'phone' ? formatarTelefone(row[col.id]) : (row[col.id] ?? '')) // eslint-disable-line react-hooks/exhaustive-deps
   }, [isEditing])
 
   function commit(v) {
@@ -283,6 +287,25 @@ function InlineCell({ row, col, isEditing, onActivate, onCommit, onSaveImmediate
           }}
         />
       </div>
+    )
+  }
+
+  // telefone: máscara brasileira ao digitar; grava em E.164 (utils/telefone.js)
+  if (col.type === 'phone') {
+    return (
+      <input
+        className="cell-input"
+        type="tel"
+        inputMode="tel"
+        autoComplete="off"
+        autoFocus
+        placeholder="(11) 99999-9999"
+        value={localVal}
+        onChange={e => setLocalVal(mascaraTelefone(e.target.value))}
+        // sem mudança no texto, devolve o valor como estava (não regrava telefones antigos só por clicar)
+        onBlur={e => onCommit(e.target.value === formatarTelefone(row[col.id]) ? (row[col.id] ?? null) : telefoneParaSalvar(e.target.value))}
+        onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
+      />
     )
   }
 
@@ -759,13 +782,19 @@ export default function CRM() {
     else toast('Coluna atualizada')
   }
 
+  // Exclui a coluna e tira os dados dela de todos os registros — numa transação,
+  // pela função crm_excluir_coluna (migration_035): a API não remove chave de
+  // JSON num update. Fixas não se excluem (a função também recusa).
   async function removeColumn(colId) {
     const col = columns.find(c => c.id === colId)
-    if (col?.fixed) return
-    setColumns(prev => prev.filter(c => c.id !== colId))
+    if (!col || col.fixed) return
     setColModal(null)
-    if (!supabaseReady || !activeEmpresaId) return
-    await supabase.from('crm_colunas').delete().eq('id', colId)
+    if (supabaseReady && activeEmpresaId) {
+      const { error } = await supabase.rpc('crm_excluir_coluna', { p_coluna: colId })
+      if (error) { console.error('[crm] excluir coluna', error); toast('Não foi possível excluir a coluna'); return }
+    }
+    setColumns(prev => prev.filter(c => c.id !== colId))
+    setRows(prev => prev.map(r => { if (!(colId in r)) return r; const { [colId]: _fora, ...resto } = r; return resto }))
     toast('Coluna excluída')
   }
 
@@ -1208,6 +1237,19 @@ export default function CRM() {
                         >
                           {visible ? <IconEye /> : <IconEyeOff />}
                         </button>
+                        {/* só colunas personalizadas; aparece no hover da linha (fixas não se excluem) */}
+                        {!c.fixed && (
+                          <button
+                            type="button"
+                            className="crm-col-vis-del"
+                            onClick={() => setDeleteConfirm({ type: 'col', id: c.id, nome: c.name })}
+                            title="Excluir coluna"
+                            aria-label={`Excluir coluna ${c.name}`}
+                          >
+                            <IconTrash />
+                          </button>
+                        )}
+                        {c.fixed && <span className="crm-col-vis-del-espaco" aria-hidden="true" />}
                       </div>
                     )
                   })}

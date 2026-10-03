@@ -8,6 +8,7 @@ import { SelectDropdown } from '../components/SelectDropdown.jsx'
 import { DatePicker } from '../components/DatePicker.jsx'
 import { carregarCalculoPrecificacao } from '../hooks/usePrecificacaoCalculo.js'
 import { duplicarPrecificacao } from '../utils/duplicar.js'
+import { formatarTelefone, mascaraTelefone, telefoneParaSalvar } from '../utils/telefone.js'
 import './CRMDrawer.css'
 
 function fmtDateTime(iso) {
@@ -197,6 +198,25 @@ function DrawerField({ col, value, onChange, onAddOption, clientes, activeEmpres
     )
   }
 
+  // ── telefone: máscara brasileira ao digitar; grava em E.164 (utils/telefone.js) ──
+  if (col.type === 'phone') {
+    return (
+      <div className="dr-field">
+        <label className="dr-label">{col.name}</label>
+        <input
+          className="dr-input"
+          type="tel"
+          inputMode="tel"
+          autoComplete="off"
+          value={formatarTelefone(localVal)}
+          onChange={e => setLocalVal(mascaraTelefone(e.target.value))}
+          onBlur={e => { if (e.target.value !== formatarTelefone(value)) commit(telefoneParaSalvar(e.target.value)) }}
+          placeholder="(11) 99999-9999"
+        />
+      </div>
+    )
+  }
+
   // ── text / number ──
   return (
     <div className="dr-field">
@@ -232,16 +252,6 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
   // não entra no objeto da linha, senão updateCell o gravaria dentro de valores.
   const [origemForm, setOrigemForm] = useState(null)
   const [fichas, setFichas] = useState([])
-  // telefones da ficha chegam em E.164 (+5511998765432): formatados para leitura
-  // com react-phone-number-input, baixada só quando a ficha tem telefone
-  const [formatarTel, setFormatarTel] = useState(null)
-  useEffect(() => {
-    if (formatarTel || !fichas.some(fc => Array.isArray(fc.respostas) && fc.respostas.some(r => r.tipo === 'phone'))) return
-    import('react-phone-number-input').then(m => setFormatarTel(() => v => {
-      if (typeof v !== 'string' || !v.startsWith('+')) return v // telefones antigos: como foram digitados
-      return (v.startsWith('+55') ? m.formatPhoneNumber(v) : m.formatPhoneNumberIntl(v)) || v
-    })).catch(() => {})
-  }, [fichas, formatarTel])
   const listRef = useRef(null)
 
   const clienteCol = columns.find(c => c.slug === 'cliente')
@@ -473,7 +483,7 @@ export default function CRMDrawer({ row, columns, onClose, onSave, onUpdateCell,
               {fichas.flatMap(fc => (Array.isArray(fc.respostas) ? fc.respostas : []).map((r, i) => (
                 <div className="dr-ficha-item" key={`${fc.id}-${i}`}>
                   <div className="dr-ficha-label">{r.label}</div>
-                  <div className="dr-ficha-valor">{r.tipo === 'phone' && formatarTel ? formatarTel(r.valor) : r.valor}</div>
+                  <div className="dr-ficha-valor">{r.tipo === 'phone' ? formatarTelefone(r.valor) : r.valor}</div>
                 </div>
               )))}
             </div>
