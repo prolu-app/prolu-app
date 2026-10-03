@@ -9,8 +9,9 @@
 //
 // Envio pelo Resend. Secrets (supabase secrets set …):
 //   RESEND_API_KEY   obrigatório
-//   NOTIF_EMAIL_FROM opcional — padrão "Prolu <notificacoes@prolu.com.br>"
-//                    (o domínio precisa estar verificado no Resend)
+//   NOTIF_EMAIL_FROM opcional — padrão "Prolu <notificacoes@mail.prolu.com.br>"
+//                    (o domínio precisa estar verificado no Resend — o verificado é
+//                    mail.prolu.com.br; prolu.com.br NÃO está, e o Resend recusa)
 //   APP_URL          opcional — padrão https://app.prolu.com.br
 // WhatsApp: ainda não envia (só a interface no editor, "Em breve").
 
@@ -155,7 +156,7 @@ Deno.serve(async (req) => {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from: Deno.env.get('NOTIF_EMAIL_FROM') || 'Prolu <notificacoes@prolu.com.br>',
+      from: Deno.env.get('NOTIF_EMAIL_FROM') || 'Prolu <notificacoes@mail.prolu.com.br>',
       to: destinatarios,
       subject: `Novo preenchimento — ${form.nome}`.replace(/[\r\n]+/g, ' '),
       html,
