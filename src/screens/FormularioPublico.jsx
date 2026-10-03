@@ -252,7 +252,7 @@ export default function FormularioPublico() {
                     ) : c.tipo === 'phone' ? (
                       <Suspense fallback={<input className="prolu-form__input" id={id} disabled aria-busy="true" placeholder="Carregando…" />}>
                         <FormTelefoneField
-                          id={id} valor={valores[c.id] || ''} obrigatorio={c.obrigatorio}
+                          id={id} valor={valores[c.id] || ''} obrigatorio={c.obrigatorio} inline={embed}
                           invalido={!!erros[c.id]} describedBy={erros[c.id] ? `${id}-erro` : undefined}
                           onChange={v => alterar(c.id, v)} inputRef={el => { refs.current[c.id] = el }}
                         />
