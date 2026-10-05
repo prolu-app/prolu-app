@@ -122,14 +122,20 @@ Deno.serve(async (req) => {
     const { data: campos } = await supabase.from('formulario_campos').select('id').eq('formulario_id', form.id).order('ordem').limit(5)
     ids = (campos || []).map(c => c.id)
   }
+  // negrito do WhatsApp (*…*): asterisco dentro do texto quebraria a marcação.
+  // Sem "\n" nos parâmetros — a Meta recusa o envio (#132018).
+  const semAsterisco = (s: unknown) => String(s ?? '').replace(/\*/g, '')
   const porCampo = new Map(respostas.map(r => [r.campo_id, r]))
   const linhas = [0, 1, 2, 3, 4].map(i => {
     const r = ids[i] ? porCampo.get(ids[i]) : undefined
-    return r && r.valor.trim() ? param(`${r.label}: ${r.valor}`, 200) : '-'
+    if (!r || !r.valor.trim()) return '-'
+    // *pergunta:* resposta — corta só a resposta, para não perder o fecho do negrito
+    const pergunta = `*${param(semAsterisco(r.label), 80)}:* `
+    return pergunta + param(r.valor, 200 - pergunta.length)
   })
   const telefone = respostas.find(r => r.tipo === 'phone' && r.valor.trim())
   const lead = telefone ? numeroLead(telefone.valor) : null
-  const parametros = [param(form.nome, 60), ...linhas, lead ? `https://wa.me/${lead}` : '-']
+  const parametros = [`*${param(semAsterisco(form.nome), 58)}*`, ...linhas, lead ? `https://wa.me/${lead}` : '-']
 
   const versao = Deno.env.get('WHATSAPP_API_VERSION') || 'v26.0'
   const numeroId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID') || '1376822895512393'
