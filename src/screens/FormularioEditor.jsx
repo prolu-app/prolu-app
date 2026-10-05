@@ -30,11 +30,12 @@ const TIPOS = [
   { value: 'number', label: 'Número' },
   { value: 'phone', label: 'Telefone' },
   { value: 'email', label: 'E-mail' },
-  { value: 'select', label: 'Seleção (lista)' },
-  { value: 'radio', label: 'Escolha única' },       // migration_039
-  { value: 'checkbox', label: 'Múltipla escolha' }, // migration_039
+  // só os rótulos mudam; os valores gravados em formulario_campos.tipo continuam os mesmos
+  { value: 'select', label: 'Lista suspensa' },
+  { value: 'radio', label: 'Múltipla escolha' },    // migration_039: botões, uma resposta
+  { value: 'checkbox', label: 'Caixa de seleção' }, // migration_039: caixas, várias respostas
 ]
-// tipos com lista de opções; radio e checkbox aceitam a opção "Outro"
+// tipos com lista de opções; radio e checkbox aceitam a opção "Outro" (fora do CRM)
 const TIPOS_COM_OPCOES = ['select', 'radio', 'checkbox']
 const OUTRO = '__outro__'
 
@@ -560,10 +561,14 @@ function CampoCard({
   const opcoesDaColuna = colMapeada?.tipo === 'select'
   const comOpcoes = TIPOS_COM_OPCOES.includes(campo.tipo)
   const opcoesNormais = opcoes.filter(o => o.value !== OUTRO)
-  // "Outro" (migration_039): radio/checkbox, nunca com opções vindas de coluna de Seleção do CRM
-  const aceitaOutro = (campo.tipo === 'radio' || campo.tipo === 'checkbox') && !opcoesDaColuna
+  // "Outro" (migration_039): só Múltipla escolha (radio) e Caixa de seleção (checkbox)
+  // fora do CRM; nunca na Lista suspensa nem em campo ligado a coluna do CRM
+  const ehEscolha = campo.tipo === 'radio' || campo.tipo === 'checkbox'
+  const aceitaOutro = ehEscolha && !campo.crm_coluna_id
   const temOutro = opcoes.some(o => o.value === OUTRO)
   const semOpcoes = comOpcoes && (opcoesDaColuna ? colMapeada.opcoes.length === 0 : opcoesNormais.length === 0)
+  // coluna de Seleção do CRM: o tipo fica entre Lista suspensa e Múltipla escolha
+  const tiposDoCampo = opcoesDaColuna ? TIPOS.filter(t => CAMPO_ACEITA.select.includes(t.value)) : TIPOS
 
   function mudarMapeamento(colId) {
     if (!colId) { onSalvar({ crm_coluna_id: null }); return }
@@ -571,6 +576,8 @@ function CampoCard({
     if (!col) return
     const patch = { crm_coluna_id: col.id }
     if (!CAMPO_ACEITA[col.tipo].includes(campo.tipo)) patch.tipo = tipoPadraoPara(col.tipo)
+    // ligado ao CRM não tem "Outro": tira a opção junto
+    if (temOutro) patch.opcoes = opcoesNormais
     onSalvar(patch)
   }
 
@@ -629,12 +636,12 @@ function CampoCard({
           <select
             className="fm-tipo"
             value={campo.tipo}
-            disabled={!podeEditar || opcoesDaColuna}
-            title={opcoesDaColuna ? 'Definido pela coluna do CRM' : undefined}
+            disabled={!podeEditar}
+            title={opcoesDaColuna ? 'Coluna de Seleção do CRM: Lista suspensa ou Múltipla escolha' : undefined}
             onChange={e => mudarTipo(e.target.value)}
             aria-label="Tipo do campo"
           >
-            {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            {tiposDoCampo.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </div>
 
@@ -662,7 +669,7 @@ function CampoCard({
             {colMapeada.opcoes.map(o => <span className="fm-opcao fm-opcao-crm" key={o}>{o}</span>)}
             <span className="fm-mapa-dica">Opções da coluna {colMapeada.nome} do CRM — edite no CRM</span>
             {semOpcoes && <span className="fm-aviso">A coluna não tem opções</span>}
-            {campo.tipo === 'radio' && <span className="fm-mapa-dica">"Outro" não disponível: a coluna do CRM só aceita as opções dela.</span>}
+            {campo.tipo === 'radio' && <span className="fm-mapa-dica">Sem opção "Outro" em campos ligados ao CRM.</span>}
           </div>
         )}
 
@@ -689,7 +696,8 @@ function CampoCard({
               />
             )}
             {/* "Outro:" no fim, com o campo de texto que o visitante vai ver (aqui só visual) */}
-            {aceitaOutro && temOutro && (
+            {/* em campo ligado ao CRM só aparece para remover um "Outro" antigo */}
+            {ehEscolha && temOutro && (
               <span className="fm-opcao fm-opcao-outro">
                 Outro: <input disabled placeholder="texto do visitante" aria-label="Campo de texto da opção Outro (prévia)" />
                 {podeEditar && (
@@ -703,6 +711,11 @@ function CampoCard({
               <button type="button" className="fm-add-outro" onClick={() => onSalvar({ opcoes: [...opcoesNormais, { value: OUTRO, tipo: 'outro' }] })}>
                 + Adicionar opção 'Outro'
               </button>
+            )}
+            {ehEscolha && campo.crm_coluna_id && (
+              <span className={temOutro ? 'fm-aviso' : 'fm-mapa-dica'}>
+                {temOutro ? 'Campo ligado ao CRM não usa "Outro" — remova a opção.' : 'Sem opção "Outro" em campos ligados ao CRM.'}
+              </span>
             )}
             {semOpcoes && <span className="fm-aviso">Adicione ao menos uma opção</span>}
           </div>
