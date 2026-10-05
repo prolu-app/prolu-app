@@ -5,6 +5,7 @@ import EditorIntro from '../components/EditorIntro.jsx'
 import { INTRO_MAX, introVazia } from '../utils/introHtml.js'
 import { FmSwitch } from './Formularios.jsx'
 import { IconChevronDown, IconTrash } from '../components/Icons.jsx'
+import { comprimirCapa } from '../utils/comprimirImagem.js'
 import { supabase } from '../services/supabaseClient.js'
 import {
   ESTILO_PADRAO, RAIO_MAX, LIMITES, BOTAO_TEXTO_MAX, BOTAO_TEXTO_PADRAO, normalizarEstilo, estiloParaPagina, textoDoBotao,
@@ -544,7 +545,7 @@ function caminhoNoBucket(url) {
   return i >= 0 ? decodeURIComponent(url.slice(i + marca.length).split('?')[0]) : null
 }
 
-function UploadImagem({ form, coluna, prefixo, maxMb, redonda, rotulo, off, salvarForm }) {
+function UploadImagem({ form, coluna, prefixo, maxMb, redonda, rotulo, off, salvarForm, comprimir }) {
   const toast = useToast()
   const inputRef = useRef(null)
   const [enviando, setEnviando] = useState(false)
@@ -556,13 +557,15 @@ function UploadImagem({ form, coluna, prefixo, maxMb, redonda, rotulo, off, salv
   }
 
   async function escolher(e) {
-    const file = e.target.files?.[0]
+    let file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    const ext = TIPOS_IMAGEM[file.type]
-    if (!ext) { toast('Use uma imagem JPG, PNG, WEBP ou GIF'); return }
+    if (!TIPOS_IMAGEM[file.type]) { toast('Use uma imagem JPG, PNG, WEBP ou GIF'); return }
     if (file.size > maxMb * 1024 * 1024) { toast(`Imagem muito grande — máximo ${maxMb} MB`); return }
     setEnviando(true)
+    // capa: JPEG leve (utils/comprimirImagem.js); falhou → manda o original
+    if (comprimir) file = await comprimir(file).catch(() => file)
+    const ext = TIPOS_IMAGEM[file.type]
     const caminho = `${form.empresa_id}/${form.id}/${prefixo}-${Date.now()}.${ext}`
     const { error } = await supabase.storage.from(BUCKET).upload(caminho, file, { contentType: file.type, cacheControl: '31536000', upsert: false })
     if (error) {
@@ -624,8 +627,8 @@ export function PainelApresentacao({ form, podeEditar, salvarForm }) {
         <Linha rotulo="Logo" dica="Circular. Sem logo, a página não mostra nenhum. Até 5 MB (JPG, PNG, WEBP ou GIF).">
           <UploadImagem form={form} coluna="logo_url" prefixo="logo" maxMb={5} redonda rotulo="Logo do formulário" off={off} salvarForm={salvarForm} />
         </Linha>
-        <Linha rotulo="Capa" dica="Faixa no topo da página. Tamanho sugerido: 1200×400 px. Até 10 MB.">
-          <UploadImagem form={form} coluna="capa_url" prefixo="capa" maxMb={10} rotulo="Imagem de capa" off={off} salvarForm={salvarForm} />
+        <Linha rotulo="Capa" dica="Faixa no topo da página e imagem do link compartilhado. Tamanho sugerido: 1200×400 px. Até 10 MB — é reduzida para JPEG leve no envio.">
+          <UploadImagem form={form} coluna="capa_url" prefixo="capa" maxMb={10} rotulo="Imagem de capa" off={off} salvarForm={salvarForm} comprimir={comprimirCapa} />
         </Linha>
         <Linha rotulo="Título da página" dica="Aparece como destaque abaixo do nome do escritório. Opcional.">
           <CampoTextoSalvo
