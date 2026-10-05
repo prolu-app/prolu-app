@@ -17,7 +17,8 @@
 // Tabelas/colunas: migrations 025, 026, 028 (estilo + após o envio), 029
 // (apresentação: logo, capa, introdução, vídeo; botão no agradecimento) e 030
 // (titulo_pagina), 032 (o que exibir no topo), 034 e 038 (notificações: chama
-// formulario-notificacao e formulario-whatsapp em segundo plano depois de gravar).
+// formulario-notificacao e formulario-whatsapp em segundo plano depois de gravar)
+// e 039 (radio, checkbox, opção "Outro", página de agradecimento condicional).
 //
 // Também atende o embed (public/embed.js): o modo "cru" chama esta função
 // direto do site do escritório (CORS liberado, sem apikey — verify_jwt off).
@@ -36,13 +37,18 @@ function jsonResponse(body: unknown, status: number) {
   })
 }
 
-const LIMITE = { text: 300, textarea: 5000, email: 254, phone: 30, number: 30, select: 300 } as Record<string, number>
+const LIMITE = { text: 300, textarea: 5000, email: 254, phone: 30, number: 30, select: 300, radio: 320, checkbox: 320 } as Record<string, number>
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 type Campo = {
   id: string; label: string; tipo: string; obrigatorio: boolean; ordem: number
-  opcoes: { value: string }[]; crm_coluna_id: string | null
+  opcoes: { value: string; tipo?: string }[]; crm_coluna_id: string | null
 }
+
+// Opção "Outro" de radio/checkbox (migration_039): item { value: '__outro__' }
+// nas opções; a resposta chega como "Outro: <texto>" (ou "Outro:" em branco).
+const OUTRO = '__outro__'
+const RESPOSTA_OUTRO = /^Outro:( |$)/
 type Coluna = { id: string; nome: string; tipo: string; slug: string | null; opcoes: string[] }
 
 // crm_colunas.opcoes: colunas fixas = objeto { slug, items: [{value}] };
@@ -58,7 +64,20 @@ function lerColuna(c: { id: string; nome: string; tipo: string; opcoes: unknown 
 function opcoesDoCampo(campo: Campo, colunas: Map<string, Coluna>): string[] {
   const col = campo.crm_coluna_id ? colunas.get(campo.crm_coluna_id) : null
   if (col && col.tipo === 'select') return col.opcoes
-  return (campo.opcoes || []).map(o => o.value)
+  return (campo.opcoes || []).map(o => o.value).filter(v => v !== OUTRO)
+}
+
+// "Outro" só vale em radio/checkbox e nunca quando a pergunta vai para uma
+// coluna de Seleção do CRM (as opções dela são fixas — decisão da migration_039)
+function temOutro(campo: Campo, colunas: Map<string, Coluna>): boolean {
+  if (campo.tipo !== 'radio' && campo.tipo !== 'checkbox') return false
+  const col = campo.crm_coluna_id ? colunas.get(campo.crm_coluna_id) : null
+  if (col && col.tipo === 'select') return false
+  return (campo.opcoes || []).some(o => o.value === OUTRO)
+}
+
+function escolhaValida(campo: Campo, colunas: Map<string, Coluna>, v: string): boolean {
+  return opcoesDoCampo(campo, colunas).includes(v) || (temOutro(campo, colunas) && RESPOSTA_OUTRO.test(v))
 }
 
 function hojeSaoPaulo(): string {
@@ -69,14 +88,32 @@ function hojeSaoPaulo(): string {
 // O que a página/embed faz após um envio aceito (migration_028): redirecionar
 // para a URL do escritório (ex.: página de obrigado com Google Tag / Pixel —
 // o Prolu não dispara tracking) ou mostrar a mensagem, com textos opcionais.
-function aposEnvio(form: Record<string, unknown>) {
+function aposEnvio(form: Record<string, unknown>, respostas: Map<string, string[]> = new Map()) {
   const url = typeof form.redirect_url === 'string' ? form.redirect_url.trim() : ''
   if (form.pos_envio === 'redirecionar' && /^https?:\/\/[^\s]+$/i.test(url)) return { redirecionar: url }
+  // página condicional (A, migration_039) quando alguma regra casa e ela tem
+  // título ou texto; senão a padrão (B: sucesso_*, obrigado_botao_*)
+  const usaA = condicaoCasa(form, respostas) && !!(textoOuNull(form.sucesso_a_titulo) || textoOuNull(form.sucesso_a_texto))
+  const p = usaA ? 'a_' : ''
   // botão opcional na mensagem (migration_029): só com texto e URL http(s)
-  const btnUrl = textoOuNull(form.obrigado_botao_url)
-  const botao = textoOuNull(form.obrigado_botao_texto) && btnUrl && /^https?:\/\/[^\s]+$/i.test(btnUrl)
-    ? { texto: textoOuNull(form.obrigado_botao_texto), url: btnUrl } : null
-  return { sucesso: { titulo: textoOuNull(form.sucesso_titulo), texto: textoOuNull(form.sucesso_texto), botao } }
+  const btnUrl = textoOuNull(form[`obrigado_${p}botao_url`])
+  const btnTexto = textoOuNull(form[`obrigado_${p}botao_texto`])
+  const botao = btnTexto && btnUrl && /^https?:\/\/[^\s]+$/i.test(btnUrl) ? { texto: btnTexto, url: btnUrl } : null
+  return { sucesso: { titulo: textoOuNull(form[`sucesso_${p}titulo`]), texto: textoOuNull(form[`sucesso_${p}texto`]), botao } }
+}
+
+// obrigado_condicao: [{ campo_id, valores }] — regras em OU, valores em OU;
+// comparação sem diferenciar maiúsculas; "__outro__" casa com "Outro: …"
+function condicaoCasa(form: Record<string, unknown>, respostas: Map<string, string[]>): boolean {
+  if (form.obrigado_a_ativa !== true || !Array.isArray(form.obrigado_condicao)) return false
+  return (form.obrigado_condicao as unknown[]).some(r => {
+    const regra = (r && typeof r === 'object' ? r : {}) as { campo_id?: unknown; valores?: unknown }
+    const lista = respostas.get(String(regra.campo_id)) || []
+    const alvos = Array.isArray(regra.valores) ? regra.valores.filter((x): x is string => typeof x === 'string') : []
+    return alvos.some(alvo => alvo === OUTRO
+      ? lista.some(x => RESPOSTA_OUTRO.test(x))
+      : lista.some(x => x.toLowerCase() === alvo.toLowerCase()))
+  })
 }
 
 function textoOuNull(v: unknown) {
@@ -167,7 +204,8 @@ Deno.serve(async (req) => {
       },
       campos: campos.map(c => ({
         id: c.id, label: c.label, tipo: c.tipo, obrigatorio: c.obrigatorio,
-        opcoes: c.tipo === 'select' ? opcoesDoCampo(c, colunas) : [],
+        opcoes: ['select', 'radio', 'checkbox'].includes(c.tipo) ? opcoesDoCampo(c, colunas) : [],
+        outro: temOutro(c, colunas), // radio/checkbox com "Outro" (migration_039)
       })),
     }, 200)
   }
@@ -181,9 +219,21 @@ Deno.serve(async (req) => {
 
   // ── validação campo a campo (ids desconhecidos são ignorados) ──
   const erros: Record<string, string> = {}
-  const valores: Record<string, string> = {}
+  const valores: Record<string, string> = {}       // texto (CRM texto, ficha, notificações)
+  const multiplas: Record<string, string[]> = {}   // checkbox: lista (CRM tags, condição)
   for (const c of campos) {
     const bruto = respostas[c.id]
+    // múltipla escolha: lista de opções (e no máximo uma "Outro: …")
+    if (c.tipo === 'checkbox') {
+      const lista = [...new Set((Array.isArray(bruto) ? bruto : [])
+        .filter((x): x is string => typeof x === 'string').map(x => x.trim()).filter(Boolean))].slice(0, 50)
+      if (!lista.length) { if (c.obrigatorio) erros[c.id] = 'Campo obrigatório.'; continue }
+      if (lista.some(x => x.length > LIMITE.checkbox)) { erros[c.id] = 'Resposta muito longa.'; continue }
+      if (lista.some(x => !escolhaValida(c, colunas, x)) || lista.filter(x => RESPOSTA_OUTRO.test(x)).length > 1) { erros[c.id] = 'Opção inválida.'; continue }
+      multiplas[c.id] = lista
+      valores[c.id] = lista.join(', ')
+      continue
+    }
     const v = typeof bruto === 'string' ? bruto.trim() : (typeof bruto === 'number' ? String(bruto) : '')
     if (!v) {
       if (c.obrigatorio) erros[c.id] = 'Campo obrigatório.'
@@ -196,7 +246,7 @@ Deno.serve(async (req) => {
       if (digitos.length < 8 || digitos.length > 15) { erros[c.id] = 'Telefone inválido.'; continue }
     }
     if (c.tipo === 'number' && !Number.isFinite(Number(v.replace(',', '.')))) { erros[c.id] = 'Informe um número.'; continue }
-    if (c.tipo === 'select' && !opcoesDoCampo(c, colunas).includes(v)) { erros[c.id] = 'Opção inválida.'; continue }
+    if ((c.tipo === 'select' || c.tipo === 'radio') && !escolhaValida(c, colunas, v)) { erros[c.id] = 'Opção inválida.'; continue }
     valores[c.id] = v
   }
   if (Object.keys(erros).length) return jsonResponse({ error: 'Verifique os campos destacados.', erros }, 422)
@@ -216,6 +266,7 @@ Deno.serve(async (req) => {
       continue
     }
     if (col.tipo === 'number' || col.tipo === 'money') linha[col.id] = Number(v.replace(',', '.'))
+    else if (col.tipo === 'tags') linha[col.id] = multiplas[c.id] || [v] // múltipla escolha → uma tag por opção
     else linha[col.id] = v
     if (col.tipo === 'client') nomeCliente = v
   }
@@ -303,5 +354,7 @@ Deno.serve(async (req) => {
     emSegundoPlano('formulario-whatsapp', { formulario_id: form.id, crm_linha_id: nova.id, respostas: respostasNotif })
   }
 
-  return jsonResponse({ ok: true, ...aposEnvio(form) }, 200)
+  // respostas por campo (listas) para a página condicional
+  const respostasPorCampo = new Map(Object.keys(valores).map(id => [id, multiplas[id] || [valores[id]]]))
+  return jsonResponse({ ok: true, ...aposEnvio(form, respostasPorCampo) }, 200)
 })

@@ -136,6 +136,9 @@
     ':where(.prolu-form__erro,.prolu-form__legenda){font-size:.85em}',
     ':where(.prolu-form__input[aria-invalid="true"]){border-color:#c62828;outline-color:#c62828}',
     ':where(.prolu-form__enviar){cursor:pointer;font:inherit}',
+    ':where(.prolu-form__escolhas){display:flex;flex-direction:column;gap:.25em}',
+    ':where(.prolu-form__escolha,.prolu-form__escolha--outro>label){display:flex;align-items:center;gap:.5em;cursor:pointer}',
+    ':where(.prolu-form__outro-texto){font:inherit;flex:1;min-width:10em}',
     ':where(.prolu-form__enviar:disabled){opacity:.6;cursor:wait}',
     ':where(.prolu-form__capa){display:block;width:100%;height:auto;max-height:320px;object-fit:cover}',
     ':where(.prolu-form__logo){display:block;width:80px;height:80px;border-radius:50%;object-fit:cover;margin:1em auto}',
@@ -162,6 +165,8 @@
   }
 
   function validar(campo, valor) {
+    // múltipla escolha: lista; "Outro:" em branco conta como resposta
+    if (Array.isArray(valor)) return !valor.length && campo.obrigatorio ? 'Campo obrigatório.' : null
     var v = (valor || '').trim()
     if (!v) return campo.obrigatorio ? 'Campo obrigatório.' : null
     if (campo.tipo === 'email' && !EMAIL_RE.test(v)) return 'E-mail inválido.'
@@ -261,8 +266,11 @@
       wrap.setAttribute('data-campo', c.id)
       wrap.setAttribute('data-tipo', c.tipo)
 
-      var label = el('label', 'prolu-form__label', c.label || 'Pergunta')
-      label.htmlFor = id
+      var grupoOpcoes = c.tipo === 'radio' || c.tipo === 'checkbox'
+      // grupo de opções: rótulo do grupo (span), não de um input
+      var label = el(grupoOpcoes ? 'span' : 'label', 'prolu-form__label', c.label || 'Pergunta')
+      if (grupoOpcoes) label.id = id + '-rotulo'
+      else label.htmlFor = id
       if (c.obrigatorio) {
         var ast = el('span', 'prolu-form__asterisco', ' *')
         ast.setAttribute('aria-hidden', 'true')
@@ -271,7 +279,60 @@
       wrap.appendChild(label)
 
       var input
-      if (c.tipo === 'textarea') {
+      var alvo = null // onde vão aria-invalid/aria-describedby (o grupo, nas escolhas)
+      var ler = null  // valor da resposta (as escolhas montam texto ou lista)
+      if (grupoOpcoes) {
+        // escolha única / múltipla escolha, com "Outro:" opcional (migration_039)
+        var grupo = el('div', 'prolu-form__escolhas prolu-form__escolhas--' + c.tipo)
+        grupo.setAttribute('role', c.tipo === 'radio' ? 'radiogroup' : 'group')
+        grupo.setAttribute('aria-labelledby', id + '-rotulo')
+        var marcas = []
+        ;(c.opcoes || []).forEach(function (o) {
+          var lab = el('label', 'prolu-form__escolha')
+          var inp = el('input')
+          inp.type = c.tipo
+          inp.name = id
+          inp.value = o
+          lab.appendChild(inp)
+          lab.appendChild(el('span', null, o))
+          grupo.appendChild(lab)
+          marcas.push(inp)
+        })
+        var marcaOutro = null, textoOutro = null
+        if (c.outro) {
+          var linha = el('div', 'prolu-form__escolha prolu-form__escolha--outro')
+          var labO = el('label')
+          marcaOutro = el('input')
+          marcaOutro.type = c.tipo
+          marcaOutro.name = id
+          marcaOutro.value = '__outro__'
+          labO.appendChild(marcaOutro)
+          labO.appendChild(el('span', null, 'Outro:'))
+          textoOutro = el('input', 'prolu-form__outro-texto')
+          textoOutro.type = 'text'
+          textoOutro.maxLength = 300
+          textoOutro.disabled = true
+          textoOutro.setAttribute('aria-label', 'Outro: especifique')
+          linha.appendChild(labO)
+          linha.appendChild(textoOutro)
+          grupo.appendChild(linha)
+          // o texto só fica habilitado com "Outro" marcado
+          grupo.addEventListener('change', function () { textoOutro.disabled = !marcaOutro.checked })
+        }
+        var primeira = marcas[0] || marcaOutro
+        if (primeira) primeira.id = id
+        input = primeira || grupo
+        alvo = grupo
+        ler = function () {
+          var vals = marcas.filter(function (m) { return m.checked }).map(function (m) { return m.value })
+          if (marcaOutro && marcaOutro.checked) {
+            var t = textoOutro.value.trim()
+            vals.push(t ? 'Outro: ' + t : 'Outro:')
+          }
+          return c.tipo === 'checkbox' ? vals : (vals[0] || '')
+        }
+        wrap.appendChild(grupo)
+      } else if (c.tipo === 'textarea') {
         input = el('textarea', 'prolu-form__input')
         input.rows = 4
         input.maxLength = 5000
@@ -287,13 +348,15 @@
         if (c.tipo === 'email') input.autocomplete = 'email'
         input.maxLength = c.tipo === 'text' ? 300 : 254
       }
-      input.id = id
-      input.name = c.id
-      if (c.obrigatorio) input.required = true
-      wrap.appendChild(input)
+      if (!grupoOpcoes) {
+        input.id = id
+        input.name = c.id
+        if (c.obrigatorio) input.required = true
+        wrap.appendChild(input)
+      }
 
-      var item = { campo: c, wrap: wrap, input: input, erro: null }
-      input.addEventListener(c.tipo === 'select' ? 'change' : 'input', function () { mostrarErro(item, null) })
+      var item = { campo: c, wrap: wrap, input: input, alvo: alvo || input, erro: null, ler: ler || function () { return input.value } }
+      ;(grupoOpcoes ? alvo : input).addEventListener(c.tipo === 'select' || grupoOpcoes ? 'change' : 'input', function () { mostrarErro(item, null) })
       itens[c.id] = item
       lista.appendChild(wrap)
     })
@@ -318,11 +381,11 @@
         item.erro = el('div', 'prolu-form__erro', msg)
         item.erro.id = item.input.id + '-erro'
         item.wrap.appendChild(item.erro)
-        item.input.setAttribute('aria-invalid', 'true')
-        item.input.setAttribute('aria-describedby', item.erro.id)
+        item.alvo.setAttribute('aria-invalid', 'true')
+        item.alvo.setAttribute('aria-describedby', item.erro.id)
       } else {
-        item.input.removeAttribute('aria-invalid')
-        item.input.removeAttribute('aria-describedby')
+        item.alvo.removeAttribute('aria-invalid')
+        item.alvo.removeAttribute('aria-describedby')
       }
     }
 
@@ -345,7 +408,7 @@
       var respostas = {}
       var erros = {}
       campos.forEach(function (c) {
-        var v = itens[c.id].input.value
+        var v = itens[c.id].ler()
         respostas[c.id] = v
         var m = validar(c, v)
         if (m) erros[c.id] = m

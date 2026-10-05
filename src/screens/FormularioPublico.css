@@ -108,6 +108,29 @@ select.prolu-form__input { cursor: pointer; }
 .prolu-form__paises-ddi { font-size: 13px; opacity: 0.6; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .prolu-form__paises-vazio { padding: 10px 12px; font-size: 13.5px; opacity: 0.6; }
 
+/* escolha única / múltipla escolha (components/FormEscolhaField.jsx, migration_039) */
+.prolu-form__escolhas { display: flex; flex-direction: column; gap: 4px; }
+.prolu-form__escolha, .prolu-form__escolha--outro > label {
+  display: flex; align-items: center; gap: 10px; cursor: pointer;
+  font-size: 15px; color: var(--pf-input-texto, var(--ink)); line-height: 1.35;
+}
+.prolu-form__escolha { padding: 6px 2px; }
+.prolu-form__escolha input[type="radio"], .prolu-form__escolha input[type="checkbox"] {
+  width: 18px; height: 18px; margin: 0; flex-shrink: 0; cursor: pointer;
+  accent-color: var(--pf-destaque, var(--green));
+}
+.prolu-form__escolha input:focus-visible { outline: 2px solid var(--pf-destaque, var(--green)); outline-offset: 2px; }
+.prolu-form__escolha--outro { gap: 10px; flex-wrap: wrap; }
+.prolu-form__outro-texto {
+  flex: 1; min-width: 160px; box-sizing: border-box; border: none; outline: none;
+  background: var(--pf-input-bg, var(--cream)); color: var(--pf-input-texto, var(--ink));
+  border-radius: var(--pf-input-raio, 10px); padding: 7px 10px; font: inherit; font-size: 14px;
+  box-shadow: 0 0 0 var(--pf-input-contorno-largura, 1.5px) var(--pf-input-contorno, transparent);
+}
+.prolu-form__outro-texto:focus { box-shadow: 0 0 0 calc(var(--pf-input-contorno-largura, 1.5px) + 0.5px) var(--pf-destaque, var(--green)); }
+.prolu-form__outro-texto:disabled { opacity: 0.45; cursor: not-allowed; }
+.prolu-form__escolhas[aria-invalid="true"] { border-radius: 8px; box-shadow: 0 0 0 1.5px var(--red); padding: 4px 8px; }
+
 /* seleção própria (components/FormSelectField.jsx): o botão é um
    .prolu-form__input (fundo, texto, contorno, cantos, foco e erro vêm de lá) */
 .prolu-form__select { position: relative; }

@@ -30,18 +30,26 @@ const TIPOS = [
   { value: 'number', label: 'Número' },
   { value: 'phone', label: 'Telefone' },
   { value: 'email', label: 'E-mail' },
-  { value: 'select', label: 'Seleção' },
+  { value: 'select', label: 'Seleção (lista)' },
+  { value: 'radio', label: 'Escolha única' },       // migration_039
+  { value: 'checkbox', label: 'Múltipla escolha' }, // migration_039
 ]
+// tipos com lista de opções; radio e checkbox aceitam a opção "Outro"
+const TIPOS_COM_OPCOES = ['select', 'radio', 'checkbox']
+const OUTRO = '__outro__'
 
 // ── Mapeamento campo → coluna do CRM (Fase 2) ──
-// Tipos de campo aceitos por tipo de coluna do CRM. Colunas de data, tags e
+// Tipos de campo aceitos por tipo de coluna do CRM. Colunas de data e
 // checkbox não recebem campos; Status é preenchido sozinho no envio.
+// Múltipla escolha: em coluna de texto vai "A, B"; em coluna de tags, uma tag
+// por opção (migration_039).
 const CAMPO_ACEITA = {
-  text: ['text', 'textarea', 'phone', 'email'],
+  text: ['text', 'textarea', 'phone', 'email', 'radio', 'checkbox'],
   client: ['text'],
   number: ['number'],
   money: ['number'],
-  select: ['select'],
+  select: ['select', 'radio'],
+  tags: ['checkbox'],
   phone: ['phone'], // coluna fixa Telefone (migration_035): recebe o campo de telefone (E.164)
 }
 const SLUGS_AUTOMATICOS = ['status']
@@ -222,6 +230,13 @@ export default function FormularioEditor() {
     const { error } = await supabase.from('formulario_campos').delete().eq('id', campoId)
     if (error) { setCampos(anterior); toast('Não foi possível remover o campo'); return }
     await gravarOrdem(restantes)
+    // regras da página condicional que usavam a pergunta saem junto
+    const regras = Array.isArray(form.obrigado_condicao) ? form.obrigado_condicao : []
+    if (regras.some(r => r.campo_id === campoId)) {
+      if (await salvarForm({ obrigado_condicao: regras.filter(r => r.campo_id !== campoId) })) {
+        toast('Regra de página condicional removida porque a pergunta foi excluída')
+      }
+    }
   }
 
   async function gravarOrdem(lista) {
@@ -503,7 +518,7 @@ export default function FormularioEditor() {
       </section>
 
       <section role="tabpanel" id="fm-painel-envio" aria-labelledby="fm-aba-envio" hidden={aba !== 'envio'}>
-        <PainelPosEnvio form={form} podeEditar={podeEditar} salvarForm={salvarForm} />
+        <PainelPosEnvio form={form} campos={campos} colunasCrm={colunasCrm} podeEditar={podeEditar} salvarForm={salvarForm} />
       </section>
 
       <section role="tabpanel" id="fm-painel-estilo" aria-labelledby="fm-aba-estilo" hidden={aba !== 'estilo'}>
@@ -534,7 +549,7 @@ function CampoCard({
 
   function adicionarOpcao() {
     const v = novaOpcao.trim()
-    if (!v) return
+    if (!v || v === OUTRO) { setNovaOpcao(''); return }
     if (opcoes.some(o => o.value.toLowerCase() === v.toLowerCase())) { setNovaOpcao(''); return }
     onSalvar({ opcoes: [...opcoes, { value: v }] })
     setNovaOpcao('')
@@ -543,7 +558,12 @@ function CampoCard({
   const colMapeada = campo.crm_coluna_id ? colunasMapeaveis.find(c => c.id === campo.crm_coluna_id) : null
   // mapeado para seleção do CRM: as opções são as da coluna (decisão da Fase 2)
   const opcoesDaColuna = colMapeada?.tipo === 'select'
-  const semOpcoes = campo.tipo === 'select' && (opcoesDaColuna ? colMapeada.opcoes.length === 0 : opcoes.length === 0)
+  const comOpcoes = TIPOS_COM_OPCOES.includes(campo.tipo)
+  const opcoesNormais = opcoes.filter(o => o.value !== OUTRO)
+  // "Outro" (migration_039): radio/checkbox, nunca com opções vindas de coluna de Seleção do CRM
+  const aceitaOutro = (campo.tipo === 'radio' || campo.tipo === 'checkbox') && !opcoesDaColuna
+  const temOutro = opcoes.some(o => o.value === OUTRO)
+  const semOpcoes = comOpcoes && (opcoesDaColuna ? colMapeada.opcoes.length === 0 : opcoesNormais.length === 0)
 
   function mudarMapeamento(colId) {
     if (!colId) { onSalvar({ crm_coluna_id: null }); return }
@@ -637,17 +657,18 @@ function CampoCard({
           {!campo.crm_coluna_id && <span className="fm-mapa-dica">Fica só no drawer do registro, não vira coluna</span>}
         </div>
 
-        {campo.tipo === 'select' && opcoesDaColuna && (
+        {comOpcoes && opcoesDaColuna && (
           <div className="fm-opcoes">
             {colMapeada.opcoes.map(o => <span className="fm-opcao fm-opcao-crm" key={o}>{o}</span>)}
             <span className="fm-mapa-dica">Opções da coluna {colMapeada.nome} do CRM — edite no CRM</span>
             {semOpcoes && <span className="fm-aviso">A coluna não tem opções</span>}
+            {campo.tipo === 'radio' && <span className="fm-mapa-dica">"Outro" não disponível: a coluna do CRM só aceita as opções dela.</span>}
           </div>
         )}
 
-        {campo.tipo === 'select' && !opcoesDaColuna && (
+        {comOpcoes && !opcoesDaColuna && (
           <div className="fm-opcoes">
-            {opcoes.map(o => (
+            {opcoesNormais.map(o => (
               <span className="fm-opcao" key={o.value}>
                 {o.value}
                 {podeEditar && (
@@ -666,6 +687,22 @@ function CampoCard({
                 onBlur={adicionarOpcao}
                 placeholder="+ Nova opção (Enter)"
               />
+            )}
+            {/* "Outro:" no fim, com o campo de texto que o visitante vai ver (aqui só visual) */}
+            {aceitaOutro && temOutro && (
+              <span className="fm-opcao fm-opcao-outro">
+                Outro: <input disabled placeholder="texto do visitante" aria-label="Campo de texto da opção Outro (prévia)" />
+                {podeEditar && (
+                  <button type="button" onClick={() => onSalvar({ opcoes: opcoesNormais })} aria-label="Remover opção Outro">
+                    <IconClose />
+                  </button>
+                )}
+              </span>
+            )}
+            {aceitaOutro && !temOutro && podeEditar && (
+              <button type="button" className="fm-add-outro" onClick={() => onSalvar({ opcoes: [...opcoesNormais, { value: OUTRO, tipo: 'outro' }] })}>
+                + Adicionar opção 'Outro'
+              </button>
             )}
             {semOpcoes && <span className="fm-aviso">Adicione ao menos uma opção</span>}
           </div>

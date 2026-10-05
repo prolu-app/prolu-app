@@ -4,6 +4,7 @@ import { supabase } from '../services/supabaseClient.js'
 import { estiloParaPagina, textoDoBotao, SUCESSO_TITULO_PADRAO, sucessoTextoPadrao, URL_REDIRECT_RE, embedDoYoutube } from '../utils/formularioEstilo.js'
 import { sanitizarIntro } from '../utils/introHtml.js'
 import FormSelectField from '../components/FormSelectField.jsx'
+import FormEscolhaField from '../components/FormEscolhaField.jsx'
 import './FormularioPublico.css'
 
 // telefone com país/máscara (react-phone-number-input + bandeiras, ~120 KB gz): só
@@ -43,6 +44,8 @@ function Video({ id, titulo }) {
 
 // telefonePossivel: isPossiblePhoneNumber da lib (carregada sob demanda em enviar)
 function validar(campo, valor, telefonePossivel) {
+  // múltipla escolha: lista; "Outro:" em branco conta como resposta (não bloqueia)
+  if (Array.isArray(valor)) return !valor.length && campo.obrigatorio ? 'Campo obrigatório.' : null
   const v = (valor || '').trim()
   if (!v) return campo.obrigatorio ? 'Campo obrigatório.' : null
   if (campo.tipo === 'email' && !EMAIL_RE.test(v)) return 'E-mail inválido.'
@@ -236,11 +239,28 @@ export default function FormularioPublico() {
                 if (erros[c.id]) classes.push('prolu-form__campo--erro')
                 return (
                   <div className={classes.join(' ')} data-campo={c.id} data-tipo={c.tipo} key={c.id}>
-                    <label className="prolu-form__label" htmlFor={id}>
-                      {c.label || 'Pergunta'}
-                      {c.obrigatorio && <span className="prolu-form__asterisco" aria-hidden="true"> *</span>}
-                    </label>
-                    {c.tipo === 'textarea' ? (
+                    {/* grupo de opções (radio/checkbox): rótulo do grupo, não de um input */}
+                    {c.tipo === 'radio' || c.tipo === 'checkbox' ? (
+                      <span className="prolu-form__label" id={`${id}-rotulo`}>
+                        {c.label || 'Pergunta'}
+                        {c.obrigatorio && <span className="prolu-form__asterisco" aria-hidden="true"> *</span>}
+                      </span>
+                    ) : (
+                      <label className="prolu-form__label" htmlFor={id}>
+                        {c.label || 'Pergunta'}
+                        {c.obrigatorio && <span className="prolu-form__asterisco" aria-hidden="true"> *</span>}
+                      </label>
+                    )}
+                    {c.tipo === 'radio' || c.tipo === 'checkbox' ? (
+                      <FormEscolhaField
+                        id={id} tipo={c.tipo} opcoes={c.opcoes || []} outro={!!c.outro}
+                        valor={valores[c.id] ?? (c.tipo === 'checkbox' ? [] : '')}
+                        onChange={v => alterar(c.id, v)}
+                        rotuloId={`${id}-rotulo`}
+                        invalido={!!erros[c.id]} describedBy={erros[c.id] ? `${id}-erro` : undefined}
+                        primeiroRef={el => { refs.current[c.id] = el }}
+                      />
+                    ) : c.tipo === 'textarea' ? (
                       <textarea rows={4} maxLength={5000} {...comum} />
                     ) : c.tipo === 'select' ? (
                       <FormSelectField

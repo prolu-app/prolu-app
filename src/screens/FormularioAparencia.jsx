@@ -4,6 +4,7 @@ import CampoTextoSalvo from '../components/CampoTextoSalvo.jsx'
 import EditorIntro from '../components/EditorIntro.jsx'
 import { INTRO_MAX, introVazia } from '../utils/introHtml.js'
 import { FmSwitch } from './Formularios.jsx'
+import { IconChevronDown, IconTrash } from '../components/Icons.jsx'
 import { supabase } from '../services/supabaseClient.js'
 import {
   ESTILO_PADRAO, RAIO_MAX, LIMITES, BOTAO_TEXTO_MAX, BOTAO_TEXTO_PADRAO, normalizarEstilo, estiloParaPagina, textoDoBotao,
@@ -252,48 +253,49 @@ function completarUrl(digitada) {
 
 // Botão opcional na mensagem de agradecimento (migration_029). Sem coluna de
 // "ligado": aparece quando texto e URL estão preenchidos; desligar apaga os dois.
-function BotaoObrigado({ form, off, salvarForm }) {
+// colunas da página padrão (B) ou da condicional (A, migration_039); sufixo nos rótulos acessíveis
+function BotaoObrigado({ form, off, salvarForm, colTexto = 'obrigado_botao_texto', colUrl = 'obrigado_botao_url', sufixo = '' }) {
   const toast = useToast()
-  const [ligado, setLigado] = useState(!!(form.obrigado_botao_texto || form.obrigado_botao_url))
+  const [ligado, setLigado] = useState(!!(form[colTexto] || form[colUrl]))
   const [urlInvalida, setUrlInvalida] = useState(false)
 
   async function alternar(v) {
     setLigado(v)
-    if (!v && (form.obrigado_botao_texto || form.obrigado_botao_url)) {
-      if (await salvarForm({ obrigado_botao_texto: null, obrigado_botao_url: null })) toast('Botão removido da mensagem')
+    if (!v && (form[colTexto] || form[colUrl])) {
+      if (await salvarForm({ [colTexto]: null, [colUrl]: null })) toast('Botão removido da mensagem')
       else setLigado(true)
     }
   }
 
   async function salvarUrl(digitada) {
-    if (!digitada) { setUrlInvalida(false); salvarForm({ obrigado_botao_url: null }); return }
+    if (!digitada) { setUrlInvalida(false); salvarForm({ [colUrl]: null }); return }
     const url = completarUrl(digitada)
     if (!url) { setUrlInvalida(true); return }
     setUrlInvalida(false)
-    if (await salvarForm({ obrigado_botao_url: url })) toast('Botão salvo')
+    if (await salvarForm({ [colUrl]: url })) toast('Botão salvo')
   }
 
-  const incompleto = ligado && !(form.obrigado_botao_texto && form.obrigado_botao_url)
+  const incompleto = ligado && !(form[colTexto] && form[colUrl])
   return (
     <>
       <Linha rotulo="Botão na mensagem">
-        <FmSwitch ligado={ligado} disabled={off} rotulo="Exibir botão na mensagem de agradecimento" onChange={alternar} />
+        <FmSwitch ligado={ligado} disabled={off} rotulo={`Exibir botão na mensagem de agradecimento${sufixo}`} onChange={alternar} />
         <span className="fm-status-texto">{ligado ? 'Exibir botão' : 'Sem botão'}</span>
       </Linha>
       {ligado && (
         <>
           <Linha rotulo="Texto do botão">
             <CampoTextoSalvo
-              className="fm-pos-input" valor={form.obrigado_botao_texto || ''} disabled={off} maxLength={60}
-              placeholder="Ex.: Acessar nosso site" aria-label="Texto do botão da mensagem de agradecimento"
-              onSalvar={v => salvarForm({ obrigado_botao_texto: v || null }).then(ok => ok && toast('Botão salvo'))}
+              className="fm-pos-input" valor={form[colTexto] || ''} disabled={off} maxLength={60}
+              placeholder="Ex.: Acessar nosso site" aria-label={`Texto do botão da mensagem de agradecimento${sufixo}`}
+              onSalvar={v => salvarForm({ [colTexto]: v || null }).then(ok => ok && toast('Botão salvo'))}
             />
           </Linha>
           <Linha rotulo="Link do botão" dica="Abre em uma nova aba.">
             <CampoTextoSalvo
-              className={`fm-pos-input${urlInvalida ? ' invalido' : ''}`} valor={form.obrigado_botao_url || ''} disabled={off}
+              className={`fm-pos-input${urlInvalida ? ' invalido' : ''}`} valor={form[colUrl] || ''} disabled={off}
               type="url" inputMode="url" maxLength={2000} placeholder="https://seusite.com.br"
-              aria-label="Link do botão da mensagem de agradecimento" aria-invalid={urlInvalida}
+              aria-label={`Link do botão da mensagem de agradecimento${sufixo}`} aria-invalid={urlInvalida}
               onFocus={() => setUrlInvalida(false)}
               onSalvar={salvarUrl}
             />
@@ -306,7 +308,7 @@ function BotaoObrigado({ form, off, salvarForm }) {
   )
 }
 
-export function PainelPosEnvio({ form, podeEditar, salvarForm }) {
+export function PainelPosEnvio({ form, campos = [], colunasCrm = [], podeEditar, salvarForm }) {
   const toast = useToast()
   // "Redirecionar" escolhido mas ainda sem URL: só na tela — o banco exige a
   // URL junto (constraint formularios_redirect_url_valida)
@@ -350,6 +352,7 @@ export function PainelPosEnvio({ form, podeEditar, salvarForm }) {
         </Linha>
         {modo === 'mensagem' ? (
           <>
+            <div className="fm-subsecao">Página padrão</div>
             <Linha rotulo="Título">
               <CampoTextoSalvo
                 className="fm-pos-input" valor={form.sucesso_titulo || ''} disabled={off} maxLength={120}
@@ -383,7 +386,137 @@ export function PainelPosEnvio({ form, podeEditar, salvarForm }) {
           </Linha>
         )}
       </div>
+      {modo === 'mensagem' && (
+        <PaginaCondicional form={form} campos={campos} colunasCrm={colunasCrm} off={off} salvarForm={salvarForm} />
+      )}
     </>
+  )
+}
+
+// ── Página de agradecimento condicional (A, migration_039) ──
+// Aparece no lugar da padrão quando alguma regra casa: regras em OU; opções de
+// uma regra em OU. Só perguntas de seleção (lista, escolha única, múltipla).
+// Quem decide é a Edge Function formulario-publico (condicaoCasa); sem título
+// e texto, vale a padrão. As opções vêm do estado atual do editor.
+const TIPOS_CONDICAO = ['select', 'radio', 'checkbox']
+const OUTRO = '__outro__'
+
+function opcoesParaCondicao(campo, colunasCrm) {
+  const col = campo.crm_coluna_id ? colunasCrm.find(c => c.id === campo.crm_coluna_id) : null
+  if (col && col.tipo === 'select') return (col.opcoes || []).map(v => ({ valor: v, rotulo: v }))
+  const lista = (Array.isArray(campo.opcoes) ? campo.opcoes : [])
+  const normais = lista.filter(o => o.value !== OUTRO).map(o => ({ valor: o.value, rotulo: o.value }))
+  const temOutro = (campo.tipo === 'radio' || campo.tipo === 'checkbox') && lista.some(o => o.value === OUTRO)
+  return temOutro ? [...normais, { valor: OUTRO, rotulo: 'Outro' }] : normais
+}
+
+function PaginaCondicional({ form, campos, colunasCrm, off, salvarForm }) {
+  const toast = useToast()
+  const [aberta, setAberta] = useState(!!form.obrigado_a_ativa)
+  const elegiveis = campos.filter(c => TIPOS_CONDICAO.includes(c.tipo))
+  const regras = Array.isArray(form.obrigado_condicao) ? form.obrigado_condicao : []
+
+  const salvarRegras = lista => salvarForm({ obrigado_condicao: lista })
+  function adicionarRegra() {
+    if (!elegiveis.length) return
+    salvarRegras([...regras, { campo_id: elegiveis[0].id, valores: [] }])
+  }
+  function mudarPergunta(i, campoId) {
+    salvarRegras(regras.map((r, j) => (j === i ? { campo_id: campoId, valores: [] } : r)))
+  }
+  function alternarValor(i, valor) {
+    salvarRegras(regras.map((r, j) => {
+      if (j !== i) return r
+      const vals = Array.isArray(r.valores) ? r.valores : []
+      return { ...r, valores: vals.includes(valor) ? vals.filter(v => v !== valor) : [...vals, valor] }
+    }))
+  }
+  function removerRegra(i) { salvarRegras(regras.filter((_, j) => j !== i)) }
+
+  return (
+    <div className="fm-avancado fm-condicional">
+      <button type="button" className="fm-avancado-toggle" aria-expanded={aberta} aria-controls="fm-condicional" onClick={() => setAberta(a => !a)}>
+        <IconChevronDown /> Página condicional
+      </button>
+      {aberta && (
+        <div className="fm-publico" id="fm-condicional">
+          <Linha rotulo="Página condicional" dica="Mostra outra mensagem quando a resposta do visitante casa com uma regra. Sem título e texto, vale a página padrão.">
+            <FmSwitch
+              ligado={!!form.obrigado_a_ativa} disabled={off} rotulo="Ativar página condicional"
+              onChange={v => salvarForm({ obrigado_a_ativa: v }).then(ok => ok && toast(v ? 'Página condicional ativada' : 'Página condicional desativada'))}
+            />
+            <span className="fm-status-texto">Ativar página condicional</span>
+          </Linha>
+          {form.obrigado_a_ativa && (
+            <>
+              <Linha rotulo="Título">
+                <CampoTextoSalvo
+                  className="fm-pos-input" valor={form.sucesso_a_titulo || ''} disabled={off} maxLength={120}
+                  placeholder="Ex.: Que bom que você quer reformar!" aria-label="Título da página condicional"
+                  onSalvar={v => salvarForm({ sucesso_a_titulo: v || null }).then(ok => ok && toast('Página condicional salva'))}
+                />
+              </Linha>
+              <Linha rotulo="Texto">
+                <CampoTextoSalvo
+                  multilinha rows={3} className="fm-pos-input" valor={form.sucesso_a_texto || ''} disabled={off} maxLength={1000}
+                  placeholder="Mensagem para quem respondeu de acordo com as regras abaixo." aria-label="Texto da página condicional"
+                  onSalvar={v => salvarForm({ sucesso_a_texto: v || null }).then(ok => ok && toast('Página condicional salva'))}
+                />
+              </Linha>
+              <BotaoObrigado form={form} off={off} salvarForm={salvarForm} colTexto="obrigado_a_botao_texto" colUrl="obrigado_a_botao_url" sufixo=" (página condicional)" />
+
+              <div className="fm-subsecao">Condição — mostrar esta página quando:</div>
+              {!elegiveis.length ? (
+                <p className="fm-notif-aviso" role="status">Adicione uma pergunta de seleção ao formulário para usar páginas condicionais</p>
+              ) : (
+                <>
+                  {regras.length === 0 && <p className="fm-publico-dica">Nenhuma regra ainda — sem regra, aparece sempre a página padrão.</p>}
+                  {regras.map((r, i) => {
+                    const campo = elegiveis.find(c => c.id === r.campo_id)
+                    const opcoes = campo ? opcoesParaCondicao(campo, colunasCrm) : []
+                    const vals = Array.isArray(r.valores) ? r.valores : []
+                    return (
+                      <div className="fm-regra" key={i}>
+                        {i > 0 && <span className="fm-regra-ou">ou</span>}
+                        <div className="fm-regra-topo">
+                          <select
+                            className="fm-tipo fm-regra-pergunta" value={campo ? r.campo_id : ''} disabled={off}
+                            aria-label={`Pergunta da regra ${i + 1}`}
+                            onChange={e => mudarPergunta(i, e.target.value)}
+                          >
+                            {!campo && <option value="">(pergunta não é mais de seleção)</option>}
+                            {elegiveis.map(c => <option key={c.id} value={c.id}>{c.label || 'Pergunta sem título'}</option>)}
+                          </select>
+                          <span className="fm-status-texto">responder qualquer uma de:</span>
+                          {!off && (
+                            <button type="button" className="fm-icon-btn fm-regra-remover" onClick={() => removerRegra(i)} aria-label={`Remover regra ${i + 1}`} title="Remover regra">
+                              <IconTrash />
+                            </button>
+                          )}
+                        </div>
+                        <div className="fm-regra-opcoes">
+                          {opcoes.length === 0 && <span className="fm-publico-dica">Esta pergunta ainda não tem opções.</span>}
+                          {opcoes.map(o => (
+                            <label key={o.valor} className={`fm-regra-opcao${vals.includes(o.valor) ? ' marcada' : ''}`}>
+                              <input type="checkbox" checked={vals.includes(o.valor)} disabled={off} onChange={() => alternarValor(i, o.valor)} />
+                              {o.rotulo}
+                            </label>
+                          ))}
+                        </div>
+                        {campo && opcoes.length > 0 && !vals.length && <span className="fm-publico-aviso">Marque ao menos uma opção — sem opção, a regra não vale.</span>}
+                      </div>
+                    )
+                  })}
+                  {!off && regras.length < 20 && (
+                    <button type="button" className="fm-embed-btn fm-regra-add" onClick={adicionarRegra}>+ Adicionar regra</button>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
