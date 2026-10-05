@@ -68,6 +68,17 @@ async function chamar(body) {
 }
 
 // mensagens para o embed.js na página que contém o iframe
+// texto puro da introdução (HTML já sanitizado) para og:description: blocos
+// separados por espaço, até 160 caracteres + "..." quando corta
+const DESCRICAO_MAX = 160
+function textoDaIntro(html) {
+  if (!html) return ''
+  const tpl = document.createElement('template') // inerte: não carrega nada
+  tpl.innerHTML = html.replace(/<\/(p|li|h1|h2)>|<br\s*\/?>/gi, ' $&')
+  const texto = tpl.content.textContent.replace(/\s+/g, ' ').trim()
+  return texto.length > DESCRICAO_MAX ? texto.slice(0, DESCRICAO_MAX).trimEnd() + '...' : texto
+}
+
 function avisarSite(tipo, dados) {
   if (window.parent !== window) window.parent.postMessage({ tipo: `prolu-form:${tipo}`, ...dados }, '*')
 }
@@ -110,6 +121,34 @@ export default function FormularioPublico() {
     })
     return () => { vivo = false }
   }, [slugEscritorio, slugFormulario]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Open Graph / Twitter para o card do link compartilhado. SPA: só vale para
+  // quem executa JS (Google etc.) — WhatsApp/iMessage leem o HTML cru e
+  // precisariam de pré-renderização no servidor. Sai tudo ao desmontar.
+  useEffect(() => {
+    if (!form) return
+    const tituloOg = form.titulo || form.escritorio || 'Formulário'
+    const descricao = textoDaIntro(introHtml)
+    const tags = [
+      ['property', 'og:type', 'website'],
+      ['property', 'og:url', `${window.location.origin}/e/${encodeURIComponent(slugEscritorio)}/${encodeURIComponent(slugFormulario)}`],
+      ['property', 'og:title', tituloOg],
+      ['property', 'og:description', descricao],
+      ['property', 'og:image', ap?.capa],
+      ['name', 'twitter:card', 'summary_large_image'],
+      ['name', 'twitter:title', tituloOg],
+      ['name', 'twitter:description', descricao],
+      ['name', 'twitter:image', ap?.capa],
+    ].filter(([, , valor]) => valor) // sem introdução/capa, a tag fica de fora
+    const criadas = tags.map(([attr, chave, valor]) => {
+      const meta = document.createElement('meta')
+      meta.setAttribute(attr, chave)
+      meta.setAttribute('content', valor)
+      document.head.appendChild(meta)
+      return meta
+    })
+    return () => criadas.forEach(m => m.remove())
+  }, [form, introHtml, ap?.capa, slugEscritorio, slugFormulario])
 
   // embed: body/#root transparentes (index.css pinta o body) e altura para o site
   useEffect(() => {
