@@ -32,7 +32,7 @@
 .prolu-form__hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
 
 /* sempre uma coluna: um campo por linha */
-.prolu-form__campos { display: flex; flex-direction: column; gap: 18px; margin: 26px 0 22px; }
+.prolu-form__campos { display: flex; flex-direction: column; gap: 32px; margin: 26px 0 22px; }
 .prolu-form__campo { display: flex; flex-direction: column; gap: 6px; }
 .prolu-form__label { font-size: var(--pf-label-tamanho, 14px); font-weight: var(--pf-label-peso, 500); color: var(--pf-label-cor, var(--ink)); }
 .prolu-form__asterisco { color: var(--red); }
