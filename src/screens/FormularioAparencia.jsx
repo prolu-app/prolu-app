@@ -170,6 +170,9 @@ export function PainelEstilo({ form, campos, podeEditar, salvarForm }) {
             <Linha rotulo="Cor de destaque" dica="Contorno do campo enquanto a pessoa digita nele.">
               <Cor rotulo="Cor de destaque do campo em foco" valor={estilo.cor_destaque} disabled={off} onChange={v => mudar({ cor_destaque: v })} />
             </Linha>
+            <Linha rotulo="Cor de seleção" dica="Opção marcada em Múltipla escolha e Caixa de seleção.">
+              <Cor rotulo="Cor de seleção" valor={estilo.cor_selecao} disabled={off} onChange={v => mudar({ cor_selecao: v })} />
+            </Linha>
             <Linha rotulo="Cantos">
               <Raio rotulo="Cantos arredondados dos campos" valor={estilo.input_raio} max={RAIO_MAX.input_raio} disabled={off} onChange={v => mudar({ input_raio: v })} />
             </Linha>
@@ -235,6 +238,14 @@ export function PainelEstilo({ form, campos, podeEditar, salvarForm }) {
                     <input className={`prolu-form__input${i === 1 ? ' fm-previa-foco' : ''}`} readOnly tabIndex={-1} value={i === 0 ? 'Texto digitado' : ''} />
                   </div>
                 ))}
+                {/* opção marcada de Múltipla escolha e Caixa de seleção: mostra a cor de seleção */}
+                <div className="prolu-form__campo fm-previa-escolhas">
+                  <span className="prolu-form__label">Opções</span>
+                  <div className="prolu-form__escolhas">
+                    <label className="prolu-form__escolha"><input type="radio" checked readOnly tabIndex={-1} /><span>Múltipla escolha</span></label>
+                    <label className="prolu-form__escolha"><input type="checkbox" checked readOnly tabIndex={-1} /><span>Caixa de seleção</span></label>
+                  </div>
+                </div>
               </div>
               <button type="button" className="prolu-form__enviar" tabIndex={-1}>{textoDoBotao(estilo)}</button>
             </div>

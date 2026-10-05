@@ -35,6 +35,7 @@ export const ESTILO_PADRAO = {
   label_tamanho: 'normal', // pequeno 12px | normal 14px | grande 16px
   label_peso: 'normal', // normal | negrito
   cor_destaque: '#cbe921', // contorno do campo em foco (era o verde Prolu fixo)
+  cor_selecao: '#000000', // bolinha/caixa marcada de Múltipla escolha e Caixa de seleção (accent-color)
 }
 
 // limites dos sliders numéricos (px): [mín, máx, passo]
@@ -116,6 +117,7 @@ export function estiloParaPagina(bruto) {
     '--pf-label-tamanho': LABEL_TAMANHO[e.label_tamanho],
     '--pf-label-peso': e.label_peso === 'negrito' ? 700 : 500,
     '--pf-destaque': e.cor_destaque,
+    '--pf-selecao': e.cor_selecao,
     '--pf-botao-peso': e.botao_peso === 'negrito' ? 600 : 400,
     '--pf-botao-raio': `${e.botao_raio}px`,
   }
