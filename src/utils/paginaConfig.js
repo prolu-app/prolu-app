@@ -41,7 +41,7 @@ export const BIO_MAX = 300
 export const TITULO_LINK_MAX = 100
 export const OPACIDADE = [0.05, 0.4] // sliders de padrão/textura/luz
 
-// arquivos em /public/textures/<id>.png e /public/shadows/<id>.png (adicionados
+// arquivos em /public/textures/<id>.webp e /public/shadows/<id>.webp (adicionados
 // à parte — se faltar, o fundo fica só na cor, sem quebrar nada)
 export const TEXTURAS = [
   { id: 'madeira-fina', label: 'Madeira Fina' },
@@ -67,8 +67,8 @@ export const SOMBRAS = [
   { id: 'sombra-samambaia', label: 'Samambaia' },
   { id: 'sombra-janela-folha', label: 'Janela + Folha' },
 ]
-export const urlTextura = id => `/textures/${id}.png`
-export const urlSombra = id => `/shadows/${id}.png`
+export const urlTextura = id => `/textures/${id}.webp`
+export const urlSombra = id => `/shadows/${id}.webp`
 
 // Google Fonts carregadas sob demanda (só a escolhida). `familia` = valor do CSS.
 export const FONTES = [
