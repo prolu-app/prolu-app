@@ -65,7 +65,7 @@ function lerColunaCrm(c) {
 }
 
 // Mesmo critério do EtapasEditor/CRM: metade de cima = antes, de baixo = depois
-function posicaoNoAlvo(ev) {
+export function posicaoNoAlvo(ev) {
   const rect = ev.currentTarget.getBoundingClientRect()
   return ev.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
 }
@@ -533,8 +533,10 @@ export default function FormularioEditor() {
   )
 }
 
-function CampoCard({
-  campo, indice, total, podeEditar, focar, onFocado, onSalvar, onRemover, onMover, colunasMapeaveis, colunasUsadas,
+// Card de uma pergunta. Também usado no editor de modelos do admin
+// (AdminModelosFormulario, migration_043) com semCrm: sem o bloco "Vai para o CRM".
+export function CampoCard({
+  campo, indice, total, podeEditar, focar, onFocado, onSalvar, onRemover, onMover, colunasMapeaveis = [], colunasUsadas = new Set(), semCrm = false,
   armado, onArmar, arrastando, dragOverPos, onDragStart, onDragOver, onDrop, onDragEnd,
 }) {
   const labelRef = useRef(null)
@@ -645,7 +647,7 @@ function CampoCard({
           </select>
         </div>
 
-        <div className="fm-mapa">
+        {!semCrm && <div className="fm-mapa">
           <span className="fm-mapa-label">Vai para o CRM</span>
           <select
             className="fm-tipo fm-mapa-select"
@@ -662,7 +664,7 @@ function CampoCard({
             ))}
           </select>
           {!campo.crm_coluna_id && <span className="fm-mapa-dica">Fica só no drawer do registro, não vira coluna</span>}
-        </div>
+        </div>}
 
         {comOpcoes && opcoesDaColuna && (
           <div className="fm-opcoes">

@@ -167,6 +167,27 @@
 .fm-textarea { resize: vertical; font-family: inherit; }
 
 /* liga/desliga */
+/* "Novo formulário": escolher entre zero e modelos (migration_043) */
+.fm-novo-modal { width: min(560px, calc(100vw - 32px)); }
+.fm-novo-sub { margin: -4px 0 14px; font-size: 13.5px; color: var(--ink-60); }
+.fm-novo-opcoes { display: flex; flex-direction: column; gap: 8px; max-height: min(52vh, 460px); overflow-y: auto; margin-bottom: 4px; }
+.fm-novo-opcao {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 100%;
+  padding: 12px 14px; border: 1px solid var(--ink-divider, #e4e3dc); border-radius: 12px;
+  background: var(--white, #fff); cursor: pointer; font: inherit; text-align: left; color: var(--ink);
+  transition: border-color 0.15s, background 0.15s;
+}
+.fm-novo-opcao:hover:not(:disabled) { border-color: var(--ink); background: var(--cream); }
+.fm-novo-opcao:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.fm-novo-opcao:disabled { cursor: default; opacity: 0.6; }
+.fm-novo-zero { border-style: dashed; }
+.fm-novo-opcao-nome { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+.fm-novo-opcao-nome svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2.2; fill: none; }
+.fm-novo-opcao-desc { font-size: 12.5px; color: var(--ink-60); line-height: 1.4; }
+.fm-novo-opcao-meta { font-size: 11.5px; color: var(--ink-40); }
+.fm-novo-carregando { font-size: 13px; color: var(--ink-40); margin: 6px 2px; }
+.fm-novo-voltar { margin-right: auto; }
+
 .fm-switch {
   position: relative; flex-shrink: 0; width: 34px; height: 20px; padding: 0;
   border: none; border-radius: 99px; background: var(--ink-divider); cursor: pointer;

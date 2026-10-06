@@ -62,6 +62,11 @@ export default function Formularios() {
   const [lista, setLista] = useState([])
   const [loading, setLoading] = useState(true)
   const [modalNovo, setModalNovo] = useState(false)
+  // "Novo formulário": primeiro escolhe começar do zero ou de um modelo da
+  // Prolu (form_templates, migration_043); "zero" segue para nome/descrição
+  const [passoNovo, setPassoNovo] = useState('escolher') // escolher | zero
+  const [modelosForm, setModelosForm] = useState(null) // null = carregando
+  const [criandoModeloId, setCriandoModeloId] = useState(null)
   const [nomeNovo, setNomeNovo] = useState('')
   const [descNovo, setDescNovo] = useState('')
   const [criando, setCriando] = useState(false)
@@ -97,24 +102,70 @@ export default function Formularios() {
     toast(ativo ? 'Formulário ativado' : 'Formulário desativado')
   }
 
-  async function criar() {
-    if (!nomeNovo.trim() || criando) return
-    setCriando(true)
-    // endereço público gerado do nome; é único no sistema todo (outro
-    // escritório pode já ter usado) — em colisão (23505) tenta com sufixo
-    const base = slugify(nomeNovo)
+  // endereço público gerado do nome; único dentro do escritório — em
+  // colisão (23505) tenta com sufixo
+  async function inserirFormulario(nome, descricao) {
+    const base = slugify(nome)
     let data = null, error = null
     for (let tentativa = 0; tentativa < 4; tentativa++) {
       ;({ data, error } = await supabase
         .from('formularios')
-        .insert({ empresa_id: activeEmpresaId, nome: nomeNovo.trim(), descricao: descNovo.trim() || null, slug: tentativa ? comSufixo(base) : base })
+        .insert({ empresa_id: activeEmpresaId, nome, descricao, slug: tentativa ? comSufixo(base) : base })
         .select('id')
         .single())
       if (error?.code !== '23505') break
     }
+    return { data, error }
+  }
+
+  async function criar() {
+    if (!nomeNovo.trim() || criando) return
+    setCriando(true)
+    const { data, error } = await inserirFormulario(nomeNovo.trim(), descNovo.trim() || null)
     setCriando(false)
     if (error || !data) { console.error('[formularios] criar', error); toast('Erro ao criar formulário'); return }
     navigate(`/formularios/${data.id}`)
+  }
+
+  async function abrirNovo() {
+    setPassoNovo('escolher')
+    setModelosForm(null)
+    setModalNovo(true)
+    const { data, error } = await supabase.from('form_templates')
+      .select('id, nome, descricao, form_template_campos(count)').eq('ativo', true).order('ordem').order('nome')
+    if (error) console.error('[formularios] modelos', error)
+    const lista = (data || []).map(m => ({ ...m, qtdCampos: m.form_template_campos?.[0]?.count ?? 0 }))
+    setModelosForm(lista)
+    if (!lista.length) setPassoNovo('zero') // sem modelos: vai direto para o nome
+  }
+
+  // a partir de um modelo: formulário com o nome do modelo (editável depois)
+  // e os campos copiados, sem coluna do CRM — o escritório mapeia no editor
+  async function criarDoModelo(modelo) {
+    if (criandoModeloId) return
+    setCriandoModeloId(modelo.id)
+    try {
+      const { data: camposModelo, error: e1 } = await supabase.from('form_template_campos')
+        .select('label, tipo, obrigatorio, ordem, opcoes').eq('template_id', modelo.id).order('ordem')
+      if (e1) throw e1
+      const { data: form, error: e2 } = await inserirFormulario(modelo.nome, modelo.descricao || null)
+      if (e2 || !form) throw e2 || new Error('sem formulário')
+      if (camposModelo.length) {
+        const { error: e3 } = await supabase.from('formulario_campos').insert(camposModelo.map((c, i) => ({
+          formulario_id: form.id, label: c.label, tipo: c.tipo, obrigatorio: c.obrigatorio, ordem: i,
+          opcoes: Array.isArray(c.opcoes) ? c.opcoes : [], crm_coluna_id: null,
+        })))
+        if (e3) {
+          await supabase.from('formularios').delete().eq('id', form.id) // não deixa formulário pela metade
+          throw e3
+        }
+      }
+      navigate(`/formularios/${form.id}`)
+    } catch (e) {
+      console.error('[formularios] criar do modelo', e)
+      toast('Não foi possível criar o formulário a partir do modelo')
+      setCriandoModeloId(null)
+    }
   }
 
   async function confirmarAcao() {
@@ -144,7 +195,9 @@ export default function Formularios() {
   }
 
   function fecharModal() {
+    if (criandoModeloId) return
     setModalNovo(false)
+    setPassoNovo('escolher')
     setNomeNovo('')
     setDescNovo('')
   }
@@ -157,7 +210,7 @@ export default function Formularios() {
           <div className="page-sub">Formulários de captação do escritório — um para cada origem, se quiser.</div>
         </div>
         {podeEditar && (
-          <button className="btn-primary" onClick={() => setModalNovo(true)}>
+          <button className="btn-primary" onClick={abrirNovo}>
             <IconPlus /> Novo formulário
           </button>
         )}
@@ -245,7 +298,35 @@ export default function Formularios() {
         />
       )}
 
-      {modalNovo && (
+      {modalNovo && passoNovo === 'escolher' && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) fecharModal() }}>
+          <div className="modal fm-novo-modal" role="dialog" aria-modal="true" aria-labelledby="fm-novo-titulo">
+            <div className="modal-title" id="fm-novo-titulo">Novo formulário</div>
+            <p className="fm-novo-sub">Comece do zero ou a partir de um modelo pronto da Prolu.</p>
+            <div className="fm-novo-opcoes">
+              <button type="button" className="fm-novo-opcao fm-novo-zero" onClick={() => setPassoNovo('zero')} disabled={!!criandoModeloId}>
+                <span className="fm-novo-opcao-nome"><IconPlus /> Começar do zero</span>
+                <span className="fm-novo-opcao-desc">Formulário em branco — você cria as perguntas.</span>
+              </button>
+              {modelosForm === null && <p className="fm-novo-carregando">Carregando modelos…</p>}
+              {modelosForm?.map(m => (
+                <button key={m.id} type="button" className="fm-novo-opcao" onClick={() => criarDoModelo(m)} disabled={!!criandoModeloId}>
+                  <span className="fm-novo-opcao-nome">{m.nome}</span>
+                  {m.descricao && <span className="fm-novo-opcao-desc">{m.descricao}</span>}
+                  <span className="fm-novo-opcao-meta">
+                    {criandoModeloId === m.id ? 'Criando formulário…' : `${m.qtdCampos} ${m.qtdCampos === 1 ? 'campo' : 'campos'} · Modelo Prolu`}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={fecharModal} disabled={!!criandoModeloId}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalNovo && passoNovo === 'zero' && (
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) fecharModal() }}>
           <div className="modal">
             <div className="modal-title">Novo formulário</div>
@@ -270,6 +351,7 @@ export default function Formularios() {
               />
             </div>
             <div className="modal-actions">
+              {modelosForm?.length > 0 && <button className="btn-cancel fm-novo-voltar" onClick={() => setPassoNovo('escolher')}>Voltar</button>}
               <button className="btn-cancel" onClick={fecharModal}>Cancelar</button>
               <button className="btn-confirm" onClick={criar} disabled={criando || !nomeNovo.trim()}>
                 {criando ? 'Criando…' : 'Criar'}
