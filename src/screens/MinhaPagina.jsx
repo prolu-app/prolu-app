@@ -77,6 +77,41 @@ async function enviarImagem(file, { empresaId, prefixo, comprimir, toast }) {
   return supabase.storage.from(BUCKET).getPublicUrl(caminho).data.publicUrl
 }
 
+// Prévia fiel ao celular: a página é desenhada com 390px de largura (um
+// celular comum) e reduzida com transform: scale até caber na moldura 9:16.
+// A escala acompanha o tamanho da moldura (ResizeObserver); a tela interna tem
+// a altura da moldura ÷ escala, então nada é cortado — o conteúdo rola dentro.
+const PREVIA_LARGURA_BASE = 390
+
+function PreviaCelular({ children }) {
+  const molduraRef = useRef(null)
+  const [medida, setMedida] = useState({ escala: 1, altura: 0 })
+
+  useEffect(() => {
+    const el = molduraRef.current
+    if (!el) return
+    const medir = () => {
+      const escala = el.clientWidth / PREVIA_LARGURA_BASE
+      if (escala > 0) setMedida({ escala, altura: el.clientHeight / escala })
+    }
+    medir()
+    const obs = new ResizeObserver(medir)
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  return (
+    <div className="mp-previa-moldura" ref={molduraRef}>
+      <div
+        className="mp-previa-tela"
+        style={{ width: PREVIA_LARGURA_BASE, height: medida.altura || undefined, transform: `scale(${medida.escala})`, transformOrigin: 'top left' }}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
 function UploadPagina({ url, rotulo, empresaId, prefixo, comprimir, redonda, off, onMudar, onEnviada }) {
   const toast = useToast()
   const inputRef = useRef(null)
@@ -488,10 +523,10 @@ export default function MinhaPagina() {
 
         <aside className="mp-editor-previa" aria-label="Prévia da página">
           <div className="mp-previa-rotulo">Prévia</div>
-          <div className="mp-previa-moldura">
+          <PreviaCelular>
             {/* normalizada como na página pública: a prévia mostra exatamente o que vai ao ar */}
             <PaginaView config={normalizarPagina(config)} links={linksPrevia} slugEscritorio={empresa.slug} escritorio={empresa.nome} previa />
-          </div>
+          </PreviaCelular>
           {podeEditar && (
             <div className={`mp-status${hasUnsavedChanges ? ' pendente' : ' salvo'}`} role="status">
               {hasUnsavedChanges ? '● Alterações não salvas' : '✓ Salvo'}

@@ -30,13 +30,15 @@
   aspect-ratio: 9 / 16;
   border: 2px solid #333;
   border-radius: 36px;
-  overflow: hidden auto;
-  scrollbar-width: thin;
+  overflow: hidden;
+  position: relative;
   background: #fff;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
 }
-.mp-previa-moldura .mp-pagina { min-height: 100%; }
-.mp-previa-moldura .mp-conteudo { padding-top: 28px; }
+/* tela de 390px reduzida por transform: scale (PreviaCelular); rola por dentro */
+.mp-previa-tela { position: absolute; top: 0; left: 0; overflow: hidden auto; scrollbar-width: none; }
+.mp-previa-tela::-webkit-scrollbar { display: none; }
+.mp-previa-tela .mp-pagina { min-height: 100%; }
 
 /* links */
 .mp-links-lista { display: flex; flex-direction: column; gap: 10px; }
