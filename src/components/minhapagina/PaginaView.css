@@ -1,0 +1,85 @@
+/* Minha Página (PaginaView.jsx) — mobile-first, coluna de até 480px */
+.mp-pagina {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-repeat: repeat;
+  isolation: isolate;
+}
+/* textura / luz natural: imagem por cima da cor, com opacidade própria.
+   Se o arquivo não existir, fica só a cor. */
+.mp-pagina--imagem::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: var(--mp-fundo-img);
+  background-size: cover;
+  background-position: center;
+  opacity: var(--mp-fundo-op, 0.15);
+  pointer-events: none;
+}
+.mp-pagina--previa { min-height: 100%; }
+
+.mp-conteudo {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 40px 20px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.mp-banner {
+  width: 100%;
+  aspect-ratio: 3 / 1;
+  object-fit: cover;
+  border-radius: 16px;
+  margin-bottom: 16px;
+}
+.mp-foto {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  margin-bottom: 14px;
+  background: #fff;
+}
+.mp-foto--quadrado { border-radius: 0; }
+.mp-foto--arredondado { border-radius: 18px; }
+.mp-foto--redondo { border-radius: 50%; }
+/* com banner, a foto sobe e fica parcialmente sobre ele */
+.mp-foto--sobre-banner { margin-top: -64px; box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.9); }
+
+.mp-nome { margin: 0; font-size: 22px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.mp-bio { margin: 8px 0 0; font-size: 15px; line-height: 1.5; white-space: pre-line; overflow-wrap: anywhere; }
+
+.mp-links { width: 100%; display: flex; flex-direction: column; gap: 12px; margin-top: 28px; }
+.mp-link {
+  display: block;
+  width: 100%;
+  padding: 15px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  overflow-wrap: anywhere;
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+.mp-link:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.mp-link:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+
+.mp-rodape { margin-top: 40px; font-size: 13px; text-decoration: none; opacity: 0.8; }
+.mp-rodape:hover { opacity: 1; text-decoration: underline; }
+
+/* página pública: carregando / indisponível */
+.mp-estado {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  font-family: 'Rubik', sans-serif;
+  color: #555;
+  background: #f8f7f5;
+}

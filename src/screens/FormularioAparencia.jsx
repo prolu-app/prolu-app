@@ -19,7 +19,7 @@ import './FormularioPublico.css'
 // o embed cru continua estilizado só pelo CSS do site. Depois do envio vale
 // para a página e para os dois modos de embed.
 
-function Segmentos({ valor, opcoes, onChange, disabled, rotulo }) {
+export function Segmentos({ valor, opcoes, onChange, disabled, rotulo }) {
   return (
     <div className="fm-seg" role="radiogroup" aria-label={rotulo}>
       {opcoes.map(o => (
@@ -33,7 +33,7 @@ function Segmentos({ valor, opcoes, onChange, disabled, rotulo }) {
   )
 }
 
-function Cor({ valor, onChange, disabled, rotulo }) {
+export function Cor({ valor, onChange, disabled, rotulo }) {
   return (
     <label className={`fm-cor${disabled ? ' off' : ''}`}>
       <input type="color" value={valor} onChange={e => onChange(e.target.value)} disabled={disabled} aria-label={rotulo} />
@@ -42,7 +42,7 @@ function Cor({ valor, onChange, disabled, rotulo }) {
   )
 }
 
-function Linha({ rotulo, dica, children }) {
+export function Linha({ rotulo, dica, children }) {
   return (
     <div className="fm-publico-row">
       <span className="fm-publico-label">{rotulo}</span>
@@ -61,7 +61,7 @@ const LABEL_TAMANHO = [{ value: 'pequeno', label: 'Pequeno' }, { value: 'normal'
 
 // cantos arredondados: slider + valor em px
 // slider em px (cantos, larguras de borda); limites = [mín, máx, passo]
-function Raio({ valor, max, limites, onChange, disabled, rotulo }) {
+export function Raio({ valor, max, limites, onChange, disabled, rotulo }) {
   const [min, maximo, passo] = limites || [0, max, 1]
   return (
     <div className="fm-raio">
@@ -71,7 +71,7 @@ function Raio({ valor, max, limites, onChange, disabled, rotulo }) {
   )
 }
 
-function Grupo({ titulo, children }) {
+export function Grupo({ titulo, children }) {
   return (
     <div className="fm-estilo-grupo">
       <div className="fm-estilo-grupo-titulo">{titulo}</div>

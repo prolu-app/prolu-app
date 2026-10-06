@@ -15,6 +15,19 @@ export function slugify(texto) {
   return s.length < 3 ? `${s}-form` : s
 }
 
+// O endereço do escritório também é a URL da Minha Página na raiz do app
+// (app.prolu.com.br/<slug>, migration_041): não pode colidir com as telas.
+// Mesma lista da função slug_reservado() no banco.
+export const SLUGS_RESERVADOS = [
+  'admin', 'aceitar-convite', 'agente-prolu', 'api', 'app', 'assets', 'avisos',
+  'base-conhecimento', 'cadastro', 'cliente-ideal', 'clientes', 'configuracoes',
+  'contato', 'crm', 'dashboard', 'embed', 'entrar', 'equipe', 'formularios',
+  'indicadores', 'login', 'logout', 'minha-pagina', 'onboarding', 'plano-pratico',
+  'precificacao', 'privacidade', 'prolu', 'shadows', 'static', 'suporte',
+  'termos', 'textures', 'www',
+]
+export function slugReservado(s) { return SLUGS_RESERVADOS.includes((s || '').toLowerCase()) }
+
 export function slugValido(s) {
   return SLUG_RE.test(s) && s.length >= 3 && s.length <= 60
 }

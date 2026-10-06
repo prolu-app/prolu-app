@@ -240,6 +240,7 @@ export function AuthProvider({ children }) {
     crm:              isEmpresaMaster,
     precificacao:     isEmpresaMaster,
     formularios:      isEmpresaMaster, // seção Comercial: só master/prolu_admin
+    minhaPagina:      isEmpresaMaster,
     dashboard:        isEmpresaMaster,
     indicadores:      isEmpresaMaster,
     // seção Ferramentas inteira fica fora do perfil comum

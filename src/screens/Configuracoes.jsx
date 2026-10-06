@@ -5,7 +5,7 @@ import { useAuth, roleValido } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { IconPlus, IconTrash, IconClose } from '../components/Icons.jsx'
-import { slugValido } from '../utils/slug.js'
+import { slugValido, slugReservado } from '../utils/slug.js'
 import ConfirmarSlugModal from '../components/ConfirmarSlugModal.jsx'
 import { formatarTelefone, mascaraTelefone, telefoneParaSalvar } from '../utils/telefone.js'
 import './Configuracoes.css'
@@ -533,7 +533,8 @@ function EnderecoEscritorio({ activeEmpresaId, podeEditar, toast }) {
   }, [activeEmpresaId])
 
   const limpo = valor.trim().toLowerCase()
-  const invalido = limpo !== '' && !slugValido(limpo)
+  const reservado = slugReservado(limpo)
+  const invalido = limpo !== '' && (!slugValido(limpo) || reservado)
   const alterado = limpo !== salvo
 
   function cancelarEdicao() {
@@ -545,6 +546,7 @@ function EnderecoEscritorio({ activeEmpresaId, podeEditar, toast }) {
   function pedirConfirmacao() {
     if (!alterado) return
     if (!slugValido(limpo)) { setErro(MSG_FORMATO); return }
+    if (reservado) { setErro(MSG_RESERVADO); return }
     setErro(null)
     setConfirmando(true)
   }
@@ -556,6 +558,7 @@ function EnderecoEscritorio({ activeEmpresaId, podeEditar, toast }) {
     if (error) {
       setErro(error.code === '23505' ? 'Este endereço já está em uso. Escolha outro.'
         : error.code === '42501' ? 'Somente o Master pode alterar o endereço do escritório.'
+        : /reservado/i.test(error.message || '') ? MSG_RESERVADO
         : 'Não foi possível salvar o endereço.')
       setConfirmando(false)
       return
@@ -597,7 +600,7 @@ function EnderecoEscritorio({ activeEmpresaId, podeEditar, toast }) {
           </>
         )}
       </div>
-      {(erro || invalido) && <div className="cfg-endereco-erro" role="alert">{erro || MSG_FORMATO}</div>}
+      {(erro || invalido) && <div className="cfg-endereco-erro" role="alert">{erro || (reservado ? MSG_RESERVADO : MSG_FORMATO)}</div>}
       <div className="cfg-endereco-aviso" id="cfg-slug-aviso">⚠️ Alterar este endereço derruba todos os links e embeds existentes do seu escritório.</div>
 
       {confirmando && (
@@ -615,6 +618,7 @@ function EnderecoEscritorio({ activeEmpresaId, podeEditar, toast }) {
 }
 
 const MSG_FORMATO = 'Use só letras minúsculas, números e hífens (entre 3 e 60 caracteres).'
+const MSG_RESERVADO = 'Esse endereço é reservado pelo Prolu. Escolha outro.'
 
 // Notificações por WhatsApp (migration_038): número do escritório que recebe
 // os avisos de novos leads (mensagem enviada pelo número da Prolu) e o

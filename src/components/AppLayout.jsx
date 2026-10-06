@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import {
   IconInicio, IconBase, IconCRM, IconDashboard,
   IconPlano, IconCliente, IconIndicadores, IconBurger, IconClose, IconAgente, IconBell,
-  IconBuilding, IconSettings, IconContacts, IconMoney, IconFormulario, IconChevronLeft, IconChevronRight,
+  IconBuilding, IconSettings, IconContacts, IconMoney, IconFormulario, IconChevronLeft, IconChevronRight, IconLayoutTemplate,
 } from './Icons.jsx'
 import './AppLayout.css'
 
@@ -21,6 +21,7 @@ const NAV_SECTIONS = [
       { to: '/indicadores', label: 'Indicadores', Icon: IconIndicadores, access: 'indicadores' },
       { to: '/precificacao', label: 'Precificação', Icon: IconMoney, access: 'precificacao' },
       { to: '/formularios', label: 'Formulários', Icon: IconFormulario, access: 'formularios' },
+      { to: '/minha-pagina', label: 'Minha Página', Icon: IconLayoutTemplate, access: 'minhaPagina' },
     ],
   },
   {

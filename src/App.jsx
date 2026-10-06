@@ -7,6 +7,8 @@ import Login from './screens/Login.jsx'
 import Onboarding from './screens/Onboarding.jsx'
 import AceitarConvite from './screens/AceitarConvite.jsx'
 import FormularioPublico from './screens/FormularioPublico.jsx'
+import MinhaPaginaPublica from './screens/MinhaPaginaPublica.jsx'
+import { slugReservado } from './utils/slug.js'
 
 import Inicio from './screens/Inicio.jsx'
 import BaseConhecimento from './screens/BaseConhecimento.jsx'
@@ -18,6 +20,7 @@ import PrecificacaoEtiquetas from './screens/PrecificacaoEtiquetas.jsx'
 import Clientes from './screens/Clientes.jsx'
 import Formularios from './screens/Formularios.jsx'
 import FormularioEditor from './screens/FormularioEditor.jsx'
+import MinhaPagina from './screens/MinhaPagina.jsx'
 import Dashboard from './screens/Dashboard.jsx'
 import PlanoPratico from './screens/PlanoPratico.jsx'
 import ClienteIdeal from './screens/ClienteIdeal.jsx'
@@ -69,6 +72,18 @@ export default function App() {
     )
   }
 
+  // Minha Página (/<slug do escritório>, migration_041): sem login, fora do
+  // AppLayout. Só caminhos de um nível no formato de slug que não sejam telas
+  // do app (SLUGS_RESERVADOS cobre todas as rotas abaixo).
+  const raiz = location.pathname.match(/^\/([a-z0-9]+(?:-[a-z0-9]+)*)\/?$/)
+  if (raiz && raiz[1].length >= 3 && !slugReservado(raiz[1])) {
+    return (
+      <Routes>
+        <Route path="/:slugEscritorio" element={<MinhaPaginaPublica />} />
+      </Routes>
+    )
+  }
+
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
@@ -104,6 +119,7 @@ export default function App() {
         <Route path="/clientes" element={<RotaProtegida temAcesso={acesso.contatos}><Clientes /></RotaProtegida>} />
         <Route path="/formularios" element={<RotaProtegida temAcesso={acesso.formularios}><Formularios /></RotaProtegida>} />
         <Route path="/formularios/:id" element={<RotaProtegida temAcesso={acesso.formularios}><FormularioEditor /></RotaProtegida>} />
+        <Route path="/minha-pagina" element={<RotaProtegida temAcesso={acesso.minhaPagina}><MinhaPagina /></RotaProtegida>} />
         <Route path="/dashboard" element={<RotaProtegida temAcesso={acesso.dashboard}><Dashboard /></RotaProtegida>} />
         <Route path="/plano-pratico" element={<RotaProtegida temAcesso={acesso.planoPratico}><PlanoPratico /></RotaProtegida>} />
         <Route path="/cliente-ideal" element={<RotaProtegida temAcesso={acesso.clienteIdeal}><ClienteIdeal /></RotaProtegida>} />

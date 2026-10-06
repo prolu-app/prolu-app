@@ -152,6 +152,9 @@ export const IconSettings = (p) => (
 export const IconFormulario = (p) => (
   <svg viewBox="0 0 24 24" {...p}><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
 )
+export const IconLayoutTemplate = (p) => (
+  <svg viewBox="0 0 24 24" {...p}><rect x="3" y="3" width="18" height="7" rx="1" /><rect x="3" y="14" width="9" height="7" rx="1" /><rect x="16" y="14" width="5" height="7" rx="1" /></svg>
+)
 export const IconContacts = (p) => (
   <svg viewBox="0 0 24 24" {...p}><rect x="3" y="4" width="15" height="16" rx="2" /><circle cx="10.5" cy="10" r="2.3" /><path d="M7 16.5c0-1.7 1.4-3 3.5-3s3.5 1.3 3.5 3" /><path d="M20.3 8h1.7M20.3 12h1.7M20.3 16h1.7" /></svg>
 )

@@ -25,6 +25,28 @@ async function carregar(file) {
 
 const paraBlob = (canvas, qualidade) => new Promise(ok => canvas.toBlob(ok, 'image/jpeg', qualidade))
 
+// Foto de perfil da Minha Página: aparece com ~96px — até 512px no lado maior.
+// PNG/WEBP continuam no formato (logo com fundo transparente); JPEG segue JPEG.
+const FOTO_MAX = 512
+export async function comprimirFoto(file) {
+  if (file.type === 'image/gif') return file
+  const img = await carregar(file)
+  const escala = Math.min(1, FOTO_MAX / Math.max(img.width, img.height))
+  if (escala === 1 && file.size <= ALVO_BYTES) { img.close?.(); return file }
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(img.width * escala)
+  canvas.height = Math.round(img.height * escala)
+  const tipo = file.type === 'image/jpeg' ? 'image/jpeg' : file.type === 'image/webp' ? 'image/webp' : 'image/png'
+  const ctx = canvas.getContext('2d')
+  if (tipo === 'image/jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height) }
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+  img.close?.()
+  const blob = await new Promise(ok => canvas.toBlob(ok, tipo, 0.85))
+  if (!blob || blob.size >= file.size) return file
+  const ext = { 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/png': 'png' }[tipo]
+  return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.' + ext, { type: tipo })
+}
+
 export async function comprimirCapa(file) {
   if (file.type === 'image/gif') return file
   // já leve e em JPEG: não recomprime (cada passada perde qualidade)
