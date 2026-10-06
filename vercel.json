@@ -18,6 +18,12 @@
       "has": [{ "type": "host", "value": "prolu.link" }],
       "destination": "https://prolu.com.br",
       "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "www.prolu.link" }],
+      "destination": "https://prolu.com.br",
+      "permanent": false
     }
   ],
   "rewrites": [
