@@ -4,7 +4,8 @@
 // arquivo ainda não existe mostra só o nome, sobre um cinza.
 
 import { useState } from 'react'
-import { Cor, Linha } from '../../screens/FormularioAparencia.jsx'
+import { Linha } from '../../screens/FormularioAparencia.jsx'
+import ColorPicker from './ColorPicker.jsx'
 import { CATEGORIAS_PATTERN, patternsDaCategoria } from '../../utils/pagePatterns.js'
 import { OPACIDADE, SOMBRAS, TEXTURAS, urlSombra, urlTextura } from '../../utils/paginaConfig.js'
 
@@ -60,7 +61,7 @@ export default function FundoSelector({ config, mudar, off }) {
 
   const corDeFundo = (
     <Linha rotulo="Cor de fundo">
-      <Cor rotulo="Cor de fundo da página" valor={config.fundo_cor} disabled={off} onChange={v => mudar({ fundo_cor: v })} />
+      <ColorPicker rotulo="Cor de fundo da página" valor={config.fundo_cor} disabled={off} onChange={v => mudar({ fundo_cor: v })} />
     </Linha>
   )
   const opacidadeImagem = (
@@ -110,7 +111,7 @@ export default function FundoSelector({ config, mudar, off }) {
           {config.fundo_tipo === 'pattern' && (
             <>
               <Linha rotulo="Cor do padrão">
-                <Cor rotulo="Cor do padrão" valor={config.fundo_pattern_cor} disabled={off} onChange={v => mudar({ fundo_pattern_cor: v })} />
+                <ColorPicker rotulo="Cor do padrão" valor={config.fundo_pattern_cor} disabled={off} onChange={v => mudar({ fundo_pattern_cor: v })} />
               </Linha>
               <Linha rotulo="Intensidade">
                 <Opacidade rotulo="Intensidade do padrão" valor={config.fundo_pattern_opacity} disabled={off} onChange={v => mudar({ fundo_pattern_opacity: v })} />

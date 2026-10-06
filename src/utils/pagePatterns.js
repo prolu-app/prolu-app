@@ -79,11 +79,11 @@ const LISTA = [
   // ── Orgânico ──
   { id: 'onda', label: 'Onda', categoria: 'Orgânico',
     fn: (c, o) => svg(40, 20, traco(c, o, '<path d="M0 10Q10 0 20 10T40 10"/>')) },
-  { id: 'escama', label: 'Escama', categoria: 'Orgânico',
+  { id: 'escama', label: 'Arco', categoria: 'Orgânico',
     fn: (c, o) => svg(20, 20, traco(c, o, '<path d="M0 20A10 10 0 0 1 20 20M-10 10A10 10 0 0 1 10 10M10 10A10 10 0 0 1 30 10"/>')) },
   { id: 'topografia', label: 'Topografia', categoria: 'Orgânico',
     fn: (c, o) => svg(TOPO, TOPO, traco(c, o, `<path d="${TOPO_PATH}"/>`, 0.8)) },
-  { id: 'arco', label: 'Arco', categoria: 'Orgânico',
+  { id: 'arco', label: 'Escama', categoria: 'Orgânico',
     // semicírculos para baixo em fileiras desencontradas (escama invertida):
     // o fundo de cada arco encosta nas pontas dos arcos da fileira de baixo
     fn: (c, o) => svg(40, 40, traco(c, o,

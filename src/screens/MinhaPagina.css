@@ -1,7 +1,8 @@
 /* Editor da Minha Página (MinhaPagina.jsx) — configuração à esquerda, prévia à direita */
 .mp-editor {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  /* prévia 9:16: largura limitada para o celular inteiro caber na altura da tela */
+  grid-template-columns: minmax(0, 1fr) min(340px, calc((100vh - 200px) * 9 / 16));
   gap: 28px;
   align-items: start;
 }
@@ -9,7 +10,14 @@
 .mp-editor-config > section { margin-top: 18px; }
 /* .fm-publico (display: flex) anularia o atributo hidden: só a aba ativa aparece */
 .mp-editor-config > section[hidden] { display: none !important; }
+.mp-topo-acoes { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .mp-abrir { text-decoration: none; display: inline-flex; align-items: center; }
+.mp-salvar:disabled { background: var(--ink-divider, #e4e3dc); color: var(--ink-60, #8a8a84); cursor: default; box-shadow: none; }
+
+/* indicador abaixo da prévia */
+.mp-status { margin-top: 10px; font-size: 12px; font-weight: 500; text-align: center; }
+.mp-status.pendente { color: #c77700; }
+.mp-status.salvo { color: #2e7d32; }
 
 /* prévia: "celular" fixo enquanto rola a configuração */
 .mp-editor-previa { position: sticky; top: 20px; }
@@ -18,12 +26,14 @@
   letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-60, #6b6b66); margin-bottom: 8px;
 }
 .mp-previa-moldura {
-  height: min(720px, calc(100vh - 120px));
-  border: 10px solid #121210;
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  border: 2px solid #333;
   border-radius: 36px;
   overflow: hidden auto;
+  scrollbar-width: thin;
   background: #fff;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
 }
 .mp-previa-moldura .mp-pagina { min-height: 100%; }
 .mp-previa-moldura .mp-conteudo { padding-top: 28px; }
@@ -86,7 +96,7 @@
 
 @media (max-width: 1100px) {
   .mp-editor { grid-template-columns: minmax(0, 1fr); }
-  .mp-editor-previa { position: static; max-width: 380px; margin: 0 auto; width: 100%; }
+  .mp-editor-previa { position: static; max-width: 340px; margin: 0 auto; width: 100%; }
 }
 @media (max-width: 600px) {
   .mp-link-card { flex-wrap: wrap; }
