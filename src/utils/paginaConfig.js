@@ -18,6 +18,8 @@ export const PAGINA_PADRAO = {
   botao_cor: '#1a1a1a',
   botao_cor_texto: '#ffffff',
   botao_cor_contorno: '#1a1a1a',
+  botao_cor_texto_contorno: '', // contorno: '' = mesma cor do contorno
+  botao_espessura_contorno: 2, // contorno: 1 | 2 | 3 px
   botao_arredondamento: 'md', // none | sm | md | lg | full
   botao_sombra: 'none', // none | soft | strong | hard
 
@@ -105,6 +107,7 @@ const IMG_RE = /^https:\/\/[^\s"'()\\]+$/i
 const OPCOES = {
   foto_perfil_formato: ['quadrado', 'arredondado', 'redondo'],
   botao_estilo: ['solido', 'contorno'],
+  botao_espessura_contorno: [1, 2, 3],
   botao_arredondamento: ['none', 'sm', 'md', 'lg', 'full'],
   botao_sombra: ['none', 'soft', 'strong', 'hard'],
   fundo_tipo: ['cor', 'pattern', 'textura', 'sombra'],
@@ -125,6 +128,7 @@ export function normalizarPagina(bruto) {
     else if (OPACIDADES.includes(k)) { if (Number.isFinite(v)) p[k] = Math.min(OPACIDADE[1], Math.max(OPACIDADE[0], Math.round(v * 100) / 100)) }
     else if (k === 'fundo_pattern') { if (PATTERNS[v]) p[k] = v }
     else if (k === 'fundo_imagem') { if ([...TEXTURAS, ...SOMBRAS].some(t => t.id === v)) p[k] = v }
+    else if (k === 'botao_cor_texto_contorno') { if (v === '' || (typeof v === 'string' && COR_RE.test(v))) p[k] = v.toLowerCase() }
     else if (typeof PAGINA_PADRAO[k] === 'boolean') { if (typeof v === 'boolean') p[k] = v }
     else if (typeof v === 'string' && COR_RE.test(v)) p[k] = v.toLowerCase()
   }
@@ -139,15 +143,29 @@ const RAIO = { none: '0px', sm: '4px', md: '8px', lg: '16px', full: '9999px' }
 const SOMBRA = { none: 'none', soft: '0 2px 8px rgba(0,0,0,0.12)', strong: '0 4px 16px rgba(0,0,0,0.25)', hard: '4px 4px 0px rgba(0,0,0,0.8)' }
 
 // override por link (pagina_links.estilo): só as mesmas chaves dos botões
-const CHAVES_BOTAO = ['botao_estilo', 'botao_cor', 'botao_cor_texto', 'botao_cor_contorno', 'botao_arredondamento', 'botao_sombra']
+const CHAVES_BOTAO = ['botao_estilo', 'botao_cor', 'botao_cor_texto', 'botao_cor_contorno', 'botao_cor_texto_contorno', 'botao_espessura_contorno', 'botao_arredondamento', 'botao_sombra']
 export function estiloDoBotao(p, override) {
   const o = override && typeof override === 'object'
     ? normalizarPagina({ ...p, ...Object.fromEntries(CHAVES_BOTAO.filter(k => k in override).map(k => [k, override[k]])) })
     : p
   const base = { borderRadius: RAIO[o.botao_arredondamento], boxShadow: SOMBRA[o.botao_sombra] }
   return o.botao_estilo === 'contorno'
-    ? { ...base, background: 'transparent', border: `2px solid ${o.botao_cor_contorno}`, color: o.botao_cor_contorno }
+    ? { ...base, background: 'transparent', border: `${o.botao_espessura_contorno}px solid ${o.botao_cor_contorno}`, color: o.botao_cor_texto_contorno || o.botao_cor_contorno }
     : { ...base, background: o.botao_cor, border: `2px solid ${o.botao_cor}`, color: o.botao_cor_texto }
+}
+
+// imagem do link (pagina_links.imagem_url / imagem_modo, migration_042)
+// ícone: recorte acompanha o canto do botão (reto = quadrado, pílula = círculo)
+const RAIO_ICONE = { none: '0px', sm: '3px', md: '6px', lg: '10px', full: '50%' }
+export const raioDoIcone = p => RAIO_ICONE[p.botao_arredondamento]
+// card (banner): reto, P, M ou G — pílula vira G (16px), não pílula de verdade
+export const raioDoCard = p => (p.botao_arredondamento === 'full' ? RAIO.lg : RAIO[p.botao_arredondamento])
+export const MODOS_IMAGEM = ['icone', 'banner']
+// imagem só https (mesma regra das fotos); modo ausente com imagem = ícone
+export function imagemDoLink(link) {
+  const url = typeof link?.imagem_url === 'string' && IMG_RE.test(link.imagem_url) ? link.imagem_url : null
+  if (!url) return null
+  return { url, modo: MODOS_IMAGEM.includes(link.imagem_modo) ? link.imagem_modo : 'icone' }
 }
 
 // fundo: cor + (padrão em background-image) ou (imagem no ::before, com opacidade)

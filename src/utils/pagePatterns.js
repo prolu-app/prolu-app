@@ -15,6 +15,33 @@ const traco = (cor, op, formas, largura = 1) =>
 const HEX_L = 20.785
 const HEX_H = 36
 
+// Topografia: curvas de nível abertas e irregulares, num bloco de 200×200.
+// Cada linha = altura base + deformação comum (o "relevo", mais forte no meio)
+// + ondulação própria. Tudo são senoides de período 200: o bloco emenda sem
+// costura dos lados; as linhas ficam longe das bordas de cima e de baixo e não
+// se cruzam (espaço mínimo 16 > maior diferença de deformação ≈ 10).
+const TOPO = 200
+const TOPO_LINHAS = [ // [altura base, força do relevo, fase da ondulação]
+  [24, 0.5, 0.0], [42, 0.75, 1.1], [58, 1.0, 2.3], [74, 1.2, 0.4], [92, 1.35, 3.0],
+  [112, 1.2, 1.7], [130, 0.95, 4.2], [148, 0.75, 2.8], [166, 0.6, 5.1], [182, 0.5, 0.9],
+]
+const TOPO_PATH = (() => {
+  const w = x => (2 * Math.PI * x) / TOPO
+  const relevo = x => 9 * Math.sin(w(x) + 0.6) + 5 * Math.sin(2 * w(x) + 2.1) + 2.5 * Math.sin(3 * w(x) + 4)
+  const r = n => Math.round(n * 10) / 10
+  return TOPO_LINHAS.map(([y0, k, fase]) => {
+    // pontos de -40 a 240 (passo 20); a curva (Catmull-Rom → Bézier) vai de -20 a 220
+    const p = []
+    for (let x = -40; x <= TOPO + 40; x += 20) p.push([x, y0 + k * relevo(x) + 2 * Math.sin(2 * w(x) + fase)])
+    let d = `M${r(p[1][0])} ${r(p[1][1])}`
+    for (let i = 1; i < p.length - 2; i++) {
+      const [a, b, c, e] = [p[i - 1], p[i], p[i + 1], p[i + 2]]
+      d += `C${r(b[0] + (c[0] - a[0]) / 6)} ${r(b[1] + (c[1] - a[1]) / 6)} ${r(c[0] - (e[0] - b[0]) / 6)} ${r(c[1] - (e[1] - b[1]) / 6)} ${r(c[0])} ${r(c[1])}`
+    }
+    return d
+  }).join('')
+})()
+
 const LISTA = [
   // ── Pontos ──
   { id: 'pontilhado-fino', label: 'Pontilhado Fino', categoria: 'Pontos',
@@ -55,11 +82,12 @@ const LISTA = [
   { id: 'escama', label: 'Escama', categoria: 'Orgânico',
     fn: (c, o) => svg(20, 20, traco(c, o, '<path d="M0 20A10 10 0 0 1 20 20M-10 10A10 10 0 0 1 10 10M10 10A10 10 0 0 1 30 10"/>')) },
   { id: 'topografia', label: 'Topografia', categoria: 'Orgânico',
-    fn: (c, o) => svg(80, 80, traco(c, o,
-      '<ellipse cx="40" cy="40" rx="30" ry="18"/><ellipse cx="43" cy="38" rx="19" ry="11"/><ellipse cx="46" cy="36" rx="8" ry="4.5"/>')) },
+    fn: (c, o) => svg(TOPO, TOPO, traco(c, o, `<path d="${TOPO_PATH}"/>`, 0.8)) },
   { id: 'arco', label: 'Arco', categoria: 'Orgânico',
+    // semicírculos para baixo em fileiras desencontradas (escama invertida):
+    // o fundo de cada arco encosta nas pontas dos arcos da fileira de baixo
     fn: (c, o) => svg(40, 40, traco(c, o,
-      '<path d="M0 40A20 20 0 0 1 40 40M7 40A13 13 0 0 1 33 40M14 40A6 6 0 0 1 26 40M0 20A20 20 0 0 1 40 20" />')) },
+      '<path d="M0 0A20 20 0 0 0 40 0M-20 20A20 20 0 0 0 20 20M20 20A20 20 0 0 0 60 20"/>')) },
   { id: 'petala', label: 'Pétala', categoria: 'Orgânico',
     fn: (c, o) => {
       const petala = '<path d="M20 20C15 14 15 6 20 3C25 6 25 14 20 20Z"/>'

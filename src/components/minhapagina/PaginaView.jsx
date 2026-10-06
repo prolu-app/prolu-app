@@ -1,10 +1,14 @@
 // Desenho da Minha Página — o mesmo na página pública (/<slug>) e na prévia ao
 // vivo do editor. Recebe a configuração JÁ normalizada (normalizarPagina) e os
 // links no formato da função pagina_publica: { id, tipo, titulo, url,
-// slug_formulario, estilo }.
+// slug_formulario, estilo, imagem_url, imagem_modo }.
+// Imagem do link (migration_042): "icone" = pequena à esquerda, texto segue
+// centralizado; "banner" = largura total no topo e o link vira card.
 
 import { useEffect } from 'react'
-import { carregarFonte, estiloDoBotao, estiloDoFundo, familiaDaFonte } from '../../utils/paginaConfig.js'
+import {
+  carregarFonte, estiloDoBotao, estiloDoFundo, familiaDaFonte, imagemDoLink, raioDoCard, raioDoIcone,
+} from '../../utils/paginaConfig.js'
 import './PaginaView.css'
 
 function hrefDoLink(link, slugEscritorio) {
@@ -39,16 +43,21 @@ export default function PaginaView({ config, links, slugEscritorio, escritorio, 
           <nav className="mp-links" aria-label="Links">
             {visiveis.map(l => {
               const externo = l.tipo === 'link' && /^https?:/i.test(l.url)
+              const imagem = imagemDoLink(l)
+              const card = imagem?.modo === 'banner'
+              const estilo = estiloDoBotao(config, l.estilo)
               return (
                 <a
                   key={l.id}
-                  className="mp-link"
+                  className={`mp-link${card ? ' mp-link--card' : imagem ? ' mp-link--icone' : ''}`}
                   href={hrefDoLink(l, slugEscritorio)}
-                  style={estiloDoBotao(config, l.estilo)}
+                  style={card ? { ...estilo, borderRadius: raioDoCard(config) } : estilo}
                   {...(externo ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                   {...(previa ? { tabIndex: -1, onClick: e => e.preventDefault() } : {})}
                 >
-                  {l.titulo}
+                  {card && <img className="mp-link-banner" src={imagem.url} alt="" />}
+                  {imagem && !card && <img className="mp-link-icone" src={imagem.url} alt="" style={{ borderRadius: raioDoIcone(config) }} />}
+                  <span className="mp-link-texto">{l.titulo}</span>
                 </a>
               )
             })}

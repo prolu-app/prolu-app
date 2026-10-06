@@ -38,6 +38,8 @@ const FORMATO_FOTO = [{ value: 'quadrado', label: 'Quadrado' }, { value: 'arredo
 const ESTILO_BOTAO = [{ value: 'solido', label: 'Sólido' }, { value: 'contorno', label: 'Contorno' }]
 const ARREDONDAMENTO = [{ value: 'none', label: 'Reto' }, { value: 'sm', label: 'P' }, { value: 'md', label: 'M' }, { value: 'lg', label: 'G' }, { value: 'full', label: 'Pílula' }]
 const SOMBRA = [{ value: 'none', label: 'Nenhuma' }, { value: 'soft', label: 'Suave' }, { value: 'strong', label: 'Forte' }, { value: 'hard', label: 'Marcada' }]
+const ESPESSURA = [{ value: 1, label: '1px' }, { value: 2, label: '2px' }, { value: 3, label: '3px' }]
+const MODO_IMAGEM = [{ value: 'icone', label: 'Ícone' }, { value: 'banner', label: 'Banner' }]
 
 const BUCKET = 'pagina-assets'
 const TIPOS_IMAGEM = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' }
@@ -46,10 +48,23 @@ function caminhoNoBucket(url) {
   const i = (url || '').indexOf(marca)
   return i >= 0 ? decodeURIComponent(url.slice(i + marca.length).split('?')[0]) : null
 }
+const apagarDoBucket = url => { const c = caminhoNoBucket(url); if (c) supabase.storage.from(BUCKET).remove([c]) } // melhor esforço
+
+// valida, comprime e envia para <empresa>/<prefixo>-<data>.<ext>; devolve a URL pública
+// (ou null, já avisando) — usado pela foto, pelo banner e pela imagem de cada link
+async function enviarImagem(file, { empresaId, prefixo, comprimir, toast }) {
+  if (!TIPOS_IMAGEM[file.type]) { toast('Use uma imagem JPG, PNG, WEBP ou GIF'); return null }
+  if (file.size > 10 * 1024 * 1024) { toast('Imagem muito grande — máximo 10 MB'); return null }
+  const pronto = await comprimir(file).catch(() => file)
+  const caminho = `${empresaId}/${prefixo}-${Date.now()}.${TIPOS_IMAGEM[pronto.type]}`
+  const { error } = await supabase.storage.from(BUCKET).upload(caminho, pronto, { contentType: pronto.type, cacheControl: '31536000', upsert: false })
+  if (error) { console.error('[minha-pagina] upload', error); toast('Não foi possível enviar a imagem'); return null }
+  return supabase.storage.from(BUCKET).getPublicUrl(caminho).data.publicUrl
+}
 
 // Texto que grava sozinho 800 ms depois da última tecla (e na saída do campo).
 // Mostra o que foi digitado; só aceita o valor de fora quando não está em foco.
-function TextoAtrasado({ valor, onSalvar, multilinha, inputRef, ...resto }) {
+function TextoAtrasado({ valor, onSalvar, onDigitar, multilinha, inputRef, ...resto }) {
   const [texto, setTexto] = useState(valor)
   const timer = useRef(null)
   const ultimo = useRef(valor)
@@ -65,6 +80,7 @@ function TextoAtrasado({ valor, onSalvar, multilinha, inputRef, ...resto }) {
   }
   function mudar(v) {
     setTexto(v)
+    onDigitar?.(v)
     clearTimeout(timer.current)
     timer.current = setTimeout(() => descarregar(v), ATRASO)
   }
@@ -90,37 +106,23 @@ function UploadPagina({ url, rotulo, empresaId, prefixo, comprimir, redonda, off
   const [enviando, setEnviando] = useState(false)
 
   async function escolher(e) {
-    let file = e.target.files?.[0]
+    const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    if (!TIPOS_IMAGEM[file.type]) { toast('Use uma imagem JPG, PNG, WEBP ou GIF'); return }
-    if (file.size > 10 * 1024 * 1024) { toast('Imagem muito grande — máximo 10 MB'); return }
     setEnviando(true)
-    file = await comprimir(file).catch(() => file)
-    const caminho = `${empresaId}/${prefixo}-${Date.now()}.${TIPOS_IMAGEM[file.type]}`
-    const { error } = await supabase.storage.from(BUCKET).upload(caminho, file, { contentType: file.type, cacheControl: '31536000', upsert: false })
-    if (error) {
-      setEnviando(false)
-      console.error('[minha-pagina] upload', error)
-      toast('Não foi possível enviar a imagem')
-      return
-    }
-    const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(caminho)
+    const publicUrl = await enviarImagem(file, { empresaId, prefixo, comprimir, toast })
+    if (!publicUrl) { setEnviando(false); return }
     const anterior = url
     const ok = await onSalvar(publicUrl)
     setEnviando(false)
-    if (!ok) { await supabase.storage.from(BUCKET).remove([caminho]); return }
+    if (!ok) { apagarDoBucket(publicUrl); return }
     toast('Imagem salva')
-    const antigo = caminhoNoBucket(anterior)
-    if (antigo) supabase.storage.from(BUCKET).remove([antigo]) // melhor esforço
+    apagarDoBucket(anterior)
   }
 
   async function remover() {
-    const antigo = caminhoNoBucket(url)
-    if (await onSalvar(null)) {
-      toast('Imagem removida')
-      if (antigo) supabase.storage.from(BUCKET).remove([antigo])
-    }
+    const anterior = url
+    if (await onSalvar(null)) { toast('Imagem removida'); apagarDoBucket(anterior) }
   }
 
   return (
@@ -252,6 +254,7 @@ export default function MinhaPagina() {
     setLinks(restantes)
     const { error } = await supabase.from('pagina_links').delete().eq('id', id)
     if (error) { setLinks(anterior); toast('Não foi possível excluir o link'); return }
+    apagarDoBucket(anterior.find(l => l.id === id)?.imagem_url)
     await gravarOrdem(anterior, restantes)
     toast('Link excluído')
   }
@@ -292,7 +295,7 @@ export default function MinhaPagina() {
   // prévia: o que a página pública mostraria (só ativos; formulário inativo some)
   const linksPrevia = links.filter(l => l.ativo).map(l => {
     const f = l.tipo === 'formulario' ? formularios.find(x => x.id === l.formulario_id) : null
-    return { id: l.id, tipo: l.tipo, titulo: l.titulo, url: l.url, slug_formulario: f?.ativo ? f.slug : null, estilo: l.estilo }
+    return { id: l.id, tipo: l.tipo, titulo: l.titulo, url: l.url, slug_formulario: f?.ativo ? f.slug : null, estilo: l.estilo, imagem_url: l.imagem_url, imagem_modo: l.imagem_modo }
   })
 
   return (
@@ -363,7 +366,7 @@ export default function MinhaPagina() {
             <div className="mp-links-lista">
               {links.map((l, i) => (
                 <LinkCard
-                  key={l.id} link={l} indice={i} total={links.length} formularios={formularios} off={off}
+                  key={l.id} link={l} indice={i} total={links.length} formularios={formularios} off={off} empresaId={activeEmpresaId}
                   focar={focoLink === l.id} onFocado={() => setFocoLink(null)}
                   onSalvar={patch => salvarLink(l.id, patch)} onRemover={() => removerLink(l.id)}
                   onMover={d => moverUm(l.id, d)}
@@ -407,9 +410,17 @@ export default function MinhaPagina() {
                 </Linha>
               </>
             ) : (
-              <Linha rotulo="Cor do contorno" dica="Também é a cor do texto.">
-                <Cor rotulo="Cor do contorno dos botões" valor={config.botao_cor_contorno} disabled={off} onChange={v => mudar({ botao_cor_contorno: v })} />
-              </Linha>
+              <>
+                <Linha rotulo="Cor do contorno">
+                  <Cor rotulo="Cor do contorno dos botões" valor={config.botao_cor_contorno} disabled={off} onChange={v => mudar({ botao_cor_contorno: v })} />
+                </Linha>
+                <Linha rotulo="Cor do texto">
+                  <Cor rotulo="Cor do texto dos botões com contorno" valor={config.botao_cor_texto_contorno || config.botao_cor_contorno} disabled={off} onChange={v => mudar({ botao_cor_texto_contorno: v })} />
+                </Linha>
+                <Linha rotulo="Espessura">
+                  <Segmentos rotulo="Espessura do contorno" valor={config.botao_espessura_contorno} opcoes={ESPESSURA} disabled={off} onChange={v => mudar({ botao_espessura_contorno: v })} />
+                </Linha>
+              </>
             )}
             <Linha rotulo="Cantos">
               <Segmentos rotulo="Cantos dos botões" valor={config.botao_arredondamento} opcoes={ARREDONDAMENTO} disabled={off} onChange={v => mudar({ botao_arredondamento: v })} />
@@ -482,13 +493,39 @@ export default function MinhaPagina() {
 }
 
 function LinkCard({
-  link, indice, total, formularios, off, focar, onFocado, onSalvar, onRemover, onMover,
+  link, indice, total, formularios, off, empresaId, focar, onFocado, onSalvar, onRemover, onMover,
   arrastando, sobre, onDragStart, onDragOver, onDrop, onDragEnd,
 }) {
   const tituloRef = useRef(null)
   const [armado, setArmado] = useState(false) // só arrasta pelo puxador
   const [urlInvalida, setUrlInvalida] = useState(false)
+  const [tituloDigitado, setTituloDigitado] = useState(link.titulo)
+  const [urlDigitada, setUrlDigitada] = useState(link.url || '')
+  const [enviando, setEnviando] = useState(false)
+  const toast = useToast()
+  const arquivoRef = useRef(null)
   const form = link.tipo === 'formulario' ? formularios.find(f => f.id === link.formulario_id) : null
+  const modo = link.imagem_modo === 'banner' ? 'banner' : 'icone'
+
+  // imagem do link (migration_042): ícone pequeno → até 512px; banner → como a capa
+  async function escolherImagem(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setEnviando(true)
+    const url = await enviarImagem(file, { empresaId, prefixo: 'link', comprimir: modo === 'banner' ? comprimirCapa : comprimirFoto, toast })
+    if (!url) { setEnviando(false); return }
+    const anterior = link.imagem_url
+    const ok = await onSalvar({ imagem_url: url, imagem_modo: modo })
+    setEnviando(false)
+    if (!ok) { apagarDoBucket(url); return }
+    toast('Imagem salva')
+    apagarDoBucket(anterior)
+  }
+  async function removerImagem() {
+    const anterior = link.imagem_url
+    if (await onSalvar({ imagem_url: null, imagem_modo: null })) { toast('Imagem removida'); apagarDoBucket(anterior) }
+  }
 
   useEffect(() => {
     if (focar && tituloRef.current) { tituloRef.current.focus(); onFocado() }
@@ -501,8 +538,10 @@ function LinkCard({
     if (url && url !== link.url) onSalvar({ url })
   }
 
-  const aviso = !link.titulo.trim() ? 'Sem título, o link não aparece na página.'
-    : link.tipo === 'link' && !link.url ? 'Sem endereço, o link não aparece na página.'
+  // avisos seguem o que está digitado (não só o que já foi gravado): sumir na
+  // saída do campo deslocaria o botão "Adicionar" no meio do clique
+  const aviso = !tituloDigitado.trim() ? 'Sem título, o link não aparece na página.'
+    : link.tipo === 'link' && !urlDigitada.trim() ? 'Sem endereço, o link não aparece na página.'
     : link.tipo === 'formulario' && !form ? 'Escolha um formulário.'
     : link.tipo === 'formulario' && !form.ativo ? 'Formulário inativo: o link não aparece na página.'
     : null
@@ -533,14 +572,14 @@ function LinkCard({
             inputRef={tituloRef}
             className="fm-label-input mp-link-titulo" valor={link.titulo} disabled={off} maxLength={TITULO_LINK_MAX}
             placeholder="Título do botão" aria-label={`Título do link ${indice + 1}`}
-            onSalvar={v => onSalvar({ titulo: v.slice(0, TITULO_LINK_MAX) })}
+            onSalvar={v => onSalvar({ titulo: v.slice(0, TITULO_LINK_MAX) })} onDigitar={setTituloDigitado}
           />
         </div>
         {link.tipo === 'link' ? (
           <TextoAtrasado
             className={`fm-pos-input mp-link-url${urlInvalida ? ' invalido' : ''}`} valor={link.url || ''} disabled={off}
             placeholder="seusite.com.br, wa.me/55…, mailto:…" aria-label={`Endereço do link ${indice + 1}`}
-            aria-invalid={urlInvalida || undefined} onSalvar={salvarUrl}
+            aria-invalid={urlInvalida || undefined} onSalvar={salvarUrl} onDigitar={setUrlDigitada}
           />
         ) : (
           <select
@@ -555,6 +594,23 @@ function LinkCard({
             {formularios.map(f => <option key={f.id} value={f.id}>{f.nome}{f.ativo ? '' : ' (inativo)'}</option>)}
           </select>
         )}
+        <div className="mp-link-imagem">
+          {link.imagem_url && <img className={`mp-link-imagem-mini mp-link-imagem-mini--${modo}`} src={link.imagem_url} alt="" />}
+          {!off && (
+            <>
+              <input ref={arquivoRef} type="file" accept={Object.keys(TIPOS_IMAGEM).join(',')} hidden onChange={escolherImagem} aria-label={`Imagem do link ${indice + 1}`} />
+              <button type="button" className="fm-link-btn" onClick={() => arquivoRef.current?.click()} disabled={enviando}>
+                {enviando ? 'Enviando…' : link.imagem_url ? 'Trocar imagem' : '+ Imagem'}
+              </button>
+            </>
+          )}
+          {link.imagem_url && (
+            <>
+              <Segmentos rotulo={`Modo da imagem do link ${indice + 1}`} valor={modo} opcoes={MODO_IMAGEM} disabled={off} onChange={v => onSalvar({ imagem_modo: v })} />
+              {!off && <button type="button" className="fm-link-btn" onClick={removerImagem} disabled={enviando}>Remover imagem</button>}
+            </>
+          )}
+        </div>
         {urlInvalida && <span className="fm-publico-aviso" role="alert">Endereço inválido: use um site (https://…), mailto: ou tel:.</span>}
         {!urlInvalida && aviso && link.ativo && <span className="fm-publico-aviso">{aviso}</span>}
       </div>

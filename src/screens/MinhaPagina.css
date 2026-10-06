@@ -7,6 +7,8 @@
 }
 .mp-editor-config { min-width: 0; }
 .mp-editor-config > section { margin-top: 18px; }
+/* .fm-publico (display: flex) anularia o atributo hidden: só a aba ativa aparece */
+.mp-editor-config > section[hidden] { display: none !important; }
 .mp-abrir { text-decoration: none; display: inline-flex; align-items: center; }
 
 /* prévia: "celular" fixo enquanto rola a configuração */
@@ -48,6 +50,10 @@
 .mp-link-url, .mp-link-form { width: 100%; }
 .mp-link-url.invalido { box-shadow: 0 0 0 1.5px #c62828; }
 .mp-link-acoes { display: flex; align-items: center; gap: 6px; padding-top: 4px; }
+.mp-link-imagem { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.mp-link-imagem-mini { object-fit: cover; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); }
+.mp-link-imagem-mini--icone { width: 32px; height: 32px; }
+.mp-link-imagem-mini--banner { width: 64px; height: 32px; }
 .mp-links-add { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
 .mp-links-add .btn-primary, .mp-links-add .fm-embed-btn { display: inline-flex; align-items: center; gap: 6px; }
 .mp-links-add svg { width: 15px; height: 15px; }
