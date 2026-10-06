@@ -1,4 +1,4 @@
-// Desenho da Minha Página — o mesmo na página pública (/<slug>) e na prévia ao
+// Desenho da Minha Página — o mesmo na página pública (/e/<slug>) e na prévia ao
 // vivo do editor. Recebe a configuração JÁ normalizada (normalizarPagina) e os
 // links no formato da função pagina_publica: { id, tipo, titulo, url,
 // slug_formulario, estilo, imagem_url, imagem_modo }.

@@ -15,9 +15,9 @@ export function slugify(texto) {
   return s.length < 3 ? `${s}-form` : s
 }
 
-// O endereço do escritório também é a URL da Minha Página na raiz do app
-// (app.prolu.com.br/<slug>, migration_041): não pode colidir com as telas.
-// Mesma lista da função slug_reservado() no banco.
+// Endereços que o escritório não pode usar. Criada quando a Minha Página
+// ficava na raiz do app (migration_041); a página foi para /e/<slug>, mas a
+// lista continua valendo no banco (slug_reservado()) — mantida igual aqui.
 export const SLUGS_RESERVADOS = [
   'admin', 'aceitar-convite', 'agente-prolu', 'api', 'app', 'assets', 'avisos',
   'base-conhecimento', 'cadastro', 'cliente-ideal', 'clientes', 'configuracoes',

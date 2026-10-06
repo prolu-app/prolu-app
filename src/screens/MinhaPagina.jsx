@@ -16,7 +16,6 @@ import PaginaView from '../components/minhapagina/PaginaView.jsx'
 import FundoSelector from '../components/minhapagina/FundoSelector.jsx'
 import { IconChevronDown, IconCopy, IconGrip, IconPlus, IconTrash } from '../components/Icons.jsx'
 import { comprimirCapa, comprimirFoto } from '../utils/comprimirImagem.js'
-import { slugReservado } from '../utils/slug.js'
 import {
   PAGINA_PADRAO, NOME_MAX, BIO_MAX, TITULO_LINK_MAX, FONTES,
   normalizarPagina, completarUrlLink, urlPaginaPublica,
@@ -291,7 +290,6 @@ export default function MinhaPagina() {
 
   const trocarAba = id => setParams(id === 'perfil' ? {} : { aba: id }, { replace: true })
   const urlPublica = urlPaginaPublica(empresa.slug)
-  const enderecoReservado = slugReservado(empresa.slug)
   // prévia: o que a página pública mostraria (só ativos; formulário inativo some)
   const linksPrevia = links.filter(l => l.ativo).map(l => {
     const f = l.tipo === 'formulario' ? formularios.find(x => x.id === l.formulario_id) : null
@@ -305,7 +303,7 @@ export default function MinhaPagina() {
           <div className="page-title">Minha Página</div>
           <div className="page-sub">Página pública do escritório com os seus links — para a bio do Instagram, o WhatsApp e onde mais quiser.</div>
         </div>
-        {config.publicada && !enderecoReservado && (
+        {config.publicada && (
           <a className="btn-cancel mp-abrir" href={urlPublica} target="_blank" rel="noopener noreferrer">Abrir página</a>
         )}
       </div>
@@ -464,18 +462,12 @@ export default function MinhaPagina() {
               <span className="fm-status-texto">Mostrar "Feito com Prolu"</span>
             </Linha>
             <Linha rotulo="Link público">
-              {enderecoReservado ? (
-                <span className="fm-publico-aviso">
-                  O endereço do escritório ({empresa.slug}) é reservado pelo Prolu. Troque em Configurações → Escritório para usar a Minha Página.
-                </span>
-              ) : (
-                <div className="mp-link-publico">
-                  <input className="fm-pos-input" readOnly value={urlPublica} aria-label="Link público da página" onFocus={e => e.target.select()} />
-                  <button type="button" className="fm-embed-btn" onClick={() => navigator.clipboard?.writeText(urlPublica).then(() => toast('Link copiado'), () => toast('Não foi possível copiar'))}>
-                    <IconCopy /> Copiar
-                  </button>
-                </div>
-              )}
+              <div className="mp-link-publico">
+                <input className="fm-pos-input" readOnly value={urlPublica} aria-label="Link público da página" onFocus={e => e.target.select()} />
+                <button type="button" className="fm-embed-btn" onClick={() => navigator.clipboard?.writeText(urlPublica).then(() => toast('Link copiado'), () => toast('Não foi possível copiar'))}>
+                  <IconCopy /> Copiar
+                </button>
+              </div>
             </Linha>
           </section>
         </div>

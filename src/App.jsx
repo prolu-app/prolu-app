@@ -8,7 +8,6 @@ import Onboarding from './screens/Onboarding.jsx'
 import AceitarConvite from './screens/AceitarConvite.jsx'
 import FormularioPublico from './screens/FormularioPublico.jsx'
 import MinhaPaginaPublica from './screens/MinhaPaginaPublica.jsx'
-import { slugReservado } from './utils/slug.js'
 
 import Inicio from './screens/Inicio.jsx'
 import BaseConhecimento from './screens/BaseConhecimento.jsx'
@@ -60,26 +59,16 @@ export default function App() {
   // (needsOnboarding) tentaria te mandar pro cadastro normal em vez da
   // tela de aceite do convite.
   if (location.pathname === '/aceitar-convite') return <AceitarConvite />
-  // Formulário público (/e/:slugEscritorio/:slugFormulario): sem login, fora
-  // do AppLayout — carrega e envia pela Edge Function formulario-publico.
-  // Endereço incompleto cai no mesmo componente, que mostra "indisponível".
+  // Páginas públicas, sem login e fora do AppLayout:
+  //   /e/:slugEscritorio                 → Minha Página (migration_041)
+  //   /e/:slugEscritorio/:slugFormulario → formulário (Edge Function formulario-publico)
+  // Qualquer outro endereço em /e/ cai no formulário, que mostra "indisponível".
   if (location.pathname.startsWith('/e/')) {
     return (
       <Routes>
+        <Route path="/e/:slugEscritorio" element={<MinhaPaginaPublica />} />
         <Route path="/e/:slugEscritorio/:slugFormulario" element={<FormularioPublico />} />
         <Route path="*" element={<FormularioPublico />} />
-      </Routes>
-    )
-  }
-
-  // Minha Página (/<slug do escritório>, migration_041): sem login, fora do
-  // AppLayout. Só caminhos de um nível no formato de slug que não sejam telas
-  // do app (SLUGS_RESERVADOS cobre todas as rotas abaixo).
-  const raiz = location.pathname.match(/^\/([a-z0-9]+(?:-[a-z0-9]+)*)\/?$/)
-  if (raiz && raiz[1].length >= 3 && !slugReservado(raiz[1])) {
-    return (
-      <Routes>
-        <Route path="/:slugEscritorio" element={<MinhaPaginaPublica />} />
       </Routes>
     )
   }
