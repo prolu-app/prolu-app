@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ehDominioCurto } from './utils/slug.js'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext.jsx'
 import { useToast } from './contexts/ToastContext.jsx'
@@ -59,6 +60,21 @@ export default function App() {
   // não tem registro em `usuarios` — sem esse desvio, o fluxo abaixo
   // (needsOnboarding) tentaria te mandar pro cadastro normal em vez da
   // tela de aceite do convite.
+  // Domínio curto (prolu.link): só as páginas públicas, sem login nem telas do
+  // app — então /:slug não colide com /crm, /configuracoes etc. (que só existem
+  // em app.prolu.com.br). /e/… continua valendo aqui também.
+  if (ehDominioCurto()) {
+    return (
+      <Routes>
+        <Route path="/e/:slugEscritorio" element={<MinhaPaginaPublica />} />
+        <Route path="/e/:slugEscritorio/:slugFormulario" element={<FormularioPublico />} />
+        <Route path="/:slugEscritorio" element={<MinhaPaginaPublica />} />
+        <Route path="/:slugEscritorio/:slugFormulario" element={<FormularioPublico />} />
+        <Route path="*" element={<FormularioPublico />} />
+      </Routes>
+    )
+  }
+
   if (location.pathname === '/aceitar-convite') return <AceitarConvite />
   // Páginas públicas, sem login e fora do AppLayout:
   //   /e/:slugEscritorio                 → Minha Página (migration_041)

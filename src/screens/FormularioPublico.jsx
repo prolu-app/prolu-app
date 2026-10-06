@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { supabase } from '../services/supabaseClient.js'
 import { estiloParaPagina, textoDoBotao, SUCESSO_TITULO_PADRAO, sucessoTextoPadrao, URL_REDIRECT_RE, embedDoYoutube } from '../utils/formularioEstilo.js'
 import { sanitizarIntro } from '../utils/introHtml.js'
+import { urlPublica } from '../utils/slug.js'
 import FormSelectField from '../components/FormSelectField.jsx'
 import FormEscolhaField from '../components/FormEscolhaField.jsx'
 import './FormularioPublico.css'
@@ -131,7 +132,7 @@ export default function FormularioPublico() {
     const descricao = textoDaIntro(introHtml)
     const tags = [
       ['property', 'og:type', 'website'],
-      ['property', 'og:url', `${window.location.origin}/e/${encodeURIComponent(slugEscritorio)}/${encodeURIComponent(slugFormulario)}`],
+      ['property', 'og:url', urlPublica(encodeURIComponent(slugEscritorio), encodeURIComponent(slugFormulario))],
       ['property', 'og:title', tituloOg],
       ['property', 'og:description', descricao],
       ['property', 'og:image', ap?.capa],

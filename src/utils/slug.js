@@ -37,7 +37,19 @@ export function comSufixo(base) {
   return `${base.slice(0, 54)}-${Math.random().toString(36).slice(2, 6)}`
 }
 
-// link público: /e/<slug do escritório>/<slug do formulário>
+// ── endereço público (formulário e Minha Página) ──
+// Em produção, o domínio curto: prolu.link/<escritório>[/<formulário>]. Fora
+// dele (localhost, preview do Vercel) o mesmo app em <origem>/e/…, que
+// funciona em qualquer domínio. app.prolu.com.br/e/… redireciona (308) para
+// prolu.link (vercel.json).
+export const DOMINIO_PUBLICO = 'https://prolu.link'
+export const ehDominioCurto = () => /^(www\.)?prolu\.link$/i.test(window.location.hostname)
+export function basePublica() {
+  const h = window.location.hostname
+  return ehDominioCurto() || h === 'prolu.com.br' || h.endsWith('.prolu.com.br') ? DOMINIO_PUBLICO : `${window.location.origin}/e`
+}
+
+// link público do formulário
 export function urlPublica(slugEscritorio, slugFormulario) {
-  return `${window.location.origin}/e/${slugEscritorio}/${slugFormulario}`
+  return `${basePublica()}/${slugEscritorio}/${slugFormulario}`
 }

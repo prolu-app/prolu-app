@@ -1,4 +1,4 @@
-// Minha Página pública: app.prolu.com.br/e/<slug do escritório> — sem login,
+// Minha Página pública: prolu.link/<slug do escritório> (ou /e/<slug>) — sem login,
 // fora do AppLayout. Lê tudo pela função pagina_publica (migration_041), que
 // só responde se a página estiver publicada; empresas e pagina_links seguem
 // fechados por RLS para visitantes.

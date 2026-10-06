@@ -1,4 +1,4 @@
-// Desenho da Minha Página — o mesmo na página pública (/e/<slug>) e na prévia ao
+// Desenho da Minha Página — o mesmo na página pública (prolu.link/<slug>) e na prévia ao
 // vivo do editor. Recebe a configuração JÁ normalizada (normalizarPagina) e os
 // links no formato da função pagina_publica: { id, tipo, titulo, url,
 // slug_formulario, estilo, imagem_url, imagem_modo }.
@@ -9,10 +9,12 @@ import { useEffect } from 'react'
 import {
   carregarFonte, estiloDoBotao, estiloDoFundo, familiaDaFonte, imagemDoLink, raioDoCard, raioDoIcone,
 } from '../../utils/paginaConfig.js'
+import { ehDominioCurto } from '../../utils/slug.js'
 import './PaginaView.css'
 
 function hrefDoLink(link, slugEscritorio) {
-  if (link.tipo === 'formulario') return link.slug_formulario ? `/e/${slugEscritorio}/${link.slug_formulario}` : null
+  // no domínio curto sem /e/ (prolu.link/<escritório>/<formulário>); no app, /e/…
+  if (link.tipo === 'formulario') return link.slug_formulario ? `${ehDominioCurto() ? '' : '/e'}/${slugEscritorio}/${link.slug_formulario}` : null
   return link.url || null
 }
 

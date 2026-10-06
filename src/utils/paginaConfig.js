@@ -1,10 +1,11 @@
 // Minha Página (empresas.pagina_config, migration_041) — vale para a página
-// pública app.prolu.com.br/e/<slug> e para a prévia do editor.
+// pública prolu.link/<slug> (ou /e/<slug>) e para a prévia do editor.
 // O JSON vem do banco e é aberto a qualquer visitante: tudo passa por
 // normalizarPagina (só valores conhecidos; cores #rrggbb; imagens https;
 // padrões/texturas/fontes de listas fechadas) antes de virar CSS ou SVG.
 
 import { PATTERNS } from './pagePatterns.js'
+import { basePublica } from './slug.js'
 
 export const PAGINA_PADRAO = {
   publicada: false, // só aparece para visitantes depois de publicar (aba Geral)
@@ -195,7 +196,7 @@ export function completarUrlLink(digitada) {
   return URL_LINK_RE.test(url) && url.length <= 2000 ? url : null
 }
 
-// mesmo prefixo dos formulários: /e/<escritório> (página) e /e/<escritório>/<formulário>
+// mesma base dos formulários: prolu.link/<escritório> (utils/slug.js)
 export function urlPaginaPublica(slugEscritorio) {
-  return `${window.location.origin}/e/${slugEscritorio}`
+  return `${basePublica()}/${slugEscritorio}`
 }

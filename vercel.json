@@ -1,4 +1,25 @@
 {
+  "redirects": [
+    {
+      "source": "/e/:slug",
+      "has": [{ "type": "host", "value": "app.prolu.com.br" }],
+      "destination": "https://prolu.link/:slug",
+      "permanent": true
+    },
+    {
+      "source": "/e/:slug/:formulario",
+      "has": [{ "type": "host", "value": "app.prolu.com.br" }],
+      "missing": [{ "type": "query", "key": "embed" }],
+      "destination": "https://prolu.link/:slug/:formulario",
+      "permanent": true
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "prolu.link" }],
+      "destination": "https://prolu.com.br",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
