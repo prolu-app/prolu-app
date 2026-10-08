@@ -1,0 +1,101 @@
+/* Vitrine de recurso fora do plano: a tela real fica ao fundo, desfocada e
+   sem interação; o cartão convida para o plano mínimo. */
+.bp-wrap {
+  position: relative;
+  /* altura de uma "dobra": a vitrine não rola página abaixo */
+  max-height: calc(100vh - 140px);
+  min-height: 460px;
+  overflow: hidden;
+}
+
+.bp-tela {
+  filter: blur(5px) saturate(0.85);
+  opacity: 0.75;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  /* some suavemente embaixo, sem corte seco */
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+}
+
+.bp-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.bp-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--white);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-pop);
+  padding: 30px 28px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bp-tag {
+  display: inline-flex;
+  background: var(--green-soft);
+  color: var(--green-ink);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 5px 11px;
+  border-radius: 99px;
+}
+
+.bp-titulo {
+  font-family: 'Abhaya Libre', serif;
+  font-weight: 600;
+  font-size: 30px;
+  line-height: 1.1;
+  letter-spacing: -0.4px;
+  margin-top: 14px;
+}
+.bp-titulo em {
+  font-style: normal;
+  background: linear-gradient(transparent 62%, var(--green) 62%);
+  padding: 0 2px;
+}
+
+.bp-texto {
+  color: var(--ink-60);
+  font-size: 14px;
+  line-height: 1.55;
+  margin-top: 10px;
+  max-width: 340px;
+}
+
+.bp-btn { margin-top: 22px; }
+
+.bp-link {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--ink-60);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.bp-link:hover { color: var(--ink); }
+
+/* aviso pontual ao lado de um botão bloqueado */
+.bp-aviso {
+  font-size: 12.5px;
+  color: var(--ink-60);
+}
+.bp-aviso a { color: var(--ink); font-weight: 500; text-underline-offset: 3px; }
+
+@media (max-width: 860px) {
+  .bp-wrap { max-height: calc(100vh - var(--context-banner-h, 0px) - 120px); }
+  .bp-card { padding: 26px 20px 20px; }
+  .bp-titulo { font-size: 26px; }
+}

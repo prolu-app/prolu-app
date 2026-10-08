@@ -7,6 +7,9 @@ import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { IconPlus, IconTrash, IconClose } from '../components/Icons.jsx'
 import { slugValido, slugReservado } from '../utils/slug.js'
 import ConfirmarSlugModal from '../components/ConfirmarSlugModal.jsx'
+import { AvisoPlano } from '../components/BloqueioPlano.jsx'
+import { useConta } from '../contexts/ContaContext.jsx'
+import { rotuloPlano, planoMinimo } from '../utils/planos.js'
 import { formatarTelefone, mascaraTelefone, telefoneParaSalvar } from '../utils/telefone.js'
 import './Configuracoes.css'
 
@@ -181,6 +184,16 @@ function AbaConta({ user, refreshUser, toast }) {
 
 // ───────────────────────── Aba Equipe ─────────────────────────
 
+// invite-user responde { codigo: 'plano_bloqueado' } quando o plano não inclui
+// convites ou a conta não está ativa (migration_045)
+async function mensagemErroConvite(error, padrao) {
+  try {
+    const corpo = await error?.context?.json?.()
+    if (corpo?.codigo === 'plano_bloqueado') return `Convidar pessoas está disponível no plano ${rotuloPlano(planoMinimo('equipe_convites'))}`
+  } catch { /* resposta sem JSON */ }
+  return padrao
+}
+
 function AbaEquipe({ user, isEmpresaMaster, isGestor, activeEmpresaId, toast }) {
   const [usuarios, setUsuarios] = useState([])
   const [convites, setConvites] = useState([])
@@ -192,6 +205,8 @@ function AbaEquipe({ user, isEmpresaMaster, isGestor, activeEmpresaId, toast }) 
   const [resendingIds, setResendingIds] = useState(() => new Set())
 
   const options = assignableRoles(isEmpresaMaster, isGestor)
+  // convidar pessoas depende do plano (Business+); a lista da equipe abre normal
+  const podeConvidar = useConta().planoLibera('equipe_convites')
 
   useEffect(() => { carregar() }, [activeEmpresaId])
 
@@ -234,7 +249,7 @@ function AbaEquipe({ user, isEmpresaMaster, isGestor, activeEmpresaId, toast }) 
     })
     setInviteBusy(false)
 
-    if (error) { toast('Não foi possível enviar o convite'); return }
+    if (error) { toast(await mensagemErroConvite(error, 'Não foi possível enviar o convite')); return }
 
     setInviteOpen(false)
     setForm({ nome: '', email: '', role: options[options.length - 1] || 'comum' })
@@ -268,7 +283,7 @@ function AbaEquipe({ user, isEmpresaMaster, isGestor, activeEmpresaId, toast }) 
       },
     })
 
-    toast(error ? 'Não foi possível reenviar' : 'Convite reenviado')
+    toast(error ? await mensagemErroConvite(error, 'Não foi possível reenviar') : 'Convite reenviado')
   }
 
   async function alterarRole(usuarioId, role) {
@@ -289,7 +304,10 @@ function AbaEquipe({ user, isEmpresaMaster, isGestor, activeEmpresaId, toast }) 
     <>
       <div className="page-header between cfg-eq-header">
         <div className="page-sub">Pessoas com acesso a {user?.empresa || 'seu escritório'}.</div>
-        <button className="btn-primary" onClick={abrirConvite}><IconPlus /> Convidar pessoa</button>
+        <div className="cfg-eq-convidar">
+          {!podeConvidar && <AvisoPlano recurso="equipe_convites" />}
+          <button className="btn-primary" onClick={abrirConvite} disabled={!podeConvidar}><IconPlus /> Convidar pessoa</button>
+        </div>
       </div>
 
       {loading ? (

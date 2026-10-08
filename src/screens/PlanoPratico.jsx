@@ -5,6 +5,7 @@ import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { PLANO_TAGS, PLANO_ACOES } from '../data/seed.js'
 import { IconPlus, IconCheck, IconGrip, IconTrash } from '../components/Icons.jsx'
 import { DatePicker } from '../components/DatePicker.jsx'
+import { useSomenteLeitura } from '../components/BloqueioPlano.jsx'
 import './PlanoPratico.css'
 
 const TAG_COLORS = ['#CBE921', '#FF6B2B', '#3a6ea5', '#8050a0', '#e05454', '#4CAF82', '#e5a020', '#5f5f58']
@@ -51,6 +52,7 @@ function fmtPrazo(iso) {
 export default function PlanoPratico() {
   const toast = useToast()
   const { user, activeEmpresaId } = useAuth()
+  const somenteLeitura = useSomenteLeitura()
   const [tags, setTags] = useState([])
   const [acoes, setAcoes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -79,12 +81,22 @@ export default function PlanoPratico() {
     if (tagsErr || acoesErr) { toast('Não foi possível carregar o Plano Prático'); setLoading(false); return }
 
     if (!acoesData || acoesData.length === 0) {
+      // vitrine (plano sem o recurso): mostra o plano padrão sem gravar nada
+      if (somenteLeitura) { mostrarPadraoSemGravar(); return }
       await seedPadrao()
       return
     }
 
     setTags((tagsData || []).map(parseTag))
     setAcoes(acoesData.map(parseAcao))
+    setLoading(false)
+  }
+
+  function mostrarPadraoSemGravar() {
+    const padraoTags = DEFAULT_TAGS.map((t, i) => ({ id: 'padrao-' + i, name: t.name, color: t.color }))
+    const tagIdByName = Object.fromEntries(padraoTags.map((t) => [t.name, t.id]))
+    setTags(padraoTags)
+    setAcoes(DEFAULT_ACOES.map((a, i) => ({ id: 'padrao-acao-' + i, text: a.text, tag: tagIdByName[a.tag], status: a.status, prazo: '', ordem: i })))
     setLoading(false)
   }
 

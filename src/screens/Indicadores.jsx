@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import { supabase, supabaseReady, fetchAllRows } from '../services/supabaseClient.js'
 import { listarFechamentos, fechamentosLocais } from '../services/fechamentos.js'
 import { CRM_COLUMNS, CRM_ROWS } from '../data/seed.js'
+import { useSomenteLeitura } from '../components/BloqueioPlano.jsx'
 import {
   IconPlus, IconMoney, IconCRM, IconPercent, IconEdit,
 } from '../components/Icons.jsx'
@@ -151,6 +152,7 @@ function localSeedState() {
 export default function Indicadores() {
   const toast = useToast()
   const { user, activeEmpresaId } = useAuth()
+  const somenteLeitura = useSomenteLeitura()
   const [year, setYear] = useState(CURRENT_YEAR)
   const [currentQ, setCurrentQ] = useState(currentQuarterFor(CURRENT_YEAR))
   const [cols, setCols] = useState([])
@@ -241,12 +243,25 @@ export default function Indicadores() {
     if (indErr) { toast('Não foi possível carregar os indicadores'); setLoading(false); return }
 
     let indRows = indData || []
+    // vitrine (plano sem o recurso): sem indicadores gravados, mostra os padrão
+    // em memória (os automáticos já calculados do CRM real) — sem gravar nada
+    if (somenteLeitura && indRows.length === 0) {
+      const { indicadoresLocal, metasLocal } = localSeedState()
+      localMetasRef.current = metasLocal
+      localResultadosRef.current = []
+      indIdsRef.current = []
+      setIndicadores(indicadoresLocal)
+      setMetas(metasLocal.filter((m) => m.ano === year))
+      setResultados([])
+      setLoading(false)
+      return
+    }
     if (indRows.length === 0) {
       const seeded = await seedIndicadoresPadrao(activeEmpresaId, year)
       if (!seeded) { toast('Não foi possível preparar os indicadores'); setLoading(false); return }
       indRows = seeded
     }
-    indRows = await ensurePropostasEnviadas(activeEmpresaId, indRows)
+    if (!somenteLeitura) indRows = await ensurePropostasEnviadas(activeEmpresaId, indRows)
     indIdsRef.current = indRows.map(r => r.id)
     setIndicadores(indRows)
     await loadAno(year, indIdsRef.current)

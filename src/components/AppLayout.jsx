@@ -4,8 +4,10 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import {
   IconInicio, IconBase, IconCRM, IconDashboard,
   IconPlano, IconCliente, IconIndicadores, IconBurger, IconClose, IconAgente, IconBell,
-  IconBuilding, IconSettings, IconContacts, IconMoney, IconFormulario, IconChevronLeft, IconChevronRight, IconLayoutTemplate,
+  IconBuilding, IconSettings, IconContacts, IconMoney, IconFormulario, IconChevronLeft, IconChevronRight, IconLayoutTemplate, IconStar,
 } from './Icons.jsx'
+import { useConta } from '../contexts/ContaContext.jsx'
+import { rotuloPlano } from '../utils/planos.js'
 import './AppLayout.css'
 
 // `access` referencia uma chave do objeto `acesso` (AuthContext) — o item só
@@ -86,6 +88,7 @@ export default function AppLayout() {
     impersonatedEmpresaId, impersonatedEmpresaNome, viewAsUser,
     enterUserView, exitImpersonation, exitUserView,
   } = useAuth()
+  const { plano, contaAtiva } = useConta()
   const location = useLocation()
   const navigate = useNavigate()
   const close = () => setOpen(false)
@@ -275,6 +278,15 @@ export default function AppLayout() {
                 <IconSettings />
                 <span className="nav-item-label">Configurações</span>
               </NavLink>
+              <NavLink
+                to="/planos"
+                title="Planos"
+                className={({ isActive }) => `sidebar-footer-config${isActive ? ' active' : ''}`}
+                onClick={closeOnMobile}
+              >
+                <IconStar />
+                <span className="nav-item-label">{plano ? `Plano ${rotuloPlano(plano)}` : 'Planos'}</span>
+              </NavLink>
             </div>
           </aside>
         )}
@@ -283,7 +295,7 @@ export default function AppLayout() {
           <div className="context-banner-stack" ref={bannerStackRef}>
             {impersonatedEmpresaId && (
               <div className="context-banner banner-impersonate">
-                <span>Vendo como: {impersonatedEmpresaNome}</span>
+                <span>Vendo como: {impersonatedEmpresaNome}{plano ? ` · plano ${rotuloPlano(plano)}` : ''}{contaAtiva ? '' : ' · conta suspensa'}</span>
                 <button onClick={() => { exitImpersonation(); navigate('/admin') }}>Sair</button>
               </div>
             )}

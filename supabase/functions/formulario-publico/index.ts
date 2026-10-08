@@ -172,12 +172,14 @@ Deno.serve(async (req) => {
     // '*' (e não lista de colunas): a função continua de pé mesmo durante uma
     // migration que crie/remova colunas de configuração (ex.: 028)
     // !inner: o filtro pelo slug do escritório vale para a linha (não só para o join)
-    .select('*, empresas!inner(id, nome, slug)')
+    .select('*, empresas!inner(id, nome, slug, status_conta)')
     .eq('slug', slugFormulario)
     .eq('empresas.slug', slugEscritorio)
     .maybeSingle()
-  // formulário inativo responde igual a inexistente: não revela que existe
-  if (!form || !form.ativo) return jsonResponse({ error: 'Este formulário não está disponível.' }, 404)
+  // formulário inativo — ou escritório com a conta suspensa/encerrando
+  // (migration_045) — responde igual a inexistente: não revela que existe
+  const contaAtiva = (form?.empresas as { status_conta?: string } | null)?.status_conta === 'ativa'
+  if (!form || !form.ativo || !contaAtiva) return jsonResponse({ error: 'Este formulário não está disponível.' }, 404)
 
   const [{ data: camposRaw }, { data: colunasRaw }] = await Promise.all([
     supabase.from('formulario_campos')

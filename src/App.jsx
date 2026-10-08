@@ -32,6 +32,10 @@ import AdminInicio from './screens/admin/AdminInicio.jsx'
 import AdminEscritorios from './screens/admin/AdminEscritorios.jsx'
 import AdminModelosPrecificacao from './screens/admin/AdminModelosPrecificacao.jsx'
 import AdminModelosFormulario from './screens/admin/AdminModelosFormulario.jsx'
+import Planos from './screens/Planos.jsx'
+import ContaSuspensa from './screens/ContaSuspensa.jsx'
+import BloqueioPlano from './components/BloqueioPlano.jsx'
+import { useConta } from './contexts/ContaContext.jsx'
 
 // Bloqueia o acesso direto a uma rota por URL quando o usuário não tem
 // permissão (acesso.<tela> === false): redireciona para / com um toast
@@ -52,6 +56,7 @@ function RotaProtegida({ children, temAcesso }) {
 
 export default function App() {
   const { user, loading, isProluAdmin, impersonatedEmpresaId, viewAsUser, acesso } = useAuth()
+  const { carregando: carregandoConta, contaAtiva } = useConta()
   const [showOnboarding, setShowOnboarding] = useState(false)
   const location = useLocation()
 
@@ -90,7 +95,7 @@ export default function App() {
     )
   }
 
-  if (loading) {
+  if (loading || carregandoConta) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
         <div className="logo-mark" style={{ fontFamily: 'Abhaya Libre, serif', fontWeight: 700, fontSize: 32, position: 'relative', zIndex: 1 }}>
@@ -110,6 +115,10 @@ export default function App() {
       : <Login onCreateAccount={() => setShowOnboarding(true)} />
   }
 
+  // Conta suspensa/encerrando: tela cheia, nenhuma rota do app. O prolu_admin
+  // nunca cai aqui (nem dentro de um escritório suspenso).
+  if (!contaAtiva && !isProluAdmin) return <ContaSuspensa />
+
   const isAdminMode = isProluAdmin && !impersonatedEmpresaId && !viewAsUser
 
   return (
@@ -126,14 +135,15 @@ export default function App() {
         <Route path="/formularios" element={<RotaProtegida temAcesso={acesso.formularios}><Formularios /></RotaProtegida>} />
         <Route path="/formularios/:id" element={<RotaProtegida temAcesso={acesso.formularios}><FormularioEditor /></RotaProtegida>} />
         <Route path="/minha-pagina" element={<RotaProtegida temAcesso={acesso.minhaPagina}><MinhaPagina /></RotaProtegida>} />
-        <Route path="/dashboard" element={<RotaProtegida temAcesso={acesso.dashboard}><Dashboard /></RotaProtegida>} />
-        <Route path="/plano-pratico" element={<RotaProtegida temAcesso={acesso.planoPratico}><PlanoPratico /></RotaProtegida>} />
-        <Route path="/cliente-ideal" element={<RotaProtegida temAcesso={acesso.clienteIdeal}><ClienteIdeal /></RotaProtegida>} />
-        <Route path="/indicadores" element={<RotaProtegida temAcesso={acesso.indicadores}><Indicadores /></RotaProtegida>} />
-        <Route path="/agente-prolu" element={<RotaProtegida temAcesso={acesso.agenteProlu}><AgentePrl /></RotaProtegida>} />
+        <Route path="/dashboard" element={<RotaProtegida temAcesso={acesso.dashboard}><BloqueioPlano recurso="painel_comercial"><Dashboard /></BloqueioPlano></RotaProtegida>} />
+        <Route path="/plano-pratico" element={<RotaProtegida temAcesso={acesso.planoPratico}><BloqueioPlano recurso="ferramentas_mentoria"><PlanoPratico /></BloqueioPlano></RotaProtegida>} />
+        <Route path="/cliente-ideal" element={<RotaProtegida temAcesso={acesso.clienteIdeal}><BloqueioPlano recurso="ferramentas_mentoria"><ClienteIdeal /></BloqueioPlano></RotaProtegida>} />
+        <Route path="/indicadores" element={<RotaProtegida temAcesso={acesso.indicadores}><BloqueioPlano recurso="indicadores"><Indicadores /></BloqueioPlano></RotaProtegida>} />
+        <Route path="/agente-prolu" element={<RotaProtegida temAcesso={acesso.agenteProlu}><BloqueioPlano recurso="ferramentas_mentoria"><AgentePrl /></BloqueioPlano></RotaProtegida>} />
         {/* /equipe foi substituída pela aba "Equipe" de /configuracoes */}
         <Route path="/equipe" element={<Navigate to="/configuracoes" replace />} />
         <Route path="/configuracoes" element={<RotaProtegida temAcesso={acesso.configuracoes}><Configuracoes /></RotaProtegida>} />
+        <Route path="/planos" element={<Planos />} />
         <Route path="/avisos" element={<Avisos />} />
         <Route path="/admin" element={<AdminInicio />} />
         <Route path="/admin/escritorios" element={<AdminEscritorios />} />

@@ -49,6 +49,7 @@
 
 /* ───────── Aba Equipe — lista ───────── */
 .cfg-eq-header { margin-top: 0; margin-bottom: 4px; }
+.cfg-eq-convidar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
 
 .eq-loading { color: var(--ink-40); font-size: 14px; margin-top: 24px; }
 .eq-pending-title { margin-top: 28px; }

@@ -71,6 +71,16 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Você não pode convidar com essa permissão.' }, 403)
   }
 
+  // Plano (migration_045): convidar pessoas é do Business para cima, e só com
+  // a conta ativa. empresa_libera() é a matriz do banco (espelho de
+  // src/utils/planos.js) — erro na checagem também bloqueia.
+  const { data: libera, error: planoErr } = await supabase
+    .rpc('empresa_libera', { p_empresa_id: empresa_id, p_recurso: 'equipe_convites' })
+  if (planoErr || libera !== true) {
+    if (planoErr) console.error('[invite-user] empresa_libera', planoErr)
+    return jsonResponse({ error: 'Convidar pessoas não está disponível no plano atual.', codigo: 'plano_bloqueado' }, 403)
+  }
+
   // Cria o usuário em auth.users já confirmado e dispara o e-mail com o
   // link mágico de convite. Os metadados viajam com o link e são lidos de
   // novo em /aceitar-convite (via a linha em `convites`, fonte da verdade).
