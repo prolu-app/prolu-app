@@ -1,11 +1,28 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext.jsx'
 import { useToast } from '../../contexts/ToastContext.jsx'
 import { supabase, supabaseReady, fetchAllRows } from '../../services/supabaseClient.js'
 import { resumoFechamentos, isoLocal, FECHAMENTOS_VAZIO } from '../../services/fechamentos.js'
 import { IconSearch } from '../../components/Icons.jsx'
+import AdminEscritoriosGestao from './AdminEscritoriosGestao.jsx'
+import AdminEscritorioDetalhe from './AdminEscritorioDetalhe.jsx'
 import './AdminEscritorios.css'
+import './AdminEscritoriosGestao.css'
+
+// colunas de gestão (migration_045) — lidas junto com a lista, sem consulta extra
+const COLUNAS_GESTAO = 'plano, status_conta, created_at, suspensa_em, suspensao_motivo, exclusao_programada_em'
+
+function camposGestao(e) {
+  return {
+    plano: e.plano,
+    statusConta: e.status_conta,
+    criadoEm: e.created_at,
+    suspensaEm: e.suspensa_em,
+    suspensaoMotivo: e.suspensao_motivo,
+    exclusaoProgramadaEm: e.exclusao_programada_em,
+  }
+}
 
 const PERIOD_OPTS = [
   ['ano', 'Este ano'],
@@ -63,6 +80,11 @@ export default function AdminEscritorios() {
   const [busca, setBusca] = useState('')
   const [empresas, setEmpresas] = useState([])
   const [loading, setLoading] = useState(true)
+  // abas: "Resumo" (cards, padrão) e "Gestão" (tabela + detalhe)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const aba = searchParams.get('aba') === 'gestao' ? 'gestao' : 'resumo'
+  const [detalheId, setDetalheId] = useState(null)
+  const [erroCarga, setErroCarga] = useState(false)
 
   useEffect(() => { carregar() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -72,7 +94,7 @@ export default function AdminEscritorios() {
 
     // A empresa "casa" do prolu_admin nunca deve aparecer nas métricas admin.
     const proluEmpresaId = user?.empresaId || null
-    let empresasQuery = supabase.from('empresas').select('id, nome').order('nome')
+    let empresasQuery = supabase.from('empresas').select(`id, nome, ${COLUNAS_GESTAO}`).order('nome')
     // usuários, colunas e linhas de TODOS os escritórios passam fácil do limite de
     // 1000 linhas por requisição do Supabase — sem paginar, o excedente era cortado
     // em silêncio e alguns escritórios apareciam com números menores.
@@ -85,7 +107,7 @@ export default function AdminEscritorios() {
     const [{ data: emp, error: empErr }, { data: usu }, { data: cols }, { data: linhas }] = await Promise.all([
       empresasQuery, fetchAllRows(usuariosQuery), fetchAllRows(colunasQuery), fetchAllRows(linhasQuery),
     ])
-    if (empErr) { toast('Erro ao carregar escritórios'); setLoading(false); return }
+    if (empErr) { toast('Erro ao carregar escritórios'); setErroCarga(true); setLoading(false); return }
 
     const colsByEmpresa = {}
     for (const c of cols || []) {
@@ -117,6 +139,7 @@ export default function AdminEscritorios() {
       return {
         id: e.id,
         nome: e.nome,
+        ...camposGestao(e),
         masterNome: master?.nome || master?.email || '—',
         totalUsuarios: usuariosEmpresa.length,
         linhas: todasLinhas,
@@ -167,6 +190,19 @@ export default function AdminEscritorios() {
     return [...lista].sort((a, b) => b.valorFechamentos - a.valorFechamentos)
   }, [escritorios, busca])
 
+  // depois de uma ação de conta: relê só a linha do escritório alterado
+  async function recarregarEmpresa(id) {
+    const { data, error } = await supabase.from('empresas').select(`id, ${COLUNAS_GESTAO}`).eq('id', id).maybeSingle()
+    if (error || !data) { toast('Alteração salva, mas não foi possível atualizar a lista'); return }
+    setEmpresas(prev => prev.map(e => (e.id === id ? { ...e, ...camposGestao(data) } : e)))
+  }
+
+  const detalhe = detalheId ? escritorios.find(e => e.id === detalheId) : null
+
+  function irAba(a) {
+    setSearchParams(a === 'gestao' ? { aba: 'gestao' } : {})
+  }
+
   function abrirEmpresa(e) {
     enterAsEmpresa(e.id, e.nome)
     navigate('/')
@@ -181,7 +217,7 @@ export default function AdminEscritorios() {
           <div className="page-title">Escritórios</div>
           <div className="page-sub">Todos os escritórios cadastrados na Prolu.</div>
         </div>
-        <div className="adm-period-pills">
+        {aba === 'resumo' && <div className="adm-period-pills">
           {PERIOD_OPTS.map(([k, lbl]) => (
             <button
               key={k}
@@ -191,9 +227,22 @@ export default function AdminEscritorios() {
               {lbl}
             </button>
           ))}
-        </div>
+        </div>}
       </div>
 
+      <div className="gp-abas" role="tablist">
+        {[['resumo', 'Resumo'], ['gestao', 'Gestão']].map(([k, lbl]) => (
+          <button key={k} role="tab" aria-selected={aba === k} className={`gp-aba${aba === k ? ' active' : ''}`} onClick={() => irAba(k)}>
+            {lbl}
+          </button>
+        ))}
+      </div>
+
+      {aba === 'gestao' ? (
+        loading ? <p className="esc-loading">Carregando…</p> : erroCarga ? <p className="esc-loading">Não foi possível carregar os escritórios. Recarregue a página.</p> : (
+          <AdminEscritoriosGestao escritorios={escritorios} onAbrir={setDetalheId} onAlterado={recarregarEmpresa} />
+        )
+      ) : (<>
       <div className="esc-search">
         <IconSearch className="esc-search-icon" />
         <input
@@ -262,6 +311,19 @@ export default function AdminEscritorios() {
             </div>
           ))}
         </div>
+      )}
+      </>)}
+
+      {detalhe && (
+        <AdminEscritorioDetalhe
+          escritorio={detalhe}
+          periodOpts={PERIOD_OPTS}
+          period={period}
+          onPeriod={setPeriod}
+          onEntrar={abrirEmpresa}
+          onAlterado={recarregarEmpresa}
+          onClose={() => setDetalheId(null)}
+        />
       )}
     </>
   )

@@ -44,6 +44,17 @@ export const PLANO_INFO = {
   },
 }
 
+// empresas.status_conta (separado do plano) — rótulo e cor do pill
+export const STATUS_CONTA = {
+  ativa: { rotulo: 'Ativa', pill: 'pill-green' },
+  suspensa: { rotulo: 'Suspensa', pill: 'pill-red' },
+  encerrando: { rotulo: 'Encerrando', pill: 'pill-orange' },
+}
+
+export function rotuloStatusConta(status) {
+  return STATUS_CONTA[status]?.rotulo || status || ''
+}
+
 // Recurso → plano mínimo. `beneficio` é o texto curto do cartão da vitrine.
 // Para limites numéricos (Passo 4), acrescentar aqui um mapa por plano
 // (ex.: LIMITES = { starter: { usuarios: 1, pedidos_mes: 5 }, ... }).
