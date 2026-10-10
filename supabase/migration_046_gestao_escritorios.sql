@@ -194,7 +194,7 @@ language plpgsql
 stable
 security definer
 set search_path = public
-as $
+as $$
 #variable_conflict use_column
 begin
   if not coalesce(auth_is_prolu_admin(), false) then
