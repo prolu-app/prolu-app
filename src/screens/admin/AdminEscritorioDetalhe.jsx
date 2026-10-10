@@ -39,6 +39,7 @@ function TagHistorico({ tipo, valor }) {
 export default function AdminEscritorioDetalhe({ escritorio: e, periodOpts, period, onPeriod, onEntrar, onAlterado, onClose }) {
   const [equipe, setEquipe] = useState(null) // null = carregando
   const [equipeErro, setEquipeErro] = useState(false)
+  const [cursosEsc, setCursosEsc] = useState(null) // kb_cursos do escritório
   const [historico, setHistorico] = useState(null)
   const [historicoErro, setHistoricoErro] = useState(false)
   const [trocaPlano, setTrocaPlano] = useState(null)
@@ -54,6 +55,18 @@ export default function AdminEscritorioDetalhe({ escritorio: e, periodOpts, peri
     })
     return () => { vivo = false }
   }, [e.id])
+
+  // cursos e por que o escritório acessa (plano/avulso); recarrega com o plano/status
+  useEffect(() => {
+    let vivo = true
+    setCursosEsc(null)
+    supabase.rpc('kb_cursos', { p_empresa_id: e.id }).then(({ data, error }) => {
+      if (!vivo) return
+      if (error) { console.error('[admin] cursos', error); setCursosEsc('erro'); return }
+      setCursosEsc(Array.isArray(data) ? data : [])
+    })
+    return () => { vivo = false }
+  }, [e.id, e.plano, e.statusConta])
 
   // recarrega quando plano/status mudam (nova linha no histórico)
   useEffect(() => {
@@ -139,7 +152,7 @@ export default function AdminEscritorioDetalhe({ escritorio: e, periodOpts, peri
         <section className="gp-secao">
           <div className="gp-secao-head">
             <h3 className="section-title gp-secao-titulo">Equipe e Base de Conhecimento</h3>
-            {kbPct !== null && <span className="gp-kb-geral">Escritório: {kbFeitas} de {kbTotal} aulas · {kbPct}%</span>}
+            {kbPct !== null && <span className="gp-kb-geral" title="Soma das aulas dos cursos a que o escritório tem acesso">Escritório: {kbFeitas} de {kbTotal} aulas · {kbPct}%</span>}
           </div>
           {equipe === null ? (
             <p className="esc-loading">Carregando…</p>
@@ -184,6 +197,31 @@ export default function AdminEscritorioDetalhe({ escritorio: e, periodOpts, peri
                 </tbody>
               </table>
             </div>
+          )}
+        </section>
+
+        {/* cursos: acesso e motivo (somente leitura; gestão em Admin → Cursos) */}
+        <section className="gp-secao">
+          <div className="gp-secao-head">
+            <h3 className="section-title gp-secao-titulo">Cursos</h3>
+          </div>
+          {cursosEsc === null ? (
+            <p className="esc-loading">Carregando…</p>
+          ) : cursosEsc === 'erro' ? (
+            <p className="esc-loading">Não foi possível carregar os cursos.</p>
+          ) : cursosEsc.length === 0 ? (
+            <p className="esc-loading">Nenhum curso cadastrado.</p>
+          ) : (
+            <ul className="gp-cursos">
+              {cursosEsc.map(c => (
+                <li key={c.id} className="gp-curso">
+                  <span className="gp-curso-nome">{c.titulo}{c.ativo === false && <span className="gp-curso-inativo"> · inativo</span>}</span>
+                  {c.acesso
+                    ? <span className={`pill ${c.via === 'avulso' ? 'pill-violet' : 'pill-green'}`}>{c.via === 'avulso' ? 'Liberação avulsa' : 'Pelo plano'}</span>
+                    : <span className="gp-curso-sem">Sem acesso{(c.planos || []).length ? ' · disponível em ' : ''}{(c.planos || []).map(pl => <PlanoTag key={pl} plano={pl} />)}</span>}
+                </li>
+              ))}
+            </ul>
           )}
         </section>
 

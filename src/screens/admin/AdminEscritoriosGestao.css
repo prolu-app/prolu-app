@@ -130,3 +130,11 @@
   .gp-acoes { align-items: stretch; }
   .gp-filtros .gp-filtro { flex: 1 1 140px; }
 }
+
+/* cursos do escritório (detalhe) */
+.gp-cursos { list-style: none; background: var(--white); border-radius: var(--r-lg); box-shadow: var(--shadow-rest); padding: 6px 20px; }
+.gp-curso { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 0; border-bottom: 1px solid var(--ink-divider); font-size: 13.5px; }
+.gp-curso:last-child { border-bottom: none; }
+.gp-curso-nome { font-weight: 500; }
+.gp-curso-inativo { color: var(--ink-40); font-weight: 400; }
+.gp-curso-sem { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 12.5px; color: var(--ink-60); }

@@ -33,6 +33,7 @@ import AdminEscritorios from './screens/admin/AdminEscritorios.jsx'
 import AdminModelosPrecificacao from './screens/admin/AdminModelosPrecificacao.jsx'
 import AdminModelosFormulario from './screens/admin/AdminModelosFormulario.jsx'
 import AdminPlanoPraticoPadrao from './screens/admin/AdminPlanoPraticoPadrao.jsx'
+import AdminCursos from './screens/admin/AdminCursos.jsx'
 import Planos from './screens/Planos.jsx'
 import ContaSuspensa from './screens/ContaSuspensa.jsx'
 import BloqueioPlano from './components/BloqueioPlano.jsx'
@@ -151,6 +152,7 @@ export default function App() {
         <Route path="/admin/modelos-precificacao" element={<AdminModelosPrecificacao />} />
         <Route path="/admin/modelos-formulario" element={<AdminModelosFormulario />} />
         <Route path="/admin/plano-pratico-padrao" element={<AdminPlanoPraticoPadrao />} />
+        <Route path="/admin/cursos" element={<AdminCursos />} />
       </Route>
     </Routes>
   )

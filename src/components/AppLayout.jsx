@@ -5,7 +5,7 @@ import {
   IconInicio, IconBase, IconCRM, IconDashboard,
   IconPlano, IconCliente, IconIndicadores, IconBurger, IconClose, IconAgente, IconBell,
   IconBuilding, IconSettings, IconContacts, IconMoney, IconFormulario, IconChevronLeft, IconChevronRight, IconLayoutTemplate,
-  IconSparkle, IconUpgrade, IconProjetos, IconTarefas, IconCalendar,
+  IconSparkle, IconUpgrade, IconProjetos, IconTarefas, IconCalendar, IconVideo,
 } from './Icons.jsx'
 import { useConta } from '../contexts/ContaContext.jsx'
 import { planoMinimo, rotuloPlano } from '../utils/planos.js'
@@ -65,6 +65,7 @@ const ADMIN_NAV = [
   { to: '/admin', label: 'Início', Icon: IconInicio, end: true },
   { to: '/admin/escritorios', label: 'Escritórios', Icon: IconBuilding },
   { to: '/base-conhecimento', label: 'Base de Conhecimento', Icon: IconBase },
+  { to: '/admin/cursos', label: 'Cursos', Icon: IconVideo },
   { to: '/admin/modelos-precificacao', label: 'Modelos de precificação', Icon: IconMoney },
   { to: '/admin/modelos-formulario', label: 'Modelos de formulário', Icon: IconFormulario },
   { to: '/admin/plano-pratico-padrao', label: 'Plano Prático padrão', Icon: IconPlano },

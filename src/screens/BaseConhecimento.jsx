@@ -1,12 +1,18 @@
-import { useState, useEffect } from 'react'
+import { Fragment, useState, useEffect } from 'react'
 import DOMPurify from 'dompurify'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { useAuth } from '../contexts/AuthContext.jsx'
+import { useConta } from '../contexts/ContaContext.jsx'
+import { ConviteCurso, VitrineCurso } from '../components/CursoVitrine.jsx'
+import Select from '../components/Select.jsx'
+import { PlanoTag } from '../components/PlanoTag.jsx'
+import { useUrlsAssinadas } from '../utils/kbArquivos.js'
+import { linkWhatsappCurso } from '../utils/planos.js'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { FOLDERS } from '../data/seed.js'
 import {
   IconPlus, IconCheck, IconBack, IconPlay, IconChevronDown,
-  IconChevronLeft, IconChevronRight, IconEdit, IconTrash, IconBase, IconPdf, IconVideo, IconTexto,
+  IconChevronLeft, IconChevronRight, IconEdit, IconTrash, IconBase, IconPdf, IconVideo, IconTexto, IconSparkle,
 } from '../components/Icons.jsx'
 import RichEditor from '../components/RichEditor.jsx'
 import './BaseConhecimento.css'
@@ -121,6 +127,7 @@ function buildPastas(pastasData, modulosData, aulasData, pdfsData, progressoData
       cover: p.cor_capa || 'green',
       ordem: p.ordem || 0,
       empresa_id: p.empresa_id ?? null,
+      curso_id: p.curso_id ?? null,
       nivel_acesso: p.nivel_acesso || 'todos',
       modules: (modulosByPasta[p.id] || []).sort((a, b) => a.ordem - b.ordem),
     }))
@@ -146,6 +153,12 @@ export default function BaseConhecimento() {
   const modoVisitante = isProluAdmin && Boolean(impersonatedEmpresaId || viewAsUser)
 
   const [pastas, setPastas] = useState([])
+  // cursos (migration_050): ativos com o acesso do escritório; pastas de
+  // cursos sem acesso nem chegam (RLS) — a vitrine usa só dados públicos
+  const [cursos, setCursos] = useState([])
+  const [vitrinePastaId, setVitrinePastaId] = useState(null)
+  const [vitrinePasta, setVitrinePasta] = useState(null) // { ...dados de kb_pasta_vitrine } | 'erro'
+  const { conta } = useConta()
   const [kbTab, setKbTab] = useState('cursos')
   const [loading, setLoading] = useState(true)
   const [currentPastaId, setCurrentPastaId] = useState(null)
@@ -164,7 +177,7 @@ export default function BaseConhecimento() {
   // deleteModal: null | { type, id, nome, ctx? }
   const [deleteModal, setDeleteModal] = useState(null)
 
-  const [pastaForm, setPastaForm] = useState({ nome: '', subtitulo: '', cor: 'green', nivel_acesso: 'todos' })
+  const [pastaForm, setPastaForm] = useState({ nome: '', subtitulo: '', cor: 'green', nivel_acesso: 'todos', curso_id: null })
   const [moduloForm, setModuloForm] = useState('')
   const [aulaForm, setAulaForm] = useState({ titulo: '', descricao: '', youtube_url: '', tipo: 'video', pdf_url: '', pdf_nome: '', conteudo_doc: '' })
 
@@ -218,6 +231,7 @@ export default function BaseConhecimento() {
       { data: pastasEmpresa },
       { data: pdfsData },
       { data: progressoData },
+      { data: cursosData, error: cursosErr },
     ] = await Promise.all([
       supabase.from('kb_pastas').select(nested).is('empresa_id', null).order('ordem'),
       activeEmpresaId
@@ -227,7 +241,11 @@ export default function BaseConhecimento() {
       // Modo visitante não lê progresso de ninguém — tudo entra como
       // não concluído (buildPastas trata array vazio normalmente).
       modoVisitante ? Promise.resolve({ data: [] }) : supabase.from('kb_progresso').select('*').eq('usuario_id', user.id),
+      // prolu_admin "dentro" de um escritório vê o acesso daquele escritório
+      supabase.rpc('kb_cursos', { p_empresa_id: isProluAdmin && !isAdminMode ? activeEmpresaId : null }),
     ])
+    if (cursosErr) console.error('[kb] cursos', cursosErr)
+    setCursos(Array.isArray(cursosData) ? cursosData : [])
 
     // Achata a estrutura aninhada para o formato plano que buildPastas espera.
     const pastasRaw = [...(pastasProlu || []), ...(pastasEmpresa || [])]
@@ -307,8 +325,10 @@ export default function BaseConhecimento() {
   }
 
   // ── CRUD pastas ──
-  function openNewPasta() { setPastaForm({ nome: '', subtitulo: '', cor: 'green', nivel_acesso: 'todos' }); setPastaModal('new') }
-  function openEditPasta(p) { setPastaForm({ nome: p.title, subtitulo: p.sub, cor: p.cover, nivel_acesso: p.nivel_acesso || 'todos' }); setPastaModal(p.id) }
+  // pasta Prolu nova entra no primeiro curso (o admin troca no modal); pasta
+  // do escritório nunca tem curso
+  function openNewPasta() { setPastaForm({ nome: '', subtitulo: '', cor: 'green', nivel_acesso: 'todos', curso_id: isProluAdmin ? (cursos[0]?.id || null) : null }); setPastaModal('new') }
+  function openEditPasta(p) { setPastaForm({ nome: p.title, subtitulo: p.sub, cor: p.cover, nivel_acesso: p.nivel_acesso || 'todos', curso_id: p.curso_id || null }); setPastaModal(p.id) }
 
   async function savePasta() {
     const { nome, subtitulo, cor, nivel_acesso } = pastaForm
@@ -317,6 +337,9 @@ export default function BaseConhecimento() {
     // Pasta nova pertence à empresa ativa de quem cria; prolu_admin cria
     // conteúdo global (empresa_id null). Transparente para o usuário no modal.
     const novaEmpresaId = isProluAdmin ? null : activeEmpresaId
+    const pastaEditada = editing ? pastas.find(p => p.id === pastaModal) : null
+    const ehProlu = editing ? pastaEditada?.empresa_id == null : novaEmpresaId == null
+    const curso_id = ehProlu ? (pastaForm.curso_id || null) : null
     if (!supabaseReady || !user?.id) {
       if (editing) {
         setPastas(prev => prev.map(p => p.id !== pastaModal ? p : { ...p, title: nome.trim(), sub: subtitulo.trim(), cover: cor, nivel_acesso }))
@@ -328,16 +351,16 @@ export default function BaseConhecimento() {
       return
     }
     if (editing) {
-      const { error } = await supabase.from('kb_pastas').update({ titulo: nome.trim(), subtitulo: subtitulo.trim(), cor_capa: cor, nivel_acesso }).eq('id', pastaModal)
+      const { error } = await supabase.from('kb_pastas').update({ titulo: nome.trim(), subtitulo: subtitulo.trim(), cor_capa: cor, nivel_acesso, curso_id }).eq('id', pastaModal)
       if (error) { toast('Erro ao salvar'); return }
-      setPastas(prev => prev.map(p => p.id !== pastaModal ? p : { ...p, title: nome.trim(), sub: subtitulo.trim(), cover: cor, nivel_acesso }))
+      setPastas(prev => prev.map(p => p.id !== pastaModal ? p : { ...p, title: nome.trim(), sub: subtitulo.trim(), cover: cor, nivel_acesso, curso_id }))
       toast('Pasta atualizada')
     } else {
       const { data, error } = await supabase.from('kb_pastas')
-        .insert({ titulo: nome.trim(), subtitulo: subtitulo.trim(), cor_capa: cor, ordem: pastas.length, empresa_id: novaEmpresaId, nivel_acesso })
+        .insert({ titulo: nome.trim(), subtitulo: subtitulo.trim(), cor_capa: cor, ordem: pastas.length, empresa_id: novaEmpresaId, nivel_acesso, curso_id })
         .select('*').single()
       if (error) { toast('Erro ao criar pasta'); return }
-      setPastas(prev => [...prev, { id: data.id, title: data.titulo, sub: data.subtitulo || '', cover: data.cor_capa, ordem: data.ordem, empresa_id: data.empresa_id ?? null, nivel_acesso: data.nivel_acesso || 'todos', modules: [] }])
+      setPastas(prev => [...prev, { id: data.id, title: data.titulo, sub: data.subtitulo || '', cover: data.cor_capa, ordem: data.ordem, empresa_id: data.empresa_id ?? null, curso_id: data.curso_id ?? null, nivel_acesso: data.nivel_acesso || 'todos', modules: [] }])
       toast('Pasta criada')
     }
     setPastaModal(null)
@@ -572,6 +595,24 @@ export default function BaseConhecimento() {
 
   const playerLesson = player ? findLesson(player) : null
   const embedUrl = playerLesson ? getYouTubeEmbed(playerLesson.url) : null
+  // PDFs da aula aberta: URL assinada (bucket privado, migration_050)
+  const urlsPdf = useUrlsAssinadas(playerLesson ? [playerLesson.pdf_url, ...playerLesson.pdfs.map(p => p.url)] : [])
+
+  // vitrine de uma pasta de curso sem acesso: só títulos (kb_pasta_vitrine)
+  useEffect(() => {
+    if (!vitrinePastaId) { setVitrinePasta(null); return }
+    let vivo = true
+    setVitrinePasta(null)
+    supabase.rpc('kb_pasta_vitrine', { p_pasta_id: vitrinePastaId }).then(({ data, error }) => {
+      if (!vivo) return
+      setVitrinePasta(error || !data ? 'erro' : data)
+    })
+    return () => { vivo = false }
+  }, [vitrinePastaId])
+
+  const escritorioNome = conta?.nome || user?.empresa || ''
+  // campo Curso no modal de pasta: só pasta Prolu (prolu_admin)
+  const cursosDoModal = isProluAdmin && (pastaModal === 'new' || pastas.find(x => x.id === pastaModal)?.empresa_id == null) ? cursos : null
 
   if (loading) return <div className="crm-empty">Carregando…</div>
 
@@ -617,6 +658,125 @@ export default function BaseConhecimento() {
     )
   }
 
+  // card de pasta de um curso sem acesso: dados de vitrine (kb_cursos), estrela
+  // verde e convite; abrir mostra a lista de aulas desfocada (kb_pasta_vitrine)
+  function renderFolderVitrine(p, curso) {
+    return (
+      <div className="folder-card folder-card-vitrine" key={p.id} onClick={() => setVitrinePastaId(p.id)}
+        role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter') setVitrinePastaId(p.id) }}>
+        <div className={`folder-cover ${COVER_CLASS[p.cor_capa] || 'cover-green'}`}>
+          <span className="kb-badge-prolu kb-badge-vitrine"><IconSparkle aria-hidden="true" /> Curso</span>
+          <div className="folder-icon"><IconBase /></div>
+        </div>
+        <div className="folder-body">
+          <div className="folder-title-row"><div className="folder-title">{p.titulo}</div></div>
+          <div className="folder-sub">{p.subtitulo}</div>
+          <div className="folder-vitrine-info">
+            <span>{p.aulas} {p.aulas === 1 ? 'aula' : 'aulas'}</span>
+            {(curso.planos || []).length > 0 && (
+              <span className="folder-vitrine-planos">
+                Disponível {curso.planos.length === 1 ? 'no plano' : 'nos planos'} {curso.planos.map(pl => <PlanoTag key={pl} plano={pl} />)}
+              </span>
+            )}
+          </div>
+          <a
+            className="btn-primary folder-vitrine-btn"
+            href={curso.checkout_url || linkWhatsappCurso({ escritorio: escritorioNome, curso: curso.titulo })}
+            target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
+          >
+            {curso.checkout_url ? 'Comprar este curso' : 'Fale com o Comercial'}
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  // pastas Prolu agrupadas por curso; cursos sem acesso aparecem em vitrine
+  function renderSecoesProlu(pastasProlu, extraFinal = null) {
+    const idsCursos = new Set(cursos.map(c => c.id))
+    const semCurso = pastasProlu.filter(p => !p.curso_id || !idsCursos.has(p.curso_id))
+    return (
+      <>
+        {cursos.map(c => {
+          if (c.acesso) {
+            const ps = pastasProlu.filter(p => p.curso_id === c.id)
+            if (!ps.length) return null
+            return (
+              <Fragment key={c.id}>
+                <div className="kb-section-label">
+                  <span className="cv-secao-titulo">{c.titulo}</span>
+                  {c.via === 'avulso' && <span className="cv-via">Liberado para o seu escritório</span>}
+                  {c.ativo === false && <span className="cv-via">Curso inativo</span>}
+                </div>
+                <div className="folders-grid">{ps.map(renderFolder)}</div>
+              </Fragment>
+            )
+          }
+          if (!(c.pastas || []).length) return null
+          return (
+            <Fragment key={c.id}>
+              <div className="kb-section-label">
+                <span className="cv-secao-titulo"><IconSparkle aria-label="Curso disponível em outro plano" />{c.titulo}</span>
+              </div>
+              <div className="folders-grid">{c.pastas.map(p => renderFolderVitrine(p, c))}</div>
+            </Fragment>
+          )
+        })}
+        {semCurso.length > 0 && (
+          <>
+            <div className="kb-section-label">{cursos.length ? 'Outros conteúdos Prolu' : 'Conteúdo Prolu'}</div>
+            <div className="folders-grid">{semCurso.map(renderFolder)}{extraFinal}</div>
+          </>
+        )}
+        {semCurso.length === 0 && extraFinal && <div className="folders-grid">{extraFinal}</div>}
+      </>
+    )
+  }
+
+  // ════════ VIEW: PASTA DE CURSO SEM ACESSO (vitrine) ════════
+  if (vitrinePastaId) {
+    const curso = cursos.find(c => (c.pastas || []).some(p => p.id === vitrinePastaId))
+    const dados = vitrinePasta && vitrinePasta !== 'erro' ? vitrinePasta : null
+    return (
+      <>
+        <div className="page-header">
+          <div className="page-title">{dados?.titulo || curso?.pastas.find(p => p.id === vitrinePastaId)?.titulo || 'Curso'}</div>
+          {dados?.subtitulo && <div className="page-sub">{dados.subtitulo}</div>}
+        </div>
+        <div className="back-link" onClick={() => setVitrinePastaId(null)}><IconBack /> Todas as pastas</div>
+        {vitrinePasta === 'erro' ? (
+          <div className="crm-empty">Não foi possível carregar este curso.</div>
+        ) : !dados || !curso ? (
+          <div className="crm-empty">Carregando…</div>
+        ) : (
+          <VitrineCurso curso={curso} escritorio={escritorioNome}>
+            {dados.modulos.map((m, idx) => (
+              <div className="module-card expanded" key={m.id}>
+                <div className="module-head">
+                  <div className="module-number">{String(idx + 1).padStart(2, '0')}</div>
+                  <div className="module-info">
+                    <div className="module-title">{m.titulo}</div>
+                    <div className="module-meta">{m.aulas.length} aulas</div>
+                  </div>
+                </div>
+                <div className="lessons-list">
+                  {m.aulas.map(a => (
+                    <div className="lesson-row" key={a.id}>
+                      <div className="lesson-check pend" />
+                      <div className="lesson-info">
+                        <div className="lesson-title"><IconeTipoAula tipo={a.tipo} /><span>{a.titulo}</span></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </VitrineCurso>
+        )}
+      </>
+    )
+  }
+
   if (!pasta) {
     const pastasProlu = pastasVisiveis.filter(p => p.empresa_id == null)
     const pastasEmpresa = pastasVisiveis.filter(p => p.empresa_id != null)
@@ -632,12 +792,11 @@ export default function BaseConhecimento() {
           </div>
 
           {pastasProlu.length > 0 ? (
-            <div className="folders-grid">
-              {pastasProlu.map(renderFolder)}
+            renderSecoesProlu(pastasProlu, (
               <div className="folder-card-add" onClick={openNewPasta}>
                 <IconPlus /> Nova pasta
               </div>
-            </div>
+            ))
           ) : (
             <div className="kb-empresa-cta is-clickable" onClick={openNewPasta}>
               <IconPlus />
@@ -646,7 +805,7 @@ export default function BaseConhecimento() {
           )}
 
           {pastaModal && (
-            <PastaModal form={pastaForm} setForm={setPastaForm} editing={pastaModal !== 'new'} onClose={() => setPastaModal(null)} onConfirm={savePasta} />
+            <PastaModal form={pastaForm} setForm={setPastaForm} editing={pastaModal !== 'new'} cursos={cursosDoModal} onClose={() => setPastaModal(null)} onConfirm={savePasta} />
           )}
           {deleteModal && (
             <DeleteModal {...deleteModal} onClose={() => setDeleteModal(null)} onConfirm={confirmDelete} />
@@ -673,12 +832,7 @@ export default function BaseConhecimento() {
           <PainelEquipe activeEmpresaId={activeEmpresaId} currentUserId={user?.id} />
         ) : (
           <>
-            {pastasProlu.length > 0 && (
-              <>
-                <div className="kb-section-label">Conteúdo Prolu</div>
-                <div className="folders-grid">{pastasProlu.map(renderFolder)}</div>
-              </>
-            )}
+            {renderSecoesProlu(pastasProlu)}
 
             {(podeEditarEmpresa || pastasEmpresa.length > 0) && (
               <div className="kb-section-label">
@@ -707,7 +861,7 @@ export default function BaseConhecimento() {
         )}
 
         {pastaModal && (
-          <PastaModal form={pastaForm} setForm={setPastaForm} editing={pastaModal !== 'new'} onClose={() => setPastaModal(null)} onConfirm={savePasta} />
+          <PastaModal form={pastaForm} setForm={setPastaForm} editing={pastaModal !== 'new'} cursos={cursosDoModal} onClose={() => setPastaModal(null)} onConfirm={savePasta} />
         )}
         {deleteModal && (
           <DeleteModal {...deleteModal} onClose={() => setDeleteModal(null)} onConfirm={confirmDelete} />
@@ -745,7 +899,9 @@ export default function BaseConhecimento() {
             ) : playerLesson.tipo === 'pdf' ? (
               // o tipo decide o player: aula PDF nunca cai no player de vídeo, mesmo sem arquivo
               playerLesson.pdf_url
-                ? <iframe src={playerLesson.pdf_url} className="pdf-viewer" title={playerLesson.title} />
+                ? (urlsPdf[playerLesson.pdf_url]
+                    ? <iframe src={urlsPdf[playerLesson.pdf_url]} className="pdf-viewer" title={playerLesson.title} />
+                    : <div className="player-video-fake"><IconPdf />Carregando PDF…</div>)
                 : <div className="player-video-fake">
                     <IconPdf />
                     PDF desta aula ainda não foi enviado
@@ -773,7 +929,7 @@ export default function BaseConhecimento() {
                 {playerLesson.pdfs.length > 0 && (
                   <div className="player-pdfs">
                     {playerLesson.pdfs.map(p => (
-                      <a href={p.url} className="player-pdf-item" key={p.id} target="_blank" rel="noreferrer">
+                      <a href={urlsPdf[p.url] || undefined} aria-disabled={!urlsPdf[p.url]} className="player-pdf-item" key={p.id} target="_blank" rel="noreferrer">
                         <div className="pdf-icon"><IconPdf /></div>
                         <div className="pdf-name">{p.nome}</div>
                         <div className="pdf-dl">Baixar ↓</div>
@@ -1006,12 +1162,12 @@ export default function BaseConhecimento() {
       )}
 
       {deleteModal && <DeleteModal {...deleteModal} onClose={() => setDeleteModal(null)} onConfirm={confirmDelete} />}
-      {pastaModal && <PastaModal form={pastaForm} setForm={setPastaForm} editing={pastaModal !== 'new'} onClose={() => setPastaModal(null)} onConfirm={savePasta} />}
+      {pastaModal && <PastaModal form={pastaForm} setForm={setPastaForm} editing={pastaModal !== 'new'} cursos={cursosDoModal} onClose={() => setPastaModal(null)} onConfirm={savePasta} />}
     </>
   )
 }
 
-function PastaModal({ form, setForm, editing, onClose, onConfirm }) {
+function PastaModal({ form, setForm, editing, cursos, onClose, onConfirm }) {
   return (
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className="modal">
@@ -1044,6 +1200,19 @@ function PastaModal({ form, setForm, editing, onClose, onConfirm }) {
             ))}
           </div>
         </div>
+        {cursos && (
+          <div className="modal-field">
+            <label className="modal-label">Curso</label>
+            <Select
+              className="kb-curso-select"
+              value={form.curso_id || ''}
+              options={[...cursos.map(c => ({ value: c.id, label: c.titulo })), { value: '', label: 'Sem curso (livre para todos)' }]}
+              onChange={v => setForm(f => ({ ...f, curso_id: v || null }))}
+              ariaLabel="Curso da pasta"
+            />
+            <p className="kb-curso-hint">Quem acessa a pasta segue os planos e liberações do curso (Admin → Cursos).</p>
+          </div>
+        )}
         <div className="modal-actions">
           <button className="btn-cancel" onClick={onClose}>Cancelar</button>
           <button className="btn-confirm" onClick={onConfirm}>{editing ? 'Salvar' : 'Criar pasta'}</button>

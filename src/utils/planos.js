@@ -217,3 +217,11 @@ export function linkWhatsappComercial({ escritorio, planoAtual, planoDesejado } 
   if (planoDesejado) partes.push(`Plano desejado: ${rotuloPlano(planoDesejado)}`)
   return `https://wa.me/${WHATSAPP_COMERCIAL}?text=${encodeURIComponent(partes.join('\n'))}`
 }
+
+// WhatsApp do Comercial para comprar um curso avulso (sem link de checkout)
+export function linkWhatsappCurso({ escritorio, curso } = {}) {
+  const partes = ['Olá! Quero comprar um curso no Prolu App.']
+  if (curso) partes.push(`Curso: ${curso}`)
+  if (escritorio) partes.push(`Escritório: ${escritorio}`)
+  return `https://wa.me/${WHATSAPP_COMERCIAL}?text=${encodeURIComponent(partes.join('\n'))}`
+}

@@ -4,6 +4,8 @@ Itens conhecidos, ainda não corrigidos, para entrar no roadmap.
 
 ## PDFs da Base de Conhecimento com link público
 
+- **Resolvido em:** migration_050 (Passo 3B, cursos): bucket privado, leitura por URL assinada e só de arquivo usado por aula que a pessoa vê (curso liberado). PDFs antigos continuam funcionando: a URL guardada vira só identificador do arquivo.
+
 - **Registrado em:** 2026-09-29
 - **Situação:** o bucket de Storage `kb-pdfs` é público. Qualquer pessoa com o link de um PDF consegue abri-lo, inclusive PDFs de conteúdo de outro escritório, sem estar logada.
 - **Por que não foi corrigido junto com a migration 022:** a migration 022 corrige quem pode **enviar/alterar/apagar** arquivos (dono pela 1ª pasta do caminho) e quem vê as aulas no app, mas a **leitura** do arquivo segue pública. Decisão de manter assim por enquanto.

@@ -1,0 +1,78 @@
+/* Cursos (admin) — layout de lista + editor de AdminModelosPrecificacao.css (amp-*) */
+.acu-layout { gap: 28px; }
+.acu-vazio { color: var(--ink-40); font-size: 13px; padding: 8px 10px; }
+.acu-item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 5px; width: 100%;
+  padding: 10px; border: 0; border-radius: var(--r-sm); background: none; cursor: pointer;
+  font: inherit; text-align: left; color: var(--ink);
+}
+.acu-item:hover { background: var(--cream); }
+.acu-item.active { background: var(--gray-soft); }
+.acu-item.inativo .acu-item-nome { color: var(--ink-60); }
+.acu-item-nome { font-size: 13.5px; font-weight: 500; }
+.acu-item.active .acu-item-nome { font-weight: 600; }
+.acu-item-planos { display: flex; flex-wrap: wrap; gap: 4px; }
+.acu-item-planos .tag-plano { font-size: 10.5px; padding: 0 7px; }
+
+.acu-card { padding: 24px; }
+.acu-card:hover { box-shadow: var(--shadow-rest); }
+.acu-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+.acu-campo { display: flex; flex-direction: column; }
+.acu-campo-largo { grid-column: 1 / -1; }
+.acu-switch { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-60); min-height: 40px; }
+
+.acu-bloco { margin-top: 22px; }
+.acu-planos { display: flex; flex-wrap: wrap; gap: 8px; }
+.acu-plano {
+  border: 1.5px solid var(--ink-divider); background: var(--white); border-radius: 99px; padding: 5px 8px;
+  cursor: pointer; opacity: 0.55; transition: opacity 0.15s, border-color 0.15s;
+}
+.acu-plano:hover { opacity: 0.85; }
+.acu-plano.on { opacity: 1; border-color: var(--ink); }
+.acu-plano:focus-visible { outline: 2px solid var(--green-deep); outline-offset: 2px; }
+.acu-hint { font-size: 12px; color: var(--ink-40); margin-top: 8px; line-height: 1.45; }
+
+.acu-pastas { display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow-y: auto; }
+.acu-pasta { display: flex; align-items: center; gap: 10px; padding: 7px 4px; font-size: 13.5px; cursor: pointer; border-radius: var(--r-sm); }
+.acu-pasta:hover { background: var(--cream); }
+.acu-pasta input { accent-color: var(--ink); }
+.acu-pasta-outro { font-size: 11.5px; color: var(--orange-ink); }
+
+.acu-acoes { display: flex; justify-content: flex-end; margin-top: 22px; }
+
+.acu-secao { margin-top: 30px; }
+.acu-secao-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.acu-secao-titulo { margin: 0; }
+.acu-secao-head .btn-cancel { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 13px; }
+.acu-secao-head .btn-cancel svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2.4; fill: none; }
+.acu-lib-card { padding: 10px 16px; overflow-x: auto; }
+.acu-lib-card:hover { box-shadow: var(--shadow-rest); }
+.acu-tabela { width: 100%; min-width: 600px; border-collapse: collapse; font-size: 13px; }
+.acu-tabela th {
+  text-align: left; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--ink-40); padding: 8px 10px; border-bottom: 1px solid var(--ink-divider);
+}
+.acu-tabela td { padding: 10px; border-bottom: 1px solid var(--ink-divider); vertical-align: top; }
+.acu-tabela tr:last-child td { border-bottom: none; }
+.acu-tabela tr.revogada td { color: var(--ink-40); }
+.acu-emp { font-weight: 500; margin-bottom: 4px; }
+.acu-revog { font-size: 11.5px; color: var(--red); margin-top: 3px; }
+.acu-data { white-space: nowrap; color: var(--ink-60); font-size: 12px; }
+.acu-revogar { border: none; background: none; color: var(--red); cursor: pointer; font-family: inherit; font-size: 12.5px; font-weight: 500; padding: 4px 6px; border-radius: 6px; }
+.acu-revogar:hover { background: var(--red-soft); }
+
+.acu-modal { width: 480px; }
+.acu-busca { max-width: none; margin: 0 0 10px; }
+.acu-emp-lista { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; margin-bottom: 14px; }
+.acu-emp-op {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px;
+  border: none; background: none; border-radius: var(--r-sm); cursor: pointer; font-family: inherit; font-size: 13.5px; text-align: left; color: var(--ink);
+}
+.acu-emp-op:hover:not(:disabled) { background: var(--cream); }
+.acu-emp-op.on { background: var(--green-soft); }
+.acu-emp-op:disabled { color: var(--ink-40); cursor: default; }
+.acu-emp-op-meta { font-size: 11.5px; color: var(--ink-40); flex-shrink: 0; }
+
+@media (max-width: 760px) {
+  .acu-campos { grid-template-columns: 1fr; }
+}
