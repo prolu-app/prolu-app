@@ -27,6 +27,9 @@
   --red-soft: #fde8e8;
   --violet-soft: #f2e9f8;
   --violet-ink: #8050a0;
+  /* marcador de vitrine (recurso fora do plano): verde da marca escurecido
+     para passar de 3:1 sobre o fundo do menu (limão puro dá 1,2:1) */
+  --cor-vitrine: #6f8c00;
 
   /* Raios */
   --r-lg: 22px;

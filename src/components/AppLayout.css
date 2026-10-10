@@ -180,11 +180,16 @@ body, #root, .app {
 /* rótulo longo + cadeado não quebram o item */
 .nav-item-label { min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nav-item:focus-visible { outline: 2px solid var(--green-deep); outline-offset: -2px; }
-/* item que o plano não libera: cadeado discreto, item continua clicável */
-.nav-lock { display: inline-flex; flex-shrink: 0; margin-left: auto; color: var(--ink-30); }
-.nav-lock svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 2; fill: none; }
-.nav-item:hover .nav-lock { color: var(--ink-40); }
-.nav-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* item que o plano não libera: estrela verde (convite, não proibição); o item
+   continua clicável e abre a vitrine. Cor em --cor-vitrine (index.css). */
+.nav-vitrine { display: inline-flex; flex-shrink: 0; margin-left: auto; color: var(--cor-vitrine); }
+.nav-vitrine svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+/* chip "em breve" ao lado do título da seção Projetos */
+.nav-section-breve {
+  display: inline-block; margin-left: 6px; vertical-align: 1px;
+  font-family: 'Rubik', sans-serif; font-size: 9.5px; font-weight: 500; letter-spacing: 0; text-transform: none;
+  color: var(--ink-60); background: var(--gray-soft); border-radius: 99px; padding: 1px 7px;
+}
 .nav-icon { width: 17px; height: 17px; stroke: currentColor; stroke-width: 1.8; fill: none; flex-shrink: 0; }
 
 /* "Início" fica solto acima das seções — um respiro antes de COMERCIAL */
@@ -196,9 +201,10 @@ body, #root, .app {
 /* Item "em breve" */
 .nav-item.disabled {
   opacity: 0.45;
-  pointer-events: none;
   cursor: default;
 }
+.nav-item.disabled:hover { background: transparent; color: var(--ink-60); }
+.nav-item.disabled:hover .nav-icon { color: var(--ink-40); }
 .nav-soon-tag {
   font-size: 8.5px;
   font-family: 'Montserrat', sans-serif;
@@ -283,7 +289,7 @@ body, #root, .app {
   .sidebar.collapsed .nav-section-label { display: none; }
   .sidebar.collapsed .nav-item-label,
   .sidebar.collapsed .nav-soon-tag,
-  .sidebar.collapsed .nav-lock { display: none; }
+  .sidebar.collapsed .nav-vitrine { display: none; }
   .sidebar.collapsed .nav-item {
     width: 36px; height: 36px;
     justify-content: center;

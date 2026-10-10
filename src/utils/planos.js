@@ -22,23 +22,23 @@ export const PLANO_INFO = {
   },
   pro: {
     rotulo: 'Pro',
-    descricao: 'Acompanhe resultados e metas com números reais.',
+    descricao: 'Resultados e metas com números reais.',
     precoMes: 49.9,
   },
   business: {
     rotulo: 'Business',
-    descricao: 'Para escritórios com equipe trabalhando junto.',
+    descricao: 'Para escritórios com equipe.',
     precoMes: 119.9,
   },
   mentoria: {
     rotulo: 'Mentoria',
-    descricao: 'O método completo, com as ferramentas e o acompanhamento da Prolu.',
+    descricao: 'Método completo e acompanhamento da Prolu.',
     precoMes: 500,
     servico: true,
   },
   consultoria: {
     rotulo: 'Consultoria',
-    descricao: 'Tudo da Mentoria, com a consultoria da Prolu dentro do escritório.',
+    descricao: 'Tudo da Mentoria, com a Prolu no seu escritório.',
     precoMes: 2300,
     servico: true,
   },
@@ -76,6 +76,14 @@ export function rotuloStatusConta(status) {
 // Para limites numéricos (Passo 4), acrescentar aqui um mapa por plano
 // (ex.: LIMITES = { starter: { usuarios: 1, pedidos_mes: 5 }, ... }).
 export const RECURSOS = {
+  // Recursos do plano grátis, listados para o comparativo de /planos ler tudo
+  // desta matriz. Não precisam de bloqueio (ficam fora de empresa_libera()).
+  crm_precificacao: { plano: 'starter', rotulo: 'CRM e Precificação' },
+  minha_pagina: { plano: 'starter', rotulo: 'Minha Página' },
+  // formulários + notificações por WhatsApp (migration_038): já existem e hoje
+  // não dependem de plano
+  formularios_whatsapp: { plano: 'starter', rotulo: 'Formulários + Notificações WhatsApp' },
+  base_conhecimento: { plano: 'starter', rotulo: 'Base de Conhecimento' },
   painel_comercial: {
     plano: 'pro',
     rotulo: 'Painel Comercial',
@@ -91,7 +99,7 @@ export const RECURSOS = {
     rotulo: 'Equipe',
     beneficio: 'Convide sua equipe para trabalhar junto no Prolu App.',
   },
-  // Projetos (Lote B): ainda sem funcionalidade — só menu e página "Em breve".
+  // Projetos: ainda sem funcionalidade (menu desativado, "em breve" em /planos).
   // Fora de empresa_libera() no banco de propósito: não há dado nem escrita
   // para bloquear no servidor até a área existir.
   projetos_visao_geral: {
@@ -116,17 +124,16 @@ export const RECURSOS = {
   },
 }
 
-// Comparativo de /planos, agrupado por tema. Cada item usa `recurso` (matriz
-// acima) ou `plano` (disponível a partir dele). `emBreve` = ainda não
-// construído: aparece como "em breve" em todos os planos, nunca como incluído.
+// Comparativo de /planos, agrupado por tema. Toda regra de plano vem de
+// RECURSOS (planoMinimo); a tela não repete a matriz. `emBreve` = recurso
+// futuro: linha esmaecida e chip "em breve" só nas colunas que o terão.
 export const COMPARATIVO = [
   {
     grupo: 'Comercial',
     itens: [
-      { rotulo: 'CRM de Orçamentos', plano: 'starter' },
-      { rotulo: 'Precificação', plano: 'starter' },
-      { rotulo: 'Formulários', plano: 'starter' },
-      { rotulo: 'Minha Página', plano: 'starter' },
+      { rotulo: 'CRM e Precificação', recurso: 'crm_precificacao' },
+      { rotulo: 'Minha Página', recurso: 'minha_pagina' },
+      { rotulo: 'Formulários + Notificações WhatsApp', recurso: 'formularios_whatsapp' },
       { rotulo: 'Painel Comercial', recurso: 'painel_comercial' },
       { rotulo: 'Indicadores e Metas', recurso: 'indicadores' },
     ],
@@ -135,15 +142,15 @@ export const COMPARATIVO = [
     grupo: 'Projetos',
     emBreve: true,
     itens: [
-      { rotulo: 'Visão Geral', emBreve: true },
-      { rotulo: 'Etapas e Tarefas', emBreve: true },
-      { rotulo: 'Cronograma', emBreve: true },
+      { rotulo: 'Visão Geral', recurso: 'projetos_visao_geral', emBreve: true },
+      { rotulo: 'Etapas e Tarefas', recurso: 'projetos_etapas_tarefas', emBreve: true },
+      { rotulo: 'Cronograma', recurso: 'projetos_cronograma', emBreve: true },
     ],
   },
   {
     grupo: 'Método Prolu',
     itens: [
-      { rotulo: 'Base de Conhecimento', plano: 'starter' },
+      { rotulo: 'Base de Conhecimento', recurso: 'base_conhecimento' },
       { rotulo: 'Plano Prático', recurso: 'ferramentas_mentoria' },
       { rotulo: 'Cliente Ideal', recurso: 'ferramentas_mentoria' },
       { rotulo: 'Agente Prolu', recurso: 'ferramentas_mentoria' },
@@ -152,8 +159,7 @@ export const COMPARATIVO = [
   {
     grupo: 'Escritório',
     itens: [
-      { rotulo: 'Contatos', plano: 'starter' },
-      { rotulo: 'Equipe (convidar usuários)', recurso: 'equipe_convites' },
+      { rotulo: 'Equipes (convidar usuários)', recurso: 'equipe_convites' },
     ],
   },
 ]

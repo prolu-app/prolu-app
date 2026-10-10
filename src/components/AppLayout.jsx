@@ -4,8 +4,8 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import {
   IconInicio, IconBase, IconCRM, IconDashboard,
   IconPlano, IconCliente, IconIndicadores, IconBurger, IconClose, IconAgente, IconBell,
-  IconBuilding, IconSettings, IconContacts, IconMoney, IconFormulario, IconChevronLeft, IconChevronRight, IconLayoutTemplate, IconStar,
-  IconLock, IconProjetos, IconTarefas, IconCalendar,
+  IconBuilding, IconSettings, IconContacts, IconMoney, IconFormulario, IconChevronLeft, IconChevronRight, IconLayoutTemplate,
+  IconSparkle, IconUpgrade, IconProjetos, IconTarefas, IconCalendar,
 } from './Icons.jsx'
 import { useConta } from '../contexts/ContaContext.jsx'
 import { planoMinimo, rotuloPlano } from '../utils/planos.js'
@@ -15,7 +15,8 @@ import './AppLayout.css'
 // `access` referencia uma chave do objeto `acesso` (AuthContext) — o item só
 // aparece no menu se `acesso[access]` for true (o PERFIL decide). Itens sem
 // `access` são sempre visíveis. `recurso` (src/utils/planos.js) nunca
-// esconde: sem o plano, o item mostra um cadeado discreto e abre a vitrine.
+// esconde: sem o plano, o item mostra uma estrela verde e abre a vitrine.
+// Seção `emBreve`: itens futuros, visíveis mas desativados (sem tela/rota).
 const NAV_SECTIONS = [
   {
     key: 'comercial',
@@ -32,10 +33,11 @@ const NAV_SECTIONS = [
   {
     key: 'projetos',
     label: 'Projetos',
+    emBreve: true,
     items: [
-      { to: '/projetos', label: 'Visão Geral', Icon: IconProjetos, access: 'projetosVisaoGeral', recurso: 'projetos_visao_geral', end: true },
-      { to: '/projetos/etapas-tarefas', label: 'Etapas e Tarefas', Icon: IconTarefas, access: 'projetosTarefas', recurso: 'projetos_etapas_tarefas' },
-      { to: '/projetos/cronograma', label: 'Cronograma', Icon: IconCalendar, access: 'projetosCronograma', recurso: 'projetos_cronograma' },
+      { label: 'Visão Geral', Icon: IconProjetos, access: 'projetosVisaoGeral', soon: true },
+      { label: 'Etapas e Tarefas', Icon: IconTarefas, access: 'projetosTarefas', soon: true },
+      { label: 'Cronograma', Icon: IconCalendar, access: 'projetosCronograma', soon: true },
     ],
   },
   {
@@ -54,7 +56,7 @@ const NAV_SECTIONS = [
     items: [
       { to: '/configuracoes', label: 'Configurações', Icon: IconSettings, access: 'configuracoes' },
       { to: '/clientes', label: 'Contatos', Icon: IconContacts, access: 'contatos' },
-      { to: '/planos', label: 'Planos e Upgrade', Icon: IconStar },
+      { to: '/planos', label: 'Planos e Upgrade', Icon: IconUpgrade },
     ],
   },
 ]
@@ -234,15 +236,17 @@ export default function AppLayout() {
                 if (visibleItems.length === 0) return null
                 return (
                   <Fragment key={section.key}>
-                    <span className="nav-section-label">{section.label}</span>
+                    <span className="nav-section-label">
+                      {section.label}
+                      {section.emBreve && <span className="nav-section-breve">em breve</span>}
+                    </span>
                     {visibleItems.map((item) => {
-                      const bloqueado = item.recurso && !planoLibera(item.recurso)
+                      const bloqueado = !item.soon && item.recurso && !planoLibera(item.recurso)
                       const dica = bloqueado ? `Disponível no plano ${rotuloPlano(planoMinimo(item.recurso))}` : null
                       return item.soon ? (
-                        <span className="nav-item disabled" key={item.label} title={item.label}>
+                        <span className="nav-item disabled" key={item.label} title={`${item.label} — em breve`} aria-disabled="true">
                           <item.Icon className="nav-icon" />
                           <span className="nav-item-label">{item.label}</span>
-                          <span className="nav-soon-tag">em breve</span>
                         </span>
                       ) : (
                         <NavLink
@@ -256,9 +260,8 @@ export default function AppLayout() {
                           <item.Icon className="nav-icon" />
                           <span className="nav-item-label">{item.label}</span>
                           {bloqueado && (
-                            <span className="nav-lock">
-                              <IconLock aria-hidden="true" />
-                              <span className="nav-sr">({dica})</span>
+                            <span className="nav-vitrine" aria-label={dica} role="img">
+                              <IconSparkle aria-hidden="true" />
                             </span>
                           )}
                         </NavLink>
