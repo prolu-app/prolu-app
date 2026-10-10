@@ -32,13 +32,13 @@ export const PLANO_INFO = {
   },
   mentoria: {
     rotulo: 'Mentoria',
-    descricao: 'Método completo e acompanhamento da Prolu.',
+    descricao: 'Método completo e acompanhamento em grupo da Prolu.',
     precoMes: 500,
     servico: true,
   },
   consultoria: {
     rotulo: 'Consultoria',
-    descricao: 'Tudo da Mentoria, com a Prolu no seu escritório.',
+    descricao: 'Tudo da Mentoria, com acompanhamento individual da Prolu.',
     precoMes: 2300,
     servico: true,
   },
