@@ -208,12 +208,8 @@
   white-space: nowrap;
 }
 
-/* ── barra de ação: mais baixa e leve; fica depois da tabela no fluxo, então
-   no fim da rolagem a última linha aparece inteira acima dela ── */
+/* ── barra de ação: no fim da página, depois da tabela (não flutua) ── */
 .pl-barra {
-  position: sticky;
-  bottom: 12px;
-  z-index: 5;
   margin-top: 28px;
   height: 56px;
   display: flex;
@@ -236,7 +232,7 @@
   .pl-faixa-ancora { top: calc(var(--context-banner-h, 0px) + 58px); }
   .pl-recurso-col { width: 160px; min-width: 150px; font-size: 13px; padding-left: 16px !important; }
   .pl-grupo-nome { left: 16px; }
-  .pl-barra { height: 52px; gap: 10px; padding: 0 6px 0 14px; bottom: 8px; }
+  .pl-barra { height: 52px; gap: 10px; padding: 0 6px 0 14px; }
   .pl-barra-rotulo, .pl-barra-preco { font-size: 13px; }
   .pl-barra-btn { padding: 9px 14px; font-size: 13px; }
 }

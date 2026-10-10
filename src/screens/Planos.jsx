@@ -161,7 +161,7 @@ export default function Planos() {
         </table>
       </div>
 
-      {/* barra de ação: sempre no mesmo lugar e com a mesma altura */}
+      {/* barra de ação: no fim da página, depois do comparativo */}
       <div className="pl-barra" role="region" aria-label="Falar com o Comercial">
         <div className="pl-barra-texto" aria-live="polite">
           {escolhido ? (
