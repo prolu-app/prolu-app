@@ -35,10 +35,12 @@
    (180px sozinho não sobra espaço nem para o header+toolbar acima da tabela — mantido o cálculo
    completo, que já reserva exatamente o necessário acima e abaixo.) */
 .crm-table-wrap { background: var(--white); border-radius: var(--r-lg); box-shadow: var(--shadow-rest); overflow-x: auto; overflow-y: auto; width: 100%; max-height: calc(100vh - 190px - 53px - 32px); min-height: 400px; }
-.crm-table { min-width: 1500px; width: 100%; border-collapse: collapse; font-size: 13.5px; }
-/* com larguras ajustadas pelo usuário, a soma das colunas manda — o min-width
-   fixo faria o navegador redistribuir a sobra e "desfazer" o ajuste */
-.crm-table.has-col-widths { min-width: 0; }
+/* table-layout: fixed + largura definida em TODA coluna (CRM.jsx →
+   larguraColuna) + largura da tabela = exatamente a soma delas (inline). Assim
+   o ajuste de uma coluna é respeitado de verdade e não espreme, estica nem some
+   com as outras; se sobrar tela, fica espaço em branco à direita. */
+.crm-table th.th-actions, .crm-table td.td-actions { width: 76px; }
+.crm-table { table-layout: fixed; border-collapse: collapse; font-size: 13.5px; }
 
 /* ── redimensionar coluna (só desktop: a tabela nem aparece no mobile) ── */
 .crm-table th.th-resizable { position: relative; }
@@ -53,11 +55,20 @@
 .crm-table th:hover .th-resize-handle::after { background: var(--ink-divider); }
 .th-resize-handle:hover::after, body.crm-col-resizing .th-resize-handle::after { background: var(--ink-40); }
 body.crm-col-resizing { cursor: col-resize; user-select: none; }
-/* largura manual: o título não invade a coluna vizinha (o dropdown de filtro
-   é renderizado em portal, então o overflow não o corta) */
-.crm-table th.th-has-width { overflow: hidden; }
-.crm-table th.th-has-width .th-content { min-width: 0; }
-.crm-table th.th-has-width .th-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+/* o título não invade a coluna vizinha (o dropdown de filtro é renderizado em
+   portal, então o overflow não o corta) */
+.crm-table th.th-resizable { overflow: hidden; }
+.crm-table th.th-resizable .th-content { min-width: 0; }
+.crm-table th.th-resizable .th-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+/* texto longo sem espaço (e-mail, link) quebra dentro da largura da coluna */
+.crm-table td .cell-display { overflow-wrap: anywhere; }
+/* telefone, data e valor não quebram: numa coluna estreita, cortam com "…" */
+.crm-table td[data-tipo="phone"] .cell-display,
+.crm-table td[data-tipo="date"] .cell-display,
+.crm-table td[data-tipo="money"] .cell-display,
+.crm-table td[data-tipo="number"] .cell-display {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal;
+}
 @media (hover: none) { .th-resize-handle { display: none; } }
 .crm-table thead { position: sticky; top: 0; z-index: 2; }
 .crm-table th { text-align: left; padding: 14px 16px; font-family: 'Montserrat', sans-serif; font-size: 10.5px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--ink-40); border-bottom: 1px solid var(--ink-divider); white-space: nowrap; background: var(--white); }
@@ -298,61 +309,15 @@ body.crm-col-resizing { cursor: col-resize; user-select: none; }
 .crm-table-wrap.density-compact .sd-cell .sd-trigger { min-height: 22px; }
 .crm-table-wrap.density-compact .dp-cell { font-size: 11px; padding: 0 6px; min-height: 22px; }
 .crm-table-wrap.density-compact .pill { font-size: 9px; padding: 1px 5px; }
-/* table-layout: fixed é o que faz as larguras do th[data-col] abaixo serem respeitadas
-   de verdade — em auto, width/min-width são só sugestão e o navegador ainda expande a
-   coluna pro conteúdo. */
-.crm-table-wrap.density-compact .crm-table { min-width: unset; table-layout: fixed; }
+/* larguras do compacto: LARGURA_COLUNA.compact em CRM.jsx (table-layout: fixed na regra geral) */
+.crm-table-wrap.density-compact .crm-table { min-width: unset; }
 /* Toda célula fica em uma linha só, sem exceção por tipo de coluna — a tentativa
    anterior de liberar overflow:visible só pra colunas de seleção quebrou o layout
    (empilhava verticalmente). O chevron do SelectDropdown fica dentro do fluxo
    normal da célula (sem position:absolute), então nowrap + ellipsis já é suficiente. */
 .crm-table-wrap.density-compact .crm-table td {
   min-width: unset; white-space: nowrap; vertical-align: middle;
-  overflow: hidden; text-overflow: ellipsis; max-width: 160px;
-}
-
-/* Larguras fixas para colunas que sobram ou faltam espaço no compacto.
-   Seletores com th[]/td[] (não só [data-col]) para empatar em especificidade com as
-   regras gerais de th/td acima e vencer por ordem — só [data-col] sozinho tem menos
-   especificidade que ".crm-table th"/"td" (sem o tipo do elemento) e perderia. Sem
-   max-width: o th agora pode crescer se word-break precisar; quem trunca é o td. */
-.crm-table-wrap.density-compact th[data-col="data_entrada"],
-.crm-table-wrap.density-compact td[data-col="data_entrada"],
-.crm-table-wrap.density-compact th[data-col="data_fechamento"],
-.crm-table-wrap.density-compact td[data-col="data_fechamento"] {
-  width: 72px; min-width: 72px;
-}
-.crm-table-wrap.density-compact th[data-col="valor"],
-.crm-table-wrap.density-compact td[data-col="valor"] {
-  width: 88px; min-width: 88px;
-}
-.crm-table-wrap.density-compact th[data-col="proposta"],
-.crm-table-wrap.density-compact td[data-col="proposta"] {
-  width: 68px; min-width: 68px;
-}
-.crm-table-wrap.density-compact th[data-col="icp"],
-.crm-table-wrap.density-compact td[data-col="icp"] {
-  width: 72px; min-width: 72px;
-}
-.crm-table-wrap.density-compact th[data-col="cliente"],
-.crm-table-wrap.density-compact td[data-col="cliente"] {
-  width: 110px; min-width: 110px;
-}
-.crm-table-wrap.density-compact th[data-col="status"],
-.crm-table-wrap.density-compact td[data-col="status"] {
-  width: 90px; min-width: 90px;
-}
-.crm-table-wrap.density-compact th[data-col="segmento"],
-.crm-table-wrap.density-compact td[data-col="segmento"] {
-  width: 100px; min-width: 100px;
-}
-.crm-table-wrap.density-compact th[data-col="tipo_projeto"],
-.crm-table-wrap.density-compact td[data-col="tipo_projeto"] {
-  width: 110px; min-width: 110px;
-}
-.crm-table-wrap.density-compact th[data-col="origem"],
-.crm-table-wrap.density-compact td[data-col="origem"] {
-  width: 90px; min-width: 90px;
+  overflow: hidden; text-overflow: ellipsis;
 }
 
 .crm-table-wrap.density-default .crm-table th { font-size: 10.5px; padding: 12px 16px 10px 16px; }

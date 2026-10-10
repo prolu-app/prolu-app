@@ -67,6 +67,41 @@ const FIXED_COLS_DEF = [
   { nome: 'Data de fechamento', tipo: 'date',  slug: 'data_fechamento', ordem: 11 },
 ]
 
+// Largura de cada coluna da tabela (desktop), em px, quando o usuário não
+// ajustou: por coluna fixa (slug) e, para colunas personalizadas, por tipo.
+// Toda coluna tem largura definida — a tabela usa table-layout: fixed com a
+// soma delas, então ajustar uma coluna nunca espreme, estica ou some com as
+// outras (antes só algumas colunas tinham largura, e só no compacto; Telefone,
+// Cidade e as personalizadas ficavam com a sobra: 0px a 200px+).
+const LARGURA_COLUNA = {
+  default: {
+    slug: {
+      data_entrada: 175, cliente: 220, telefone: 165, cidade: 150, segmento: 160, tipo_projeto: 210,
+      origem: 160, icp: 110, valor: 170, proposta: 185, status: 185, data_fechamento: 195,
+    },
+    tipo: { text: 180, client: 220, phone: 165, date: 160, money: 160, number: 130, select: 170, tags: 210, checkbox: 110 },
+    outra: 170,
+  },
+  compact: {
+    slug: {
+      data_entrada: 72, cliente: 110, telefone: 108, cidade: 90, segmento: 100, tipo_projeto: 110,
+      origem: 90, icp: 72, valor: 88, proposta: 68, status: 90, data_fechamento: 72,
+    },
+    tipo: { text: 110, client: 110, phone: 108, date: 72, money: 88, number: 72, select: 100, tags: 120, checkbox: 60 },
+    outra: 100,
+  },
+}
+// colunas fixas de seleção (checkbox) e de ações. A tabela tem exatamente a
+// soma das larguras: com table-layout fixed, uma tabela mais larga que a soma
+// faria o navegador repartir a sobra entre TODAS as colunas (desfaz o ajuste).
+const LARGURA_SEL = 40, LARGURA_ACOES = 76
+
+function larguraColuna(col, density) {
+  if (col.width) return col.width
+  const t = LARGURA_COLUNA[density] || LARGURA_COLUNA.default
+  return t.slug[col.slug] ?? t.tipo[col.type] ?? t.outra
+}
+
 // carregar() pode rodar duas vezes em paralelo para o mesmo escritório (o
 // React StrictMode do modo dev monta o efeito duas vezes) — sem isto, as duas
 // execuções criavam as colunas fixas e o CRM ficava com colunas duplicadas.
@@ -1297,7 +1332,10 @@ export default function CRM() {
 
       {/* DESKTOP: tabela */}
       <div className={`crm-table-wrap density-${density}${idsSelecionados.length ? ' crm-has-selection' : ''}`} ref={tableRef}>
-        <table className={`crm-table${columns.some(c => c.width) ? ' has-col-widths' : ''}`}>
+        <table
+          className="crm-table"
+          style={{ width: LARGURA_SEL + LARGURA_ACOES + visibleCols.reduce((s, c) => s + larguraColuna(c, density), 0) }}
+        >
           <thead>
             <tr>
               <th className="th-sel">
@@ -1319,7 +1357,7 @@ export default function CRM() {
                   : !!(colDateFilters[c.id]?.start && colDateFilters[c.id]?.end)
                 return (
                   <th key={c.id} data-col={c.slug || undefined} className={`th-resizable${c.width ? ' th-has-width' : ''}`}
-                    style={c.width ? { width: c.width, minWidth: c.width, maxWidth: c.width } : (density === 'compact' ? undefined : { minWidth: 150 })}>
+                    style={(w => ({ width: w, minWidth: w, maxWidth: w }))(larguraColuna(c, density))}>
                     <div className="th-content">
                       {c.fixed ? (
                         <span className="th-label th-fixed">{c.name}</span>
@@ -1373,7 +1411,7 @@ export default function CRM() {
                   <input type="checkbox" checked={selecionados.has(row.id)} onChange={() => toggleSelecionado(row.id)} aria-label="Selecionar registro" />
                 </td>
                 {visibleCols.map(col => (
-                  <td key={col.id} data-col={col.slug || undefined}>
+                  <td key={col.id} data-col={col.slug || undefined} data-tipo={col.type}>
                     <InlineCell
                       row={row}
                       col={col}
