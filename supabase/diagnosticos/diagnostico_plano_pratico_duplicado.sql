@@ -1,36 +1,36 @@
 -- ════════════════════════════════════════════════════════════════
 -- Diagnóstico: Plano Prático duplicado no escritório de teste
 -- SÓ LEITURA. Rodar no SQL Editor, um bloco de cada vez.
--- Troque 'master@teste.com' pelo e-mail do master do escritório de teste.
+-- Escritório de teste: master andresouzavr@gmail.com.
 -- ════════════════════════════════════════════════════════════════
 
 
 -- ── 1. Linha do tempo do escritório de teste ──
 -- Compare: criação do escritório, backfill (migration_049) e as duas cópias.
 select 'escritório criado' as evento, e.created_at as quando
-  from empresas e where e.id = (select empresa_id from usuarios where email = 'master@teste.com')
+  from empresas e where e.id = (select empresa_id from usuarios where email = 'andresouzavr@gmail.com')
 union all
 select 'backfill da 049', backfill_em from plano_modelo_meta
 union all
 select 'tag: ' || nome, created_at from plano_tags
- where empresa_id = (select empresa_id from usuarios where email = 'master@teste.com')
+ where empresa_id = (select empresa_id from usuarios where email = 'andresouzavr@gmail.com')
 union all
 select 'ação ' || ordem || ': ' || left(texto, 40), created_at from plano_acoes
- where empresa_id = (select empresa_id from usuarios where email = 'master@teste.com')
+ where empresa_id = (select empresa_id from usuarios where email = 'andresouzavr@gmail.com')
 order by quando;
 
 
 -- ── 2. As duas cópias lado a lado (por nome da tag e texto da ação) ──
 select nome, count(*) as vezes, array_agg(created_at order by created_at) as criadas_em
   from plano_tags
- where empresa_id = (select empresa_id from usuarios where email = 'master@teste.com')
+ where empresa_id = (select empresa_id from usuarios where email = 'andresouzavr@gmail.com')
  group by nome order by min(created_at);
 
 select texto, count(*) as vezes,
        array_agg(ordem order by created_at) as ordens,
        array_agg(created_at order by created_at) as criadas_em
   from plano_acoes
- where empresa_id = (select empresa_id from usuarios where email = 'master@teste.com')
+ where empresa_id = (select empresa_id from usuarios where email = 'andresouzavr@gmail.com')
  group by texto order by min(ordem);
 
 -- Como ler:

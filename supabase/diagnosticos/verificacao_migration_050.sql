@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════════════
 -- Verificação da migration_050 (cursos)
 -- Rodar no SQL Editor, UM BLOCO DE CADA VEZ. Os testes terminam em ROLLBACK.
--- Troque 'master@teste.com' pelo e-mail do master do escritório de teste e
+-- Escritório de teste: master andresouzavr@gmail.com. Troque
 -- 'master@outro.com' pelo de OUTRO escritório (para conferir que a liberação
 -- avulsa vale só para um).
 -- ════════════════════════════════════════════════════════════════
@@ -34,15 +34,15 @@ select policyname, cmd from pg_policies
 begin;
 -- curso só para Business+ e escritório de teste no Starter
 delete from curso_planos where curso_id = (select id from cursos order by ordem limit 1) and plano in ('starter', 'pro');
-update empresas set plano = 'starter' where id = (select empresa_id from usuarios where email = 'master@teste.com');
+update empresas set plano = 'starter' where id = (select empresa_id from usuarios where email = 'andresouzavr@gmail.com');
 
 -- esperado: false (Starter sem o curso)
-select empresa_acessa_curso((select empresa_id from usuarios where email = 'master@teste.com'),
+select empresa_acessa_curso((select empresa_id from usuarios where email = 'andresouzavr@gmail.com'),
                             (select id from cursos order by ordem limit 1)) as starter_acessa;
 
 -- como o master de teste: pastas do curso somem; vitrine só com títulos
 select set_config('request.jwt.claims', json_build_object(
-  'sub', (select auth_id from usuarios where email = 'master@teste.com'), 'role', 'authenticated')::text, true);
+  'sub', (select auth_id from usuarios where email = 'andresouzavr@gmail.com'), 'role', 'authenticated')::text, true);
 set local role authenticated;
 select count(*) as pastas_visiveis from kb_pastas where curso_id is not null;            -- esperado: 0
 select count(*) as aulas_visiveis from kb_aulas;                                         -- esperado: só aulas de pastas do escritório
@@ -59,26 +59,26 @@ rollback;
 begin;
 delete from curso_planos where curso_id = (select id from cursos order by ordem limit 1) and plano in ('starter', 'pro');
 update empresas set plano = 'starter'
- where id in (select empresa_id from usuarios where email in ('master@teste.com', 'master@outro.com'));
-select liberar_curso((select empresa_id from usuarios where email = 'master@teste.com'),
+ where id in (select empresa_id from usuarios where email in ('andresouzavr@gmail.com', 'master@outro.com'));
+select liberar_curso((select empresa_id from usuarios where email = 'andresouzavr@gmail.com'),
                      (select id from cursos order by ordem limit 1), 'manual', 'teste');
 -- esperado: teste = true, outro = false
-select empresa_acessa_curso((select empresa_id from usuarios where email = 'master@teste.com'), (select id from cursos order by ordem limit 1)) as teste,
+select empresa_acessa_curso((select empresa_id from usuarios where email = 'andresouzavr@gmail.com'), (select id from cursos order by ordem limit 1)) as teste,
        empresa_acessa_curso((select empresa_id from usuarios where email = 'master@outro.com'), (select id from cursos order by ordem limit 1)) as outro;
-select revogar_curso((select empresa_id from usuarios where email = 'master@teste.com'),
+select revogar_curso((select empresa_id from usuarios where email = 'andresouzavr@gmail.com'),
                      (select id from cursos order by ordem limit 1), 'teste');
 -- esperado: false; e a liberação revogada continua no histórico
-select empresa_acessa_curso((select empresa_id from usuarios where email = 'master@teste.com'), (select id from cursos order by ordem limit 1)) as depois_de_revogar;
+select empresa_acessa_curso((select empresa_id from usuarios where email = 'andresouzavr@gmail.com'), (select id from cursos order by ordem limit 1)) as depois_de_revogar;
 select origem, motivo, revogado_em is not null as revogada from curso_liberacoes
- where empresa_id = (select empresa_id from usuarios where email = 'master@teste.com');
+ where empresa_id = (select empresa_id from usuarios where email = 'andresouzavr@gmail.com');
 rollback;
 
 
 -- ── 6. Business libera curso listado; conta suspensa não acessa ──
 begin;
 delete from curso_planos where curso_id = (select id from cursos order by ordem limit 1) and plano in ('starter', 'pro');
-update empresas set plano = 'business' where id = (select empresa_id from usuarios where email = 'master@teste.com');
-select empresa_acessa_curso((select empresa_id from usuarios where email = 'master@teste.com'), (select id from cursos order by ordem limit 1)) as business; -- true
-update empresas set status_conta = 'suspensa', suspensao_motivo = 'teste' where id = (select empresa_id from usuarios where email = 'master@teste.com');
-select empresa_acessa_curso((select empresa_id from usuarios where email = 'master@teste.com'), (select id from cursos order by ordem limit 1)) as suspensa; -- false
+update empresas set plano = 'business' where id = (select empresa_id from usuarios where email = 'andresouzavr@gmail.com');
+select empresa_acessa_curso((select empresa_id from usuarios where email = 'andresouzavr@gmail.com'), (select id from cursos order by ordem limit 1)) as business; -- true
+update empresas set status_conta = 'suspensa', suspensao_motivo = 'teste' where id = (select empresa_id from usuarios where email = 'andresouzavr@gmail.com');
+select empresa_acessa_curso((select empresa_id from usuarios where email = 'andresouzavr@gmail.com'), (select id from cursos order by ordem limit 1)) as suspensa; -- false
 rollback;

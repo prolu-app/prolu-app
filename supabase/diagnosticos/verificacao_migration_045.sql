@@ -3,8 +3,8 @@
 -- Rodar no SQL Editor, UM BLOCO DE CADA VEZ (selecione o bloco e Run).
 -- Nada aqui altera dados: os testes simulados terminam em ROLLBACK.
 --
--- Antes: troque 'master@teste.com' pelo e-mail do MASTER do escritório de
--- teste (não use o seu escritório real).
+-- Escritório de teste: master andresouzavr@gmail.com
+-- (não use um escritório real).
 -- ════════════════════════════════════════════════════════════════
 
 
@@ -29,7 +29,7 @@ select tablename, policyname, permissive, cmd from pg_policies
 -- Esperado: a empresa de teste com plano/status atuais, e o mesmo id.
 begin;
 select set_config('request.jwt.claims', json_build_object(
-  'sub', (select auth_id from usuarios where email = 'master@teste.com'),
+  'sub', (select auth_id from usuarios where email = 'andresouzavr@gmail.com'),
   'role', 'authenticated')::text, true);
 set local role authenticated;
 select * from conta_atual();
@@ -41,7 +41,7 @@ rollback;
 -- Esperado: ERRO "Plano e status da conta só podem ser alterados pela Prolu."
 begin;
 select set_config('request.jwt.claims', json_build_object(
-  'sub', (select auth_id from usuarios where email = 'master@teste.com'),
+  'sub', (select auth_id from usuarios where email = 'andresouzavr@gmail.com'),
   'role', 'authenticated')::text, true);
 set local role authenticated;
 update empresas set plano = 'consultoria' where id = auth_empresa_id();
@@ -52,7 +52,7 @@ rollback;
 -- Esperado: "starter | ativa"
 begin;
 select set_config('request.jwt.claims', json_build_object(
-  'sub', (select auth_id from usuarios where email = 'master@teste.com'),
+  'sub', (select auth_id from usuarios where email = 'andresouzavr@gmail.com'),
   'role', 'authenticated')::text, true);
 set local role authenticated;
 insert into empresas (id, nome, plano, status_conta)
@@ -72,4 +72,4 @@ rollback;
 select r.recurso, empresa_libera(u.empresa_id, r.recurso) as libera
   from usuarios u
  cross join (values ('painel_comercial'), ('indicadores'), ('equipe_convites'), ('ferramentas_mentoria')) r(recurso)
- where u.email = 'master@teste.com';
+ where u.email = 'andresouzavr@gmail.com';

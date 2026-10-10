@@ -1,8 +1,8 @@
 -- ════════════════════════════════════════════════════════════════
 -- Verificação da migration_046 (gestão de escritórios + histórico)
 -- Rodar no SQL Editor, UM BLOCO DE CADA VEZ.
--- Use só o escritório de teste: troque 'master@teste.com' pelo e-mail do
--- master dele e 'contato@prolu.com.br' pelo e-mail do seu prolu_admin.
+-- Use só o escritório de teste (master andresouzavr@gmail.com); troque
+-- 'contato@prolu.com.br' pelo e-mail do seu prolu_admin, se for outro.
 -- ════════════════════════════════════════════════════════════════
 
 
@@ -19,10 +19,10 @@ select proname from pg_proc
 -- Desfeita no final (rollback). Esperado: 1 linha plano, origem sistema.
 begin;
 update empresas set plano = 'pro'
- where id = (select empresa_id from usuarios where email = 'master@teste.com')
+ where id = (select empresa_id from usuarios where email = 'andresouzavr@gmail.com')
    and plano <> 'pro';
 select tipo, valor_anterior, valor_novo, origem, motivo from empresa_historico
- where empresa_id = (select empresa_id from usuarios where email = 'master@teste.com')
+ where empresa_id = (select empresa_id from usuarios where email = 'andresouzavr@gmail.com')
  order by criado_em desc limit 1;
 rollback;
 
@@ -31,7 +31,7 @@ rollback;
 -- Esperado: ERRO "Apenas a Prolu pode alterar planos."
 begin;
 select set_config('request.jwt.claims', json_build_object(
-  'sub', (select auth_id from usuarios where email = 'master@teste.com'),
+  'sub', (select auth_id from usuarios where email = 'andresouzavr@gmail.com'),
   'role', 'authenticated')::text, true);
 set local role authenticated;
 select admin_alterar_plano((select auth_empresa_id()), 'consultoria', 'teste');
@@ -42,7 +42,7 @@ rollback;
 -- Esperado: 0 linhas
 begin;
 select set_config('request.jwt.claims', json_build_object(
-  'sub', (select auth_id from usuarios where email = 'master@teste.com'),
+  'sub', (select auth_id from usuarios where email = 'andresouzavr@gmail.com'),
   'role', 'authenticated')::text, true);
 set local role authenticated;
 select count(*) from empresa_historico;
@@ -56,5 +56,5 @@ select set_config('request.jwt.claims', json_build_object(
   'sub', (select auth_id from usuarios where email = 'contato@prolu.com.br'),
   'role', 'authenticated')::text, true);
 set local role authenticated;
-select * from admin_escritorio_equipe((select empresa_id from usuarios where email = 'master@teste.com'));
+select * from admin_escritorio_equipe((select empresa_id from usuarios where email = 'andresouzavr@gmail.com'));
 rollback;
