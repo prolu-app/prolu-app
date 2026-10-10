@@ -5,9 +5,11 @@
 .pl-pagina .ph { margin-bottom: 36px; }
 
 /* ── faixa reduzida (tag + preço) ── */
+/* top negativo = padding-top do .main (AppLayout.css): o sticky conta a
+   partir da borda interna do padding, e a faixa precisa encostar no topo */
 .pl-faixa-ancora {
   position: sticky;
-  top: 0;
+  top: -38px;
   height: 0;
   z-index: 6;
 }
@@ -229,7 +231,9 @@
 
 @media (max-width: 860px) {
   /* a faixa fica logo abaixo da barra superior fixa do celular */
-  .pl-faixa-ancora { top: calc(var(--context-banner-h, 0px) + 58px); }
+  /* celular: padding-top do .main é banner + 78px e a barra superior fixa
+     ocupa banner + 58px, então a faixa gruda logo abaixo dela */
+  .pl-faixa-ancora { top: -20px; }
   .pl-recurso-col { width: 160px; min-width: 150px; font-size: 13px; padding-left: 16px !important; }
   .pl-grupo-nome { left: 16px; }
   .pl-barra { height: 52px; gap: 10px; padding: 0 6px 0 14px; }

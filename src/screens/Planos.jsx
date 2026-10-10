@@ -51,18 +51,28 @@ export default function Planos() {
   }, [])
 
   // faixa aparece quando o cabeçalho completo passa por baixo dela
+  // A âncora (sticky, altura 0) marca onde a faixa fica: quando ela gruda no
+  // topo e o cabeçalho completo já passou por baixo dela, a faixa aparece.
+  // Mede a posição real (não depende do padding da área de conteúdo).
   useEffect(() => {
     const linha = linhaCabecalhoRef.current
     const ancora = ancoraRef.current
     if (!linha || !ancora) return
-    const topo = parseFloat(getComputedStyle(ancora).top) || 0
-    const io = new IntersectionObserver(([entrada]) => {
-      // rootBounds já vem reduzido pelo rootMargin (topo + faixa)
-      const acima = entrada.boundingClientRect.top < (entrada.rootBounds?.top ?? topo + ALTURA_FAIXA)
-      setFaixaVisivel(!entrada.isIntersecting && acima)
-    }, { rootMargin: `-${Math.round(topo + ALTURA_FAIXA)}px 0px 0px 0px` })
-    io.observe(linha)
-    return () => io.disconnect()
+    let quadro = 0
+    const conferir = () => {
+      quadro = 0
+      const visivel = linha.getBoundingClientRect().bottom <= ancora.getBoundingClientRect().top + ALTURA_FAIXA
+      setFaixaVisivel(visivel)
+    }
+    const agendar = () => { if (!quadro) quadro = requestAnimationFrame(conferir) }
+    conferir()
+    window.addEventListener('scroll', agendar, true) // captura: a rolagem é do <main>
+    window.addEventListener('resize', agendar)
+    return () => {
+      window.removeEventListener('scroll', agendar, true)
+      window.removeEventListener('resize', agendar)
+      if (quadro) cancelAnimationFrame(quadro)
+    }
   }, [])
 
   function classeColuna(p) {
