@@ -5,36 +5,8 @@ import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { PLANO_TAGS, PLANO_ACOES } from '../data/seed.js'
 import { IconPlus, IconCheck, IconGrip, IconTrash, IconClose } from '../components/Icons.jsx'
 import { DatePicker } from '../components/DatePicker.jsx'
-import { useSomenteLeitura } from '../components/BloqueioPlano.jsx'
+import { TAG_COLORS, STATUS_ACAO as STATUS } from '../utils/planoPratico.js'
 import './PlanoPratico.css'
-
-const TAG_COLORS = ['#CBE921', '#FF6B2B', '#3a6ea5', '#8050a0', '#e05454', '#4CAF82', '#e5a020', '#5f5f58']
-const STATUS = {
-  pend: { label: 'Pendente', cls: 'pill-gray' },
-  prog: { label: 'Em andamento', cls: 'pill-blue' },
-  done: { label: 'Concluído', cls: 'pill-green' },
-}
-
-// Seed inicial de uma empresa nova (primeira vez que abre o Plano Prático).
-const DEFAULT_TAGS = [
-  { name: 'Estrutura comercial', color: '#3a6ea5' },
-  { name: 'Posicionamento', color: '#8050a0' },
-  { name: 'Metas e indicadores', color: '#4CAF82' },
-]
-
-const DEFAULT_ACOES = [
-  { text: 'Começar a usar o CRM para registrar todo pedido de orçamento', tag: 'Estrutura comercial', status: 'pend' },
-  { text: 'Criar rotina de atualizar o CRM uma vez por semana', tag: 'Estrutura comercial', status: 'pend' },
-  { text: 'Definir o Processo de Atendimento, do primeiro contato à proposta', tag: 'Estrutura comercial', status: 'prog' },
-  { text: 'Elaborar apresentação para usar na primeira reunião com o cliente', tag: 'Estrutura comercial', status: 'pend' },
-  { text: 'Definir o Perfil de Cliente Ideal do escritório', tag: 'Posicionamento', status: 'pend' },
-  { text: 'Produzir conteúdos focados no Cliente Ideal definido', tag: 'Posicionamento', status: 'pend' },
-  { text: 'Criar formulário de qualificação para o Instagram', tag: 'Posicionamento', status: 'pend' },
-  { text: 'Definir metas de faturamento e número de projetos fechados', tag: 'Metas e indicadores', status: 'pend' },
-  { text: 'Revisar indicadores de desempenho a cada trimestre', tag: 'Metas e indicadores', status: 'pend' },
-  { text: 'Estudar precificação por horas e definir valor da hora', tag: 'Metas e indicadores', status: 'pend' },
-  { text: 'Elaborar proposta usando o Modelo Prolu', tag: 'Estrutura comercial', status: 'pend' },
-]
 
 function parseTag(row) {
   return { id: row.id, name: row.nome, color: row.cor }
@@ -52,7 +24,6 @@ function fmtPrazo(iso) {
 export default function PlanoPratico() {
   const toast = useToast()
   const { user, activeEmpresaId } = useAuth()
-  const somenteLeitura = useSomenteLeitura()
   const [tags, setTags] = useState([])
   const [acoes, setAcoes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -82,46 +53,11 @@ export default function PlanoPratico() {
     ])
     if (tagsErr || acoesErr) { toast('Não foi possível carregar o Plano Prático'); setLoading(false); return }
 
-    if (!acoesData || acoesData.length === 0) {
-      // vitrine (plano sem o recurso): mostra o plano padrão sem gravar nada
-      if (somenteLeitura) { mostrarPadraoSemGravar(); return }
-      await seedPadrao()
-      return
-    }
-
+    // O conteúdo padrão vem do modelo editável pelo prolu_admin, copiado para o
+    // escritório na CRIAÇÃO dele (migration_049) — a tela não cria mais nada ao
+    // abrir. Sem tags/ações = plano vazio (inclusive na vitrine).
     setTags((tagsData || []).map(parseTag))
-    setAcoes(acoesData.map(parseAcao))
-    setLoading(false)
-  }
-
-  function mostrarPadraoSemGravar() {
-    const padraoTags = DEFAULT_TAGS.map((t, i) => ({ id: 'padrao-' + i, name: t.name, color: t.color }))
-    const tagIdByName = Object.fromEntries(padraoTags.map((t) => [t.name, t.id]))
-    setTags(padraoTags)
-    setAcoes(DEFAULT_ACOES.map((a, i) => ({ id: 'padrao-acao-' + i, text: a.text, tag: tagIdByName[a.tag], status: a.status, prazo: '', ordem: i })))
-    setLoading(false)
-  }
-
-  async function seedPadrao() {
-    const { data: newTags, error: tagErr } = await supabase
-      .from('plano_tags')
-      .insert(DEFAULT_TAGS.map((t) => ({ empresa_id: activeEmpresaId, nome: t.name, cor: t.color })))
-      .select('*')
-    if (tagErr) { toast('Não foi possível preparar o Plano Prático'); setLoading(false); return }
-
-    const tagIdByName = Object.fromEntries(newTags.map((t) => [t.nome, t.id]))
-    const payload = DEFAULT_ACOES.map((a, i) => ({
-      empresa_id: activeEmpresaId,
-      tag_id: tagIdByName[a.tag],
-      texto: a.text,
-      status: a.status,
-      ordem: i,
-    }))
-    const { data: newAcoes, error: acoesErr } = await supabase.from('plano_acoes').insert(payload).select('*')
-    if (acoesErr) { toast('Não foi possível preparar o Plano Prático'); setLoading(false); return }
-
-    setTags(newTags.map(parseTag))
-    setAcoes(newAcoes.map(parseAcao).sort((a, b) => a.ordem - b.ordem))
+    setAcoes((acoesData || []).map(parseAcao))
     setLoading(false)
   }
 

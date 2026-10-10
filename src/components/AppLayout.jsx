@@ -67,6 +67,7 @@ const ADMIN_NAV = [
   { to: '/base-conhecimento', label: 'Base de Conhecimento', Icon: IconBase },
   { to: '/admin/modelos-precificacao', label: 'Modelos de precificação', Icon: IconMoney },
   { to: '/admin/modelos-formulario', label: 'Modelos de formulário', Icon: IconFormulario },
+  { to: '/admin/plano-pratico-padrao', label: 'Plano Prático padrão', Icon: IconPlano },
   { to: '/avisos', label: 'Avisos', Icon: IconBell },
   { to: '/agente-prolu', label: 'Agente Prolu', Icon: IconAgente },
 ]

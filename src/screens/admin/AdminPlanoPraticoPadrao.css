@@ -1,0 +1,77 @@
+/* Plano Prático padrão (admin) */
+.ppp-aviso {
+  background: var(--orange-soft); color: var(--orange-ink);
+  font-size: 13.5px; line-height: 1.5; padding: 12px 16px; border-radius: var(--r-md);
+  max-width: 760px;
+}
+.ppp-meta { font-size: 12.5px; color: var(--ink-60); margin-top: 12px; }
+.ppp-pendente { color: var(--orange-ink); font-weight: 500; }
+.ppp-vazio { color: var(--ink-40); font-size: 14px; margin-top: 28px; }
+.ppp-vazio-inline { color: var(--ink-40); font-size: 13.5px; padding: 6px 4px; }
+
+.ppp-secao { margin-top: 30px; }
+.ppp-secao-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.ppp-secao-titulo { margin: 0; }
+.ppp-add {
+  display: inline-flex; align-items: center; gap: 6px; border: none; background: none; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 500; color: var(--ink-60); padding: 6px 10px; border-radius: 99px;
+}
+.ppp-add:hover { color: var(--ink); background: rgba(18, 18, 16, 0.05); }
+.ppp-add svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2.4; fill: none; }
+
+.ppp-lista { padding: 8px 12px; display: flex; flex-direction: column; }
+.ppp-lista:hover { box-shadow: var(--shadow-rest); }
+.ppp-linha {
+  display: flex; align-items: center; gap: 12px; padding: 10px 4px;
+  border-bottom: 1px solid var(--ink-divider);
+}
+.ppp-linha:last-child { border-bottom: none; }
+.ppp-linha-acao { align-items: flex-start; }
+.ppp-linha-acao .ppp-ordem, .ppp-linha-acao .ppp-num, .ppp-linha-acao .ppp-del { margin-top: 6px; }
+
+.ppp-ordem { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+.ppp-ordem button {
+  width: 22px; height: 16px; border: none; background: none; cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center; color: var(--ink-40); border-radius: 4px;
+}
+.ppp-ordem button:hover:not(:disabled) { color: var(--ink); background: var(--gray-soft); }
+.ppp-ordem button:disabled { opacity: 0.3; cursor: default; }
+.ppp-ordem svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2.4; fill: none; }
+.ppp-ordem .ppp-subir { transform: rotate(180deg); }
+.ppp-num { width: 20px; flex-shrink: 0; font-size: 12px; font-weight: 600; color: var(--ink-40); text-align: right; }
+
+.ppp-cores { display: flex; gap: 4px; flex-shrink: 0; }
+.ppp-cor {
+  width: 16px; height: 16px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0;
+  box-shadow: 0 0 0 1px rgba(18, 18, 16, 0.08);
+}
+.ppp-cor.on { border-color: var(--white); box-shadow: 0 0 0 2px var(--ink); }
+.ppp-cor:focus-visible { outline: 2px solid var(--green-deep); outline-offset: 2px; }
+
+.ppp-input {
+  flex: 1; min-width: 0; border: none; outline: none; border-radius: var(--r-sm);
+  background: var(--cream); padding: 9px 12px; font-family: inherit; font-size: 14px; color: var(--ink);
+}
+.ppp-input:focus { box-shadow: 0 0 0 2px var(--green); }
+.ppp-texto { resize: vertical; line-height: 1.45; min-height: 40px; }
+.ppp-uso { font-size: 12px; color: var(--ink-40); white-space: nowrap; flex-shrink: 0; }
+
+.ppp-selects { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; width: 210px; }
+.ppp-select { width: 100%; }
+.ppp-tag-opcao { display: inline-flex; align-items: center; gap: 7px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ppp-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.ppp-sem-tag { color: var(--ink-40); }
+
+.ppp-del {
+  flex-shrink: 0; width: 30px; height: 30px; border: none; background: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; color: var(--ink-40); border-radius: 8px;
+}
+.ppp-del:hover { background: var(--red-soft); color: var(--red); }
+.ppp-del svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+
+@media (max-width: 860px) {
+  .ppp-linha { flex-wrap: wrap; }
+  .ppp-linha-acao .ppp-texto { flex-basis: calc(100% - 90px); }
+  .ppp-selects { width: 100%; flex-direction: row; padding-left: 34px; }
+  .ppp-cores { order: 3; width: 100%; padding-left: 34px; }
+}
