@@ -168,7 +168,8 @@ export default function PlanoPratico() {
     const { data, error } = await supabase.from('plano_tags').insert({
       empresa_id: activeEmpresaId, nome, cor: tagForm.color,
     }).select('*').single()
-    if (error) { toast('Não foi possível criar a tag'); return }
+    // 23505: índice único de nome de tag por escritório (migration_051)
+    if (error) { toast(error.code === '23505' ? 'Já existe uma tag com esse nome' : 'Não foi possível criar a tag'); return }
     setTags((prev) => [...prev, parseTag(data)])
     setActiveTag(data.id)
     setTagModal(false)
