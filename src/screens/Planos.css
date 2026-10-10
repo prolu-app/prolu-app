@@ -19,6 +19,9 @@
   left: 0;
   right: 0;
   display: flex;
+  box-sizing: border-box;
+  /* respiro do topo: os nomes descem um pouco dentro do quadro branco */
+  padding: 14px 0 8px;
   background: rgba(255, 255, 255, 0.97);
   border-radius: 0 0 var(--r-md) var(--r-md);
   box-shadow: 0 6px 18px rgba(18, 18, 16, 0.08);
@@ -42,6 +45,7 @@
 }
 .pl-faixa-cel .tag-plano { font-size: 11px; padding: 0 8px; }
 .pl-faixa-preco { font-size: 11.5px; font-weight: 600; color: var(--ink-80); }
+.pl-faixa-mes { font-weight: 400; color: var(--ink-40); }
 .pl-faixa-cel.pl-escolhido { background: var(--green-soft); }
 .pl-faixa-cel.pl-atual { background: var(--cream); }
 

@@ -11,7 +11,7 @@ import {
 } from '../utils/planos.js'
 import './Planos.css'
 
-const ALTURA_FAIXA = 48
+const ALTURA_FAIXA = 62
 
 // Página de planos (todos os perfis logados). Upgrade é manual: a barra de
 // baixo abre o WhatsApp do Comercial com escritório, plano atual e plano
@@ -96,7 +96,7 @@ export default function Planos() {
               {PLANOS.map((p, i) => (
                 <div key={p} className={`pl-faixa-cel${classeColuna(p)}`} style={{ width: larguras[i + 1] || 0 }}>
                   <PlanoTag plano={p} />
-                  <span className="pl-faixa-preco">{precoPlano(p)}</span>
+                  <span className="pl-faixa-preco">{precoPlano(p)}{PLANO_INFO[p].precoMes > 0 && <span className="pl-faixa-mes">/mês</span>}</span>
                 </div>
               ))}
             </div>
