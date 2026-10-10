@@ -21,7 +21,7 @@
   display: flex;
   box-sizing: border-box;
   /* respiro do topo: os nomes descem um pouco dentro do quadro branco */
-  padding: 14px 0 8px;
+  padding: 10px 0 6px;
   background: rgba(255, 255, 255, 0.97);
   border-radius: 0 0 var(--r-md) var(--r-md);
   box-shadow: 0 6px 18px rgba(18, 18, 16, 0.08);
@@ -40,7 +40,11 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  gap: 2px;
+  /* respiro interno: com o destaque de plano escolhido/atual o texto não encosta na borda */
+  padding: 8px 10px;
+  box-sizing: border-box;
+  border-radius: var(--r-sm);
   white-space: nowrap;
 }
 .pl-faixa-cel .tag-plano { font-size: 11px; padding: 0 8px; }
@@ -136,7 +140,7 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 30px 8px 12px;
+  padding: 32px 14px 14px;
   border: 1.5px solid transparent;
   border-radius: var(--r-md);
   background: none;

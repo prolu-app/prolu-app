@@ -11,7 +11,7 @@ import {
 } from '../utils/planos.js'
 import './Planos.css'
 
-const ALTURA_FAIXA = 62
+const ALTURA_FAIXA = 74
 
 // Página de planos (todos os perfis logados). Upgrade é manual: a barra de
 // baixo abre o WhatsApp do Comercial com escritório, plano atual e plano
