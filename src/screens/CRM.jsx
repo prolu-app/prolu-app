@@ -27,13 +27,16 @@ const DATE_FILTER_SLUGS = ['data_entrada', 'data_fechamento']
 const FIXED_COLS_DEF = [
   { nome: 'Data de entrada',   tipo: 'date',   slug: 'data_entrada',   ordem: 0 },
   { nome: 'Cliente',           tipo: 'client', slug: 'cliente',         ordem: 1 },
-  { nome: 'Cidade',            tipo: 'text',   slug: 'cidade',          ordem: 2 },
-  { nome: 'Segmento',          tipo: 'select', slug: 'segmento',        ordem: 3, editableOptions: true, items: [
+  // Telefone logo depois do Cliente (fixa desde a migration_035; antes cada
+  // escritório criava a sua, como texto)
+  { nome: 'Telefone',          tipo: 'phone',  slug: 'telefone',        ordem: 2 },
+  { nome: 'Cidade',            tipo: 'text',   slug: 'cidade',          ordem: 3 },
+  { nome: 'Segmento',          tipo: 'select', slug: 'segmento',        ordem: 4, editableOptions: true, items: [
     { value: 'Residencial', color: 'blue'   },
     { value: 'Comercial',   color: 'orange' },
     { value: 'Corporativo', color: 'violet' },
   ]},
-  { nome: 'Tipo de projeto',   tipo: 'select', slug: 'tipo_projeto',    ordem: 4, editableOptions: true, items: [
+  { nome: 'Tipo de projeto',   tipo: 'select', slug: 'tipo_projeto',    ordem: 5, editableOptions: true, items: [
     { value: 'Arquitetônico',               color: 'blue'   },
     { value: 'Interiores',                  color: 'green'  },
     { value: 'Arquitetônico + Interiores',  color: 'violet' },
@@ -43,28 +46,38 @@ const FIXED_COLS_DEF = [
     { value: 'Arquitetônico + Acomp',       color: 'blue'   },
     { value: 'Arq + Int + Acomp',           color: 'violet' },
   ]},
-  { nome: 'Origem',            tipo: 'select', slug: 'origem',          ordem: 5, editableOptions: true, items: [
+  { nome: 'Origem',            tipo: 'select', slug: 'origem',          ordem: 6, editableOptions: true, items: [
     { value: 'Indicação', color: 'green' }, { value: 'Instagram', color: 'violet' },
     { value: 'Google',    color: 'blue'  }, { value: 'Site',      color: 'orange' },
   ]},
-  { nome: 'ICP',               tipo: 'select', slug: 'icp',            ordem: 6, editableOptions: false, items: [
+  { nome: 'ICP',               tipo: 'select', slug: 'icp',            ordem: 7, editableOptions: false, items: [
     { value: 'Sim', color: 'green' }, { value: 'Não', color: 'red' },
   ]},
-  { nome: 'Valor da proposta', tipo: 'money',  slug: 'valor',           ordem: 7 },
-  { nome: 'Recebeu proposta?', tipo: 'select', slug: 'proposta',        ordem: 8, editableOptions: false, items: [
+  { nome: 'Valor da proposta', tipo: 'money',  slug: 'valor',           ordem: 8 },
+  { nome: 'Recebeu proposta?', tipo: 'select', slug: 'proposta',        ordem: 9, editableOptions: false, items: [
     { value: 'Sim', color: 'green' }, { value: 'Não', color: 'red' }, { value: 'Pendente', color: 'orange' },
   ]},
-  { nome: 'Status',            tipo: 'select', slug: 'status',          ordem: 9, editableOptions: false, items: [
+  { nome: 'Status',            tipo: 'select', slug: 'status',          ordem: 10, editableOptions: false, items: [
     { value: 'Pedido de orçamento', color: 'blue'   },
     { value: 'Aguardando',          color: 'orange' },
     { value: 'Proposta enviada',    color: 'violet' },
     { value: 'Fechado',             color: 'green'  },
     { value: 'Perdido',             color: 'gray'   },
   ]},
-  { nome: 'Data de fechamento', tipo: 'date',  slug: 'data_fechamento', ordem: 10 },
-  // fixa desde a migration_035 (antes cada escritório criava a sua, como texto)
-  { nome: 'Telefone',          tipo: 'phone',  slug: 'telefone',        ordem: 11 },
+  { nome: 'Data de fechamento', tipo: 'date',  slug: 'data_fechamento', ordem: 11 },
 ]
+
+// carregar() pode rodar duas vezes em paralelo para o mesmo escritório (o
+// React StrictMode do modo dev monta o efeito duas vezes) — sem isto, as duas
+// execuções criavam as colunas fixas e o CRM ficava com colunas duplicadas.
+// A segunda execução espera e reaproveita o resultado da primeira.
+const tarefasColunasFixas = new Map()
+function umaVezPorEmpresa(chave, fn) {
+  if (!tarefasColunasFixas.has(chave)) {
+    tarefasColunasFixas.set(chave, fn().finally(() => tarefasColunasFixas.delete(chave)))
+  }
+  return tarefasColunasFixas.get(chave)
+}
 
 // data local (toISOString é UTC: depois das 21h no Brasil gravaria o dia seguinte)
 function todayISO() { return isoLocal(new Date()) }
@@ -572,7 +585,7 @@ export default function CRM() {
       c.fixo === true || (c.opcoes != null && !Array.isArray(c.opcoes) && c.opcoes.fixed === true)
     )
     if (!cols || cols.length === 0 || !hasFixed) {
-      await seedColunasPadrao(cols || [])
+      await umaVezPorEmpresa(`seed:${activeEmpresaId}`, () => seedColunasPadrao(cols || []))
       const { data: lin2 } = await fetchAllRows(() => supabase.from('crm_linhas').select('*').eq('empresa_id', activeEmpresaId).order('created_at', { ascending: true }).order('id'))
       setRows((lin2 || []).map(flattenRow))
       return
@@ -586,7 +599,9 @@ export default function CRM() {
         empresa_id: activeEmpresaId, nome: c.nome, tipo: c.tipo, ordem: c.ordem, fixo: true,
         opcoes: { fixed: true, slug: c.slug, editableOptions: c.editableOptions !== false, items: c.items || [] },
       }))
-      const { data: newCols } = await supabase.from('crm_colunas').insert(payload).select('*')
+      const newCols = await umaVezPorEmpresa(`faltando:${activeEmpresaId}`, async () => (
+        await supabase.from('crm_colunas').insert(payload).select('*')
+      ).data)
       if (newCols) parsedCols = [...parsedCols, ...newCols.map(parseCol)]
     }
 
