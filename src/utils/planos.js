@@ -91,6 +91,24 @@ export const RECURSOS = {
     rotulo: 'Equipe',
     beneficio: 'Convide sua equipe para trabalhar junto no Prolu App.',
   },
+  // Projetos (Lote B): ainda sem funcionalidade — só menu e página "Em breve".
+  // Fora de empresa_libera() no banco de propósito: não há dado nem escrita
+  // para bloquear no servidor até a área existir.
+  projetos_visao_geral: {
+    plano: 'business',
+    rotulo: 'Visão Geral',
+    beneficio: 'Números e andamento de todos os projetos do escritório em um só lugar.',
+  },
+  projetos_etapas_tarefas: {
+    plano: 'business',
+    rotulo: 'Etapas e Tarefas',
+    beneficio: 'Projetos com etapas, tarefas e responsáveis para a equipe toda.',
+  },
+  projetos_cronograma: {
+    plano: 'business',
+    rotulo: 'Cronograma',
+    beneficio: 'Prazos e entregas dos projetos ao longo do tempo.',
+  },
   ferramentas_mentoria: {
     plano: 'mentoria',
     rotulo: 'Ferramentas do método Prolu',

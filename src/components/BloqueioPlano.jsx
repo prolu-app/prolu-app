@@ -18,17 +18,12 @@ export function useSomenteLeitura() {
 // O menu não muda: quem decide o que aparece é o perfil (AuthContext.acesso).
 export default function BloqueioPlano({ recurso, children }) {
   const { planoLibera } = useConta()
-  const navigate = useNavigate()
 
   // `inert` tira a tela do foco por teclado e de leitores de tela; o React 18
   // não conhece o atributo, então é aplicado direto no elemento.
   const telaRef = useCallback((el) => { if (el) el.setAttribute('inert', '') }, [])
 
   if (planoLibera(recurso)) return children
-
-  const minimo = planoMinimo(recurso)
-  const rotulo = rotuloPlano(minimo)
-  const info = RECURSOS[recurso]
 
   return (
     <div className="bp-wrap">
@@ -39,17 +34,28 @@ export default function BloqueioPlano({ recurso, children }) {
       </div>
 
       <div className="bp-overlay">
-        <section className="bp-card" aria-labelledby="bp-titulo">
-          <span className="bp-tag">{info?.rotulo}</span>
-          <h2 className="bp-titulo" id="bp-titulo">Disponível no plano <em>{rotulo}</em></h2>
-          {info?.beneficio && <p className="bp-texto">{info.beneficio}</p>}
-          <button className="btn-primary bp-btn" onClick={() => navigate(`/planos?plano=${minimo}`)}>
-            Fazer upgrade
-          </button>
-          <Link className="bp-link" to="/planos">Ver planos</Link>
-        </section>
+        <CartaoVitrine recurso={recurso} />
       </div>
     </div>
+  )
+}
+
+// Cartão "Disponível no plano X / Fazer upgrade" — por cima da vitrine e
+// sozinho nas páginas que ainda não têm tela real (Projetos, "Em breve").
+export function CartaoVitrine({ recurso }) {
+  const navigate = useNavigate()
+  const minimo = planoMinimo(recurso)
+  const info = RECURSOS[recurso]
+  return (
+    <section className="bp-card" aria-labelledby={`bp-titulo-${recurso}`}>
+      <span className="bp-tag">{info?.rotulo}</span>
+      <h2 className="bp-titulo" id={`bp-titulo-${recurso}`}>Disponível no plano <em>{rotuloPlano(minimo)}</em></h2>
+      {info?.beneficio && <p className="bp-texto">{info.beneficio}</p>}
+      <button className="btn-primary bp-btn" onClick={() => navigate(`/planos?plano=${minimo}`)}>
+        Fazer upgrade
+      </button>
+      <Link className="bp-link" to="/planos">Ver planos</Link>
+    </section>
   )
 }
 

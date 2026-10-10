@@ -33,6 +33,7 @@ import AdminEscritorios from './screens/admin/AdminEscritorios.jsx'
 import AdminModelosPrecificacao from './screens/admin/AdminModelosPrecificacao.jsx'
 import AdminModelosFormulario from './screens/admin/AdminModelosFormulario.jsx'
 import Planos from './screens/Planos.jsx'
+import ProjetosEmBreve from './screens/ProjetosEmBreve.jsx'
 import ContaSuspensa from './screens/ContaSuspensa.jsx'
 import BloqueioPlano from './components/BloqueioPlano.jsx'
 import { useConta } from './contexts/ContaContext.jsx'
@@ -143,6 +144,10 @@ export default function App() {
         {/* /equipe foi substituída pela aba "Equipe" de /configuracoes */}
         <Route path="/equipe" element={<Navigate to="/configuracoes" replace />} />
         <Route path="/configuracoes" element={<RotaProtegida temAcesso={acesso.configuracoes}><Configuracoes /></RotaProtegida>} />
+        {/* Projetos: só páginas provisórias "Em breve" (Lote B) */}
+        <Route path="/projetos" element={<RotaProtegida temAcesso={acesso.projetosVisaoGeral}><ProjetosEmBreve recurso="projetos_visao_geral" /></RotaProtegida>} />
+        <Route path="/projetos/etapas-tarefas" element={<RotaProtegida temAcesso={acesso.projetosTarefas}><ProjetosEmBreve recurso="projetos_etapas_tarefas" /></RotaProtegida>} />
+        <Route path="/projetos/cronograma" element={<RotaProtegida temAcesso={acesso.projetosCronograma}><ProjetosEmBreve recurso="projetos_cronograma" /></RotaProtegida>} />
         <Route path="/planos" element={<Planos />} />
         <Route path="/avisos" element={<Avisos />} />
         <Route path="/admin" element={<AdminInicio />} />

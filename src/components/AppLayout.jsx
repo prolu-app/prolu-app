@@ -5,48 +5,56 @@ import {
   IconInicio, IconBase, IconCRM, IconDashboard,
   IconPlano, IconCliente, IconIndicadores, IconBurger, IconClose, IconAgente, IconBell,
   IconBuilding, IconSettings, IconContacts, IconMoney, IconFormulario, IconChevronLeft, IconChevronRight, IconLayoutTemplate, IconStar,
+  IconLock, IconProjetos, IconTarefas, IconCalendar,
 } from './Icons.jsx'
 import { useConta } from '../contexts/ContaContext.jsx'
-import { rotuloPlano } from '../utils/planos.js'
+import { planoMinimo, rotuloPlano } from '../utils/planos.js'
+import { PlanoTag } from './PlanoTag.jsx'
 import './AppLayout.css'
 
 // `access` referencia uma chave do objeto `acesso` (AuthContext) — o item só
-// aparece no menu se `acesso[access]` for true. Itens sem `access` são
-// sempre visíveis.
+// aparece no menu se `acesso[access]` for true (o PERFIL decide). Itens sem
+// `access` são sempre visíveis. `recurso` (src/utils/planos.js) nunca
+// esconde: sem o plano, o item mostra um cadeado discreto e abre a vitrine.
 const NAV_SECTIONS = [
   {
     key: 'comercial',
     label: 'Comercial',
     items: [
       { to: '/crm', label: 'CRM', Icon: IconCRM, access: 'crm' },
-      { to: '/dashboard', label: 'Painel Comercial', Icon: IconDashboard, access: 'dashboard' },
-      { to: '/indicadores', label: 'Indicadores', Icon: IconIndicadores, access: 'indicadores' },
-      { to: '/precificacao', label: 'Precificação', Icon: IconMoney, access: 'precificacao' },
-      { to: '/formularios', label: 'Formulários', Icon: IconFormulario, access: 'formularios' },
       { to: '/minha-pagina', label: 'Minha Página', Icon: IconLayoutTemplate, access: 'minhaPagina' },
+      { to: '/formularios', label: 'Formulários', Icon: IconFormulario, access: 'formularios' },
+      { to: '/precificacao', label: 'Precificação', Icon: IconMoney, access: 'precificacao' },
+      { to: '/dashboard', label: 'Painel Comercial', Icon: IconDashboard, access: 'dashboard', recurso: 'painel_comercial' },
+      { to: '/indicadores', label: 'Indicadores', Icon: IconIndicadores, access: 'indicadores', recurso: 'indicadores' },
     ],
   },
   {
-    key: 'ferramentas',
-    label: 'Ferramentas',
+    key: 'projetos',
+    label: 'Projetos',
     items: [
-      { to: '/plano-pratico', label: 'Plano Prático', Icon: IconPlano, access: 'planoPratico' },
-      { to: '/cliente-ideal', label: 'Cliente Ideal', Icon: IconCliente, access: 'clienteIdeal' },
-      { to: '/agente-prolu', label: 'Agente Prolu', Icon: IconAgente, access: 'agenteProlu' },
+      { to: '/projetos', label: 'Visão Geral', Icon: IconProjetos, access: 'projetosVisaoGeral', recurso: 'projetos_visao_geral', end: true },
+      { to: '/projetos/etapas-tarefas', label: 'Etapas e Tarefas', Icon: IconTarefas, access: 'projetosTarefas', recurso: 'projetos_etapas_tarefas' },
+      { to: '/projetos/cronograma', label: 'Cronograma', Icon: IconCalendar, access: 'projetosCronograma', recurso: 'projetos_cronograma' },
     ],
   },
   {
-    key: 'aprender',
-    label: 'Aprender',
+    key: 'metodo',
+    label: 'Método Prolu',
     items: [
       { to: '/base-conhecimento', label: 'Base de Conhecimento', Icon: IconBase, access: 'baseConhecimento' },
+      { to: '/plano-pratico', label: 'Plano Prático', Icon: IconPlano, access: 'planoPratico', recurso: 'ferramentas_mentoria' },
+      { to: '/cliente-ideal', label: 'Cliente Ideal', Icon: IconCliente, access: 'clienteIdeal', recurso: 'ferramentas_mentoria' },
+      { to: '/agente-prolu', label: 'Agente Prolu', Icon: IconAgente, access: 'agenteProlu', recurso: 'ferramentas_mentoria' },
     ],
   },
   {
     key: 'escritorio',
     label: 'Escritório',
     items: [
+      { to: '/configuracoes', label: 'Configurações', Icon: IconSettings, access: 'configuracoes' },
       { to: '/clientes', label: 'Contatos', Icon: IconContacts, access: 'contatos' },
+      { to: '/planos', label: 'Planos e Upgrade', Icon: IconStar },
     ],
   },
 ]
@@ -88,7 +96,7 @@ export default function AppLayout() {
     impersonatedEmpresaId, impersonatedEmpresaNome, viewAsUser,
     enterUserView, exitImpersonation, exitUserView,
   } = useAuth()
-  const { plano, contaAtiva } = useConta()
+  const { plano, contaAtiva, planoLibera } = useConta()
   const location = useLocation()
   const navigate = useNavigate()
   const close = () => setOpen(false)
@@ -227,8 +235,10 @@ export default function AppLayout() {
                 return (
                   <Fragment key={section.key}>
                     <span className="nav-section-label">{section.label}</span>
-                    {visibleItems.map((item) => (
-                      item.soon ? (
+                    {visibleItems.map((item) => {
+                      const bloqueado = item.recurso && !planoLibera(item.recurso)
+                      const dica = bloqueado ? `Disponível no plano ${rotuloPlano(planoMinimo(item.recurso))}` : null
+                      return item.soon ? (
                         <span className="nav-item disabled" key={item.label} title={item.label}>
                           <item.Icon className="nav-icon" />
                           <span className="nav-item-label">{item.label}</span>
@@ -239,15 +249,21 @@ export default function AppLayout() {
                           key={item.to}
                           to={item.to}
                           end={item.end}
-                          title={item.label}
+                          title={dica ? `${item.label} — ${dica}` : item.label}
                           className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
                           onClick={closeOnMobile}
                         >
                           <item.Icon className="nav-icon" />
                           <span className="nav-item-label">{item.label}</span>
+                          {bloqueado && (
+                            <span className="nav-lock">
+                              <IconLock aria-hidden="true" />
+                              <span className="nav-sr">({dica})</span>
+                            </span>
+                          )}
                         </NavLink>
                       )
-                    ))}
+                    })}
                   </Fragment>
                 )
               })}
@@ -263,30 +279,25 @@ export default function AppLayout() {
                 <div className="avatar">{initial}</div>
                 <div className="sidebar-footer-user-info">
                   <div className="user-name">{user?.nome}</div>
-                  <div className="user-co">{user?.empresa || 'Prolu'}</div>
+                  <div className="user-co-linha">
+                    <span className="user-co">{user?.empresa || 'Prolu'}</span>
+                    {plano && (
+                      <button
+                        type="button"
+                        className="user-plano"
+                        onClick={(e) => { e.stopPropagation(); navigate('/planos'); closeOnMobile() }}
+                        title={`Plano ${rotuloPlano(plano)} — ver planos`}
+                        aria-label={`Plano ${rotuloPlano(plano)}: ver planos`}
+                      >
+                        <PlanoTag plano={plano} />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <button className="signout-btn" onClick={(e) => { e.stopPropagation(); signOut() }} aria-label="Sair" title="Sair">
                   <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>
                 </button>
               </div>
-              <NavLink
-                to="/configuracoes"
-                title="Configurações"
-                className={({ isActive }) => `sidebar-footer-config${isActive ? ' active' : ''}`}
-                onClick={closeOnMobile}
-              >
-                <IconSettings />
-                <span className="nav-item-label">Configurações</span>
-              </NavLink>
-              <NavLink
-                to="/planos"
-                title="Planos"
-                className={({ isActive }) => `sidebar-footer-config${isActive ? ' active' : ''}`}
-                onClick={closeOnMobile}
-              >
-                <IconStar />
-                <span className="nav-item-label">{plano ? `Plano ${rotuloPlano(plano)}` : 'Planos'}</span>
-              </NavLink>
             </div>
           </aside>
         )}

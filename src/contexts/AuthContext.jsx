@@ -249,7 +249,11 @@ export function AuthProvider({ children }) {
     agenteProlu:      isGestorOuSuperior,
     baseConhecimento: true, // todos podem ver
     editarConteudo:   isGestorOuSuperior, // criar/editar na BC
-    projetos:         true, // todos (futuro)
+    // Projetos (em breve): o painel segue a regra do Painel Comercial; etapas,
+    // tarefas e cronograma são de todos (o colaborador executa as tarefas)
+    projetosVisaoGeral: isEmpresaMaster,
+    projetosTarefas:  true,
+    projetosCronograma: true,
     contatos:         isGestorOuSuperior,
     configuracoes:    true, // todos (abas diferentes por role)
     equipe:           isGestorOuSuperior,

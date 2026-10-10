@@ -161,3 +161,10 @@ export const IconContacts = (p) => (
 export const IconCode = (p) => (
   <svg viewBox="0 0 24 24" {...p}><path d="M16 18l6-6-6-6M8 6l-6 6 6 6" /></svg>
 )
+// Projetos: Visão Geral (quadro) e Etapas e Tarefas (lista com checks)
+export const IconProjetos = (p) => (
+  <svg viewBox="0 0 24 24" {...p}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18M15 3v12" /></svg>
+)
+export const IconTarefas = (p) => (
+  <svg viewBox="0 0 24 24" {...p}><path d="M4 6l1.5 1.5L8 5M4 12l1.5 1.5L8 11M4 18l1.5 1.5L8 17M11 6h9M11 12h9M11 18h9" /></svg>
+)
