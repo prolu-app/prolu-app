@@ -7,7 +7,8 @@
   align-items: start;
 }
 .mp-editor-config { min-width: 0; }
-.mp-editor-config > section { margin-top: 18px; }
+.mp-editor-config > .fm-abas { margin-bottom: 24px; }
+.mp-editor-config > section { margin-top: 0; }
 /* .fm-publico (display: flex) anularia o atributo hidden: só a aba ativa aparece */
 .mp-editor-config > section[hidden] { display: none !important; }
 .mp-topo-acoes { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }

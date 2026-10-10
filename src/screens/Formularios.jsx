@@ -7,6 +7,7 @@ import { IconPlus, IconCopy, IconTrash } from '../components/Icons.jsx'
 import { excluirFormulario, duplicarFormulario } from '../services/formulariosAcoes.js'
 import { slugify, comSufixo } from '../utils/slug.js'
 import './Formularios.css'
+import PageHeader, { PageContainer } from '../components/PageHeader.jsx'
 
 // Formulários do escritório: builder (Fase 1) + link público (Fase 2),
 // hoje em /e/:slugEscritorio/:slugFormulario (migration_036).
@@ -203,18 +204,16 @@ export default function Formularios() {
   }
 
   return (
-    <>
-      <div className="page-header between">
-        <div>
-          <div className="page-title">Formulários</div>
-          <div className="page-sub">Formulários de captação do escritório — um para cada origem, se quiser.</div>
-        </div>
-        {podeEditar && (
+    <PageContainer>
+      <PageHeader
+        titulo="Formulários"
+        descricao="Formulários de captação do escritório — um para cada origem, se quiser."
+        acoes={podeEditar && (
           <button className="btn-primary" onClick={abrirNovo}>
             <IconPlus /> Novo formulário
           </button>
         )}
-      </div>
+      />
 
       {!podeEditar && activeEmpresaId && (
         <p className="fm-readonly-note">Formulários de outro escritório — somente leitura.</p>
@@ -360,6 +359,6 @@ export default function Formularios() {
           </div>
         </div>
       )}
-    </>
+    </PageContainer>
   )
 }

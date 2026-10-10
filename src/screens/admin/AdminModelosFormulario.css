@@ -21,3 +21,8 @@
 .amf-excluir-btn { display: inline-flex; align-items: center; gap: 6px; color: #c62828; }
 .amf-excluir-btn svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2; fill: none; }
 .amf-campos-titulo { margin-bottom: 10px; }
+
+/* respiro entre a lista de modelos e o editor, e entre os cards de campos */
+.amf-layout { gap: 32px; }
+.amf-campos { gap: 14px; }
+@media (max-width: 760px) { .amf-layout { gap: 20px; } }

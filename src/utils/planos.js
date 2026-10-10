@@ -13,42 +13,59 @@ export const PLANOS = ['starter', 'pro', 'business', 'mentoria', 'consultoria']
 // WhatsApp do Comercial (André): upgrade é manual por enquanto
 export const WHATSAPP_COMERCIAL = '5543991115017'
 
-// preco: texto exibido na página de planos; null = "Fale com o Comercial"
+// precoMes: valor por mês em reais (número); 0 = Grátis. Formatação em precoPlano().
 export const PLANO_INFO = {
   starter: {
     rotulo: 'Starter',
-    descricao: 'Para começar a organizar o comercial do escritório.',
-    preco: 'Grátis',
+    descricao: 'Organize o comercial do escritório.',
+    precoMes: 0,
   },
   pro: {
     rotulo: 'Pro',
-    descricao: 'Para acompanhar resultados e metas com números de verdade.',
-    preco: null,
+    descricao: 'Acompanhe resultados e metas com números reais.',
+    precoMes: 49.9,
   },
   business: {
     rotulo: 'Business',
-    descricao: 'Para escritórios com equipe trabalhando junto no app.',
-    preco: null,
+    descricao: 'Para escritórios com equipe trabalhando junto.',
+    precoMes: 119.9,
   },
   mentoria: {
     rotulo: 'Mentoria',
-    descricao: 'O app completo com as ferramentas do método e o acompanhamento da Prolu.',
-    preco: null,
+    descricao: 'O método completo, com as ferramentas e o acompanhamento da Prolu.',
+    precoMes: 500,
     servico: true,
   },
   consultoria: {
     rotulo: 'Consultoria',
-    descricao: 'Tudo da Mentoria, com a consultoria da Prolu no seu escritório.',
-    preco: null,
+    descricao: 'Tudo da Mentoria, com a consultoria da Prolu dentro do escritório.',
+    precoMes: 2300,
     servico: true,
   },
 }
 
-// empresas.status_conta (separado do plano) — rótulo e cor do pill
+// empresas.status_conta (separado do plano)
 export const STATUS_CONTA = {
-  ativa: { rotulo: 'Ativa', pill: 'pill-green' },
-  suspensa: { rotulo: 'Suspensa', pill: 'pill-red' },
-  encerrando: { rotulo: 'Encerrando', pill: 'pill-orange' },
+  ativa: { rotulo: 'Ativa' },
+  suspensa: { rotulo: 'Suspensa' },
+  encerrando: { rotulo: 'Encerrando' },
+}
+
+// Cores das tags de plano e status (components/PlanoTag.jsx) — ÚNICO lugar.
+// Fundo suave + texto/borda escuros: todo texto passa de 4,5:1 (WCAG AA).
+export const CORES_TAG = {
+  plano: {
+    starter: { fundo: '#ececea', texto: '#46463f', borda: '#d4d4cc' },
+    pro: { fundo: '#e7eff8', texto: '#29558a', borda: '#c4d7ee' },
+    business: { fundo: '#f2e9f8', texto: '#673b88', borda: '#dcc6ec' },
+    mentoria: { fundo: '#fbf0d6', texto: '#734e00', borda: '#ebd192' },
+    consultoria: { fundo: '#121210', texto: '#cbe921', borda: '#121210' },
+  },
+  status: {
+    ativa: { fundo: '#eef6d2', texto: '#46560a', borda: '#d3e68a' },
+    suspensa: { fundo: '#ffede3', texto: '#9e420b', borda: '#f9c9aa' },
+    encerrando: { fundo: '#fde8e8', texto: '#ad2222', borda: '#f3bdbd' },
+  },
 }
 
 export function rotuloStatusConta(status) {
@@ -81,23 +98,46 @@ export const RECURSOS = {
   },
 }
 
-// Linhas da tabela comparativa de /planos. `recurso` usa a matriz acima;
-// `plano` = disponível a partir desse plano. Nada de recurso ainda não
-// construído aqui (Gestão de Projetos, produtividade etc. ficam de fora).
+// Comparativo de /planos, agrupado por tema. Cada item usa `recurso` (matriz
+// acima) ou `plano` (disponível a partir dele). `emBreve` = ainda não
+// construído: aparece como "em breve" em todos os planos, nunca como incluído.
 export const COMPARATIVO = [
-  { rotulo: 'CRM de orçamentos', plano: 'starter' },
-  { rotulo: 'Precificação', plano: 'starter' },
-  { rotulo: 'Formulários', plano: 'starter' },
-  { rotulo: 'Minha Página', plano: 'starter' },
-  { rotulo: 'Contatos', plano: 'starter' },
-  { rotulo: 'Base de Conhecimento', plano: 'starter' },
-  { rotulo: 'Painel Comercial', recurso: 'painel_comercial' },
-  { rotulo: 'Indicadores e metas', recurso: 'indicadores' },
-  { rotulo: 'Equipe (convidar pessoas)', recurso: 'equipe_convites' },
-  { rotulo: 'Plano Prático', recurso: 'ferramentas_mentoria' },
-  { rotulo: 'Cliente Ideal', recurso: 'ferramentas_mentoria' },
-  { rotulo: 'Agente Prolu', recurso: 'ferramentas_mentoria' },
-  { rotulo: 'Acompanhamento da Prolu', plano: 'mentoria' },
+  {
+    grupo: 'Comercial',
+    itens: [
+      { rotulo: 'CRM de Orçamentos', plano: 'starter' },
+      { rotulo: 'Precificação', plano: 'starter' },
+      { rotulo: 'Formulários', plano: 'starter' },
+      { rotulo: 'Minha Página', plano: 'starter' },
+      { rotulo: 'Painel Comercial', recurso: 'painel_comercial' },
+      { rotulo: 'Indicadores e Metas', recurso: 'indicadores' },
+    ],
+  },
+  {
+    grupo: 'Projetos',
+    emBreve: true,
+    itens: [
+      { rotulo: 'Visão Geral', emBreve: true },
+      { rotulo: 'Etapas e Tarefas', emBreve: true },
+      { rotulo: 'Cronograma', emBreve: true },
+    ],
+  },
+  {
+    grupo: 'Método Prolu',
+    itens: [
+      { rotulo: 'Base de Conhecimento', plano: 'starter' },
+      { rotulo: 'Plano Prático', recurso: 'ferramentas_mentoria' },
+      { rotulo: 'Cliente Ideal', recurso: 'ferramentas_mentoria' },
+      { rotulo: 'Agente Prolu', recurso: 'ferramentas_mentoria' },
+    ],
+  },
+  {
+    grupo: 'Escritório',
+    itens: [
+      { rotulo: 'Contatos', plano: 'starter' },
+      { rotulo: 'Equipe (convidar usuários)', recurso: 'equipe_convites' },
+    ],
+  },
 ]
 
 export function nivelPlano(plano) {
@@ -127,6 +167,23 @@ export function planoLibera(plano, recurso) {
 // Plano a partir do qual uma linha do comparativo está disponível
 export function planoDaLinha(linha) {
   return linha.recurso ? planoMinimo(linha.recurso) : linha.plano
+}
+
+// "Grátis", "R$ 49,90", "R$ 2.300" (sem centavos quando redondo)
+export function precoPlano(plano) {
+  const v = PLANO_INFO[plano]?.precoMes
+  if (v == null) return ''
+  if (v === 0) return 'Grátis'
+  return v.toLocaleString('pt-BR', {
+    style: 'currency', currency: 'BRL',
+    minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2,
+  })
+}
+
+// preço com "/mês" (Grátis fica sem sufixo)
+export function precoPlanoMes(plano) {
+  const p = precoPlano(plano)
+  return p && PLANO_INFO[plano]?.precoMes ? `${p}/mês` : p
 }
 
 export function linkWhatsappComercial({ escritorio, planoAtual, planoDesejado } = {}) {

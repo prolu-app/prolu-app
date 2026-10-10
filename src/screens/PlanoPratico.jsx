@@ -3,7 +3,7 @@ import { useToast } from '../contexts/ToastContext.jsx'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { PLANO_TAGS, PLANO_ACOES } from '../data/seed.js'
-import { IconPlus, IconCheck, IconGrip, IconTrash } from '../components/Icons.jsx'
+import { IconPlus, IconCheck, IconGrip, IconTrash, IconClose } from '../components/Icons.jsx'
 import { DatePicker } from '../components/DatePicker.jsx'
 import { useSomenteLeitura } from '../components/BloqueioPlano.jsx'
 import './PlanoPratico.css'
@@ -60,6 +60,8 @@ export default function PlanoPratico() {
   const [activeStatus, setActiveStatus] = useState('all')
   const [menu, setMenu] = useState(null) // { id, x, y }
   const [tagModal, setTagModal] = useState(false)
+  const [tagExcluir, setTagExcluir] = useState(null) // tag a confirmar
+  const [excluindoTag, setExcluindoTag] = useState(false)
   const [tagForm, setTagForm] = useState({ name: '', color: TAG_COLORS[0] })
   const lastAddedRef = useRef(null)
   const initial = (user?.nome || 'A').charAt(0).toUpperCase()
@@ -238,6 +240,26 @@ export default function PlanoPratico() {
     toast('Tag criada')
   }
 
+  // plano_acoes.tag_id é "on delete set null": as ações da tag continuam no
+  // plano, só ficam sem tag (aparecem em "Todas")
+  async function excluirTag() {
+    const tag = tagExcluir
+    if (!tag) return
+    const removerLocal = () => {
+      setTags((prev) => prev.filter((t) => t.id !== tag.id))
+      setAcoes((prev) => prev.map((a) => (a.tag === tag.id ? { ...a, tag: null } : a)))
+      if (activeTag === tag.id) setActiveTag('all')
+      setTagExcluir(null)
+      toast('Tag excluída')
+    }
+    if (!supabaseReady || !activeEmpresaId) { removerLocal(); return }
+    setExcluindoTag(true)
+    const { error } = await supabase.from('plano_tags').delete().eq('id', tag.id)
+    setExcluindoTag(false)
+    if (error) { toast('Não foi possível excluir a tag'); return }
+    removerLocal()
+  }
+
   function openMenu(e, id) {
     e.stopPropagation()
     const r = e.currentTarget.getBoundingClientRect()
@@ -284,19 +306,25 @@ export default function PlanoPratico() {
 
       {/* toolbar: tags */}
       <div className="toolbar">
-        <div className="tags-scroll">
+        {/* quebra em várias linhas: todas as tags visíveis, "Nova tag" sempre no fim */}
+        <div className="tags-wrap">
           <button className={`tag-chip ${activeTag === 'all' ? 'active' : 'inactive'}`} onClick={() => setActiveTag('all')}>
             Todas <span className="tag-count">{tagCount('all')}</span>
           </button>
           {tags.map((t) => (
-            <button key={t.id} className={`tag-chip ${activeTag === t.id ? 'active' : 'inactive'}`} onClick={() => setActiveTag(t.id)}>
-              <span className="tag-dot" style={{ background: t.color }} />
-              {t.name}
-              <span className="tag-count">{tagCount(t.id)}</span>
-            </button>
+            <span key={t.id} className={`tag-chip tag-chip-grupo ${activeTag === t.id ? 'active' : 'inactive'}`}>
+              <button className="tag-chip-main" onClick={() => setActiveTag(t.id)} aria-pressed={activeTag === t.id}>
+                <span className="tag-dot" style={{ background: t.color }} />
+                {t.name}
+                <span className="tag-count">{tagCount(t.id)}</span>
+              </button>
+              <button className="tag-chip-del" onClick={() => setTagExcluir(t)} aria-label={`Excluir tag ${t.name}`} title="Excluir tag">
+                <IconClose />
+              </button>
+            </span>
           ))}
+          <button className="btn-new-tag" onClick={() => setTagModal(true)}><IconPlus /> Nova tag</button>
         </div>
-        <button className="btn-new-tag" onClick={() => setTagModal(true)}><IconPlus /> Nova tag</button>
         <button className="btn-primary plano-new-btn" onClick={addAction}><IconPlus /> Nova ação</button>
       </div>
 
@@ -366,6 +394,27 @@ export default function PlanoPratico() {
           ))}
         </div>
       )}
+
+      {/* confirmar exclusão de tag */}
+      {tagExcluir && (() => {
+        const emUso = acoes.filter((a) => a.tag === tagExcluir.id).length
+        return (
+          <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget && !excluindoTag) setTagExcluir(null) }}>
+            <div className="modal">
+              <div className="modal-title">Excluir a tag "{tagExcluir.name}"?</div>
+              <p className="pp-confirma-texto">
+                {emUso === 0
+                  ? 'Nenhuma ação usa esta tag.'
+                  : <>{emUso === 1 ? '1 ação usa' : `${emUso} ações usam`} esta tag. {emUso === 1 ? 'Ela continua' : 'Elas continuam'} no plano, só que sem tag (aparecem em "Todas").</>}
+              </p>
+              <div className="modal-actions">
+                <button className="btn-cancel" onClick={() => setTagExcluir(null)} disabled={excluindoTag}>Cancelar</button>
+                <button className="btn-danger" onClick={excluirTag} disabled={excluindoTag}>{excluindoTag ? 'Excluindo…' : 'Excluir tag'}</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* modal nova tag */}
       {tagModal && (

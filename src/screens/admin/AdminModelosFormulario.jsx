@@ -15,6 +15,7 @@ import { CampoCard, posicaoNoAlvo } from '../FormularioEditor.jsx'
 import '../Formularios.css'
 import './AdminModelosPrecificacao.css'
 import './AdminModelosFormulario.css'
+import PageHeader, { PageContainer } from '../../components/PageHeader.jsx'
 
 export default function AdminModelosFormulario() {
   const toast = useToast()
@@ -172,23 +173,19 @@ export default function AdminModelosFormulario() {
   function fimDoArraste() { setDragId(null); setDragOver(null); setArmadoId(null) }
 
   return (
-    <>
-      <div className="page-header between">
-        <div>
-          <div className="page-title">Modelos de formulário</div>
-          <div className="page-sub">Modelos Prolu — os ativos aparecem para todos os escritórios ao criar um formulário.</div>
-        </div>
-        <div className="amp-header-actions">
-          <button className="btn-primary" onClick={() => setModalNovo(true)}><IconPlus /> Novo modelo</button>
-        </div>
-      </div>
+    <PageContainer>
+      <PageHeader
+        titulo="Modelos de formulário"
+        descricao="Modelos Prolu — os ativos aparecem para todos os escritórios ao criar um formulário."
+        acoes={<button className="btn-primary" onClick={() => setModalNovo(true)}><IconPlus /> Novo modelo</button>}
+      />
 
       {loading ? (
         <p className="amp-empty">Carregando…</p>
       ) : modelos.length === 0 ? (
         <p className="amp-empty">Nenhum modelo de formulário cadastrado ainda.</p>
       ) : (
-        <div className="amp-layout">
+        <div className="amp-layout amf-layout">
           <div className="amp-sidebar" role="list" aria-label="Modelos de formulário">
             {modelos.map(m => (
               <button
@@ -246,7 +243,7 @@ export default function AdminModelosFormulario() {
                 ) : (
                   <>
                     {campos.length === 0 && <p className="fm-empty fm-empty-inline">Nenhum campo ainda. Adicione a primeira pergunta do modelo.</p>}
-                    <div className="fm-campos">
+                    <div className="fm-campos amf-campos">
                       {campos.map((c, i) => (
                         <CampoCard
                           key={c.id} campo={c} indice={i} total={campos.length} podeEditar semCrm
@@ -313,6 +310,6 @@ export default function AdminModelosFormulario() {
           onConfirmar={excluirModelo} onCancelar={() => setExcluindo(null)}
         />
       )}
-    </>
+    </PageContainer>
   )
 }

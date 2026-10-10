@@ -1,0 +1,13 @@
+.tag-plano {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 99px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.tag-plano-grande { font-size: 14px; padding: 4px 13px; }
+.tag-plano-vazia { color: var(--ink-40); border: none; padding: 0; }

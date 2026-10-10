@@ -1,0 +1,30 @@
+/* Container e cabeçalho únicos de página (PageHeader.jsx) */
+.page-container {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.ph {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px 24px;
+  margin-bottom: 30px;
+}
+.ph-texto { min-width: 0; max-width: 720px; }
+.ph-texto .page-sub { line-height: 1.5; }
+.ph-acoes {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  /* alinha o botão à linha do título (serifado, 38px) */
+  padding-top: 2px;
+}
+
+@media (max-width: 860px) {
+  .ph { flex-direction: column; align-items: stretch; margin-bottom: 24px; }
+  .ph-acoes { padding-top: 0; }
+}

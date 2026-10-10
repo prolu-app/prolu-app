@@ -7,6 +7,7 @@ import ImportarModeloTxtModal from '../../components/ImportarModeloTxtModal.jsx'
 import { carregarModeloTree } from '../../utils/modeloPrecificacaoTree.js'
 import { duplicarModelo } from '../../utils/duplicar.js'
 import './AdminModelosPrecificacao.css'
+import PageHeader, { PageContainer } from '../../components/PageHeader.jsx'
 
 export default function AdminModelosPrecificacao() {
   const toast = useToast()
@@ -212,21 +213,22 @@ export default function AdminModelosPrecificacao() {
   }
 
   return (
-    <>
-      <div className="page-header between">
-        <div>
-          <div className="page-title">Modelos de precificação</div>
-          <div className="page-sub">Modelos Prolu — visíveis e sugeridos pra todos os escritórios.</div>
-        </div>
-        <div className="amp-header-actions">
-          <button className="btn-secondary" onClick={() => setModalImportar(true)}>
-            <IconFile /> Importar de arquivo (.txt)
-          </button>
-          <button className="btn-primary" onClick={() => setModalNovo(true)}>
-            <IconPlus /> Novo modelo Prolu
-          </button>
-        </div>
-      </div>
+    <PageContainer>
+      <PageHeader
+        className="amp-header"
+        titulo="Modelos de precificação"
+        descricao="Modelos Prolu — visíveis e sugeridos pra todos os escritórios."
+        acoes={(
+          <>
+            <button className="btn-secondary" onClick={() => setModalImportar(true)}>
+              <IconFile /> Importar de arquivo (.txt)
+            </button>
+            <button className="btn-primary" onClick={() => setModalNovo(true)}>
+              <IconPlus /> Novo modelo Prolu
+            </button>
+          </>
+        )}
+      />
 
       {loading ? (
         <p className="amp-empty">Carregando…</p>
@@ -302,7 +304,7 @@ export default function AdminModelosPrecificacao() {
         modelosProlu={modelos}
         onImported={handleModeloImportado}
       />
-    </>
+    </PageContainer>
   )
 }
 

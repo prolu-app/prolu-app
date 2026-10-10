@@ -26,6 +26,7 @@ import {
 } from '../utils/paginaConfig.js'
 import './Formularios.css'
 import './MinhaPagina.css'
+import PageHeader, { PageContainer } from '../components/PageHeader.jsx'
 
 const ABAS = [
   { id: 'perfil', label: 'Perfil' },
@@ -342,23 +343,23 @@ export default function MinhaPagina() {
   })
 
   return (
-    <>
-      <div className="page-header between">
-        <div>
-          <div className="page-title">Minha Página</div>
-          <div className="page-sub">Página pública do escritório com os seus links — para a bio do Instagram, o WhatsApp e onde mais quiser.</div>
-        </div>
-        <div className="mp-topo-acoes">
-          {configSalva.publicada && (
-            <a className="btn-cancel mp-abrir" href={urlPublica} target="_blank" rel="noopener noreferrer">Abrir página</a>
-          )}
-          {podeEditar && (
-            <button type="button" className="btn-primary mp-salvar" onClick={salvar} disabled={!hasUnsavedChanges || salvando}>
-              {salvando ? 'Salvando…' : 'Salvar'}
-            </button>
-          )}
-        </div>
-      </div>
+    <PageContainer>
+      <PageHeader
+        titulo="Minha Página"
+        descricao="Página pública do escritório com os seus links — para a bio do Instagram, o WhatsApp e onde mais quiser."
+        acoes={(configSalva.publicada || podeEditar) && (
+          <>
+            {configSalva.publicada && (
+              <a className="btn-cancel mp-abrir" href={urlPublica} target="_blank" rel="noopener noreferrer">Abrir página</a>
+            )}
+            {podeEditar && (
+              <button type="button" className="btn-primary mp-salvar" onClick={salvar} disabled={!hasUnsavedChanges || salvando}>
+                {salvando ? 'Salvando…' : 'Salvar'}
+              </button>
+            )}
+          </>
+        )}
+      />
 
       {!podeEditar && <p className="fm-readonly-note">Página de outro escritório — somente leitura.</p>}
 
@@ -551,7 +552,7 @@ export default function MinhaPagina() {
           </div>
         </div>
       )}
-    </>
+    </PageContainer>
   )
 }
 

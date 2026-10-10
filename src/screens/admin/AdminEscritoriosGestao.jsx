@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { IconSearch } from '../../components/Icons.jsx'
-import { PLANOS, STATUS_CONTA, rotuloPlano, rotuloStatusConta } from '../../utils/planos.js'
+import { PLANOS, STATUS_CONTA } from '../../utils/planos.js'
+import Select from '../../components/Select.jsx'
+import { PlanoTag, StatusTag } from '../../components/PlanoTag.jsx'
 import { ConfirmarPlanoModal } from './AdminContaAcoes.jsx'
 
 function fmtDate(iso) {
@@ -8,9 +10,12 @@ function fmtDate(iso) {
   return new Date(iso).toLocaleDateString('pt-BR')
 }
 
-export function StatusContaPill({ status }) {
-  return <span className={`pill ${STATUS_CONTA[status]?.pill || 'pill-gray'}`}>{rotuloStatusConta(status)}</span>
-}
+// opções dos dropdowns: '' = sem filtro
+export const OPCOES_PLANO = PLANOS.map(p => ({ value: p, label: p }))
+const OPCOES_FILTRO_PLANO = [{ value: '', label: 'Todos os planos' }, ...OPCOES_PLANO]
+const OPCOES_FILTRO_STATUS = [{ value: '', label: 'Todos os status' }, ...Object.keys(STATUS_CONTA).map(s => ({ value: s, label: s }))]
+const opcaoPlano = (o) => (o.value ? <PlanoTag plano={o.value} /> : o.label)
+const opcaoStatus = (o) => (o.value ? <StatusTag status={o.value} /> : o.label)
 
 const ORDENS = {
   nome: (a, b) => a.nome.localeCompare(b.nome, 'pt-BR'),
@@ -65,14 +70,8 @@ export default function AdminEscritoriosGestao({ escritorios, onAbrir, onAlterad
             onChange={e => setBusca(e.target.value)}
           />
         </div>
-        <select className="gp-select" value={filtroPlano} onChange={e => setFiltroPlano(e.target.value)} aria-label="Filtrar por plano">
-          <option value="">Todos os planos</option>
-          {PLANOS.map(p => <option key={p} value={p}>{rotuloPlano(p)}</option>)}
-        </select>
-        <select className="gp-select" value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} aria-label="Filtrar por status">
-          <option value="">Todos os status</option>
-          {Object.keys(STATUS_CONTA).map(s => <option key={s} value={s}>{rotuloStatusConta(s)}</option>)}
-        </select>
+        <Select className="gp-filtro" value={filtroPlano} onChange={setFiltroPlano} options={OPCOES_FILTRO_PLANO} renderOption={opcaoPlano} ariaLabel="Filtrar por plano" />
+        <Select className="gp-filtro" value={filtroStatus} onChange={setFiltroStatus} options={OPCOES_FILTRO_STATUS} renderOption={opcaoStatus} ariaLabel="Filtrar por status" />
       </div>
 
       {lista.length === 0 ? (
@@ -88,7 +87,7 @@ export default function AdminEscritoriosGestao({ escritorios, onAbrir, onAlterad
                 <th scope="col">Plano</th>
                 <th scope="col">Status</th>
                 <th scope="col" className="gp-num">Usuários</th>
-                <Cabecalho campo="acesso" ordem={ordem} onOrdenar={ordenarPor}>Último acesso</Cabecalho>
+                <Cabecalho campo="acesso" ordem={ordem} onOrdenar={ordenarPor}>Última atividade no CRM</Cabecalho>
                 <Cabecalho campo="criado" ordem={ordem} onOrdenar={ordenarPor}>Criado em</Cabecalho>
               </tr>
             </thead>
@@ -106,16 +105,16 @@ export default function AdminEscritoriosGestao({ escritorios, onAbrir, onAlterad
                     <div className="esc-master">{e.masterNome}</div>
                   </td>
                   <td onClick={ev => ev.stopPropagation()}>
-                    <select
-                      className="gp-select gp-select-plano"
-                      value={e.plano || ''}
-                      onChange={ev => setTrocaPlano({ escritorio: e, novoPlano: ev.target.value })}
-                      aria-label={`Plano de ${e.nome}`}
-                    >
-                      {PLANOS.map(p => <option key={p} value={p}>{rotuloPlano(p)}</option>)}
-                    </select>
+                    <Select
+                      variante="pill"
+                      value={e.plano}
+                      options={OPCOES_PLANO}
+                      renderOption={opcaoPlano}
+                      onChange={novo => setTrocaPlano({ escritorio: e, novoPlano: novo })}
+                      ariaLabel={`Plano de ${e.nome}`}
+                    />
                   </td>
-                  <td><StatusContaPill status={e.statusConta} /></td>
+                  <td><StatusTag status={e.statusConta} /></td>
                   <td className="gp-num">{e.totalUsuarios}</td>
                   <td className="gp-data">{fmtDate(e.ultimoAcesso)}</td>
                   <td className="gp-data">{fmtDate(e.criadoEm)}</td>

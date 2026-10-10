@@ -1,0 +1,61 @@
+/* Dropdown próprio (Select.jsx) */
+.sel-gatilho {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 38px;
+  padding: 7px 12px 7px 14px;
+  border: 1.5px solid var(--ink-divider);
+  border-radius: var(--r-md);
+  background: var(--white);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13.5px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.sel-gatilho:hover { border-color: rgba(18, 18, 16, 0.16); }
+.sel-gatilho:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--green); border-color: var(--ink-40); }
+.sel-gatilho.aberto { border-color: var(--ink-40); }
+.sel-gatilho:disabled { opacity: 0.5; cursor: not-allowed; }
+.sel-gatilho.sel-pill { border-radius: 99px; min-height: 34px; padding: 4px 8px 4px 6px; background: var(--cream); border-color: transparent; }
+.sel-gatilho.sel-pill:hover { border-color: var(--ink-divider); }
+
+.sel-valor { display: inline-flex; align-items: center; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sel-placeholder { color: var(--ink-40); }
+.sel-seta { width: 14px; height: 14px; flex-shrink: 0; stroke: var(--ink-40); stroke-width: 2.2; fill: none; transition: transform 0.15s; }
+.sel-gatilho.aberto .sel-seta { transform: rotate(180deg); }
+
+.sel-lista {
+  position: fixed;
+  z-index: 300; /* acima de modais (95) e do drawer (100) */
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  background: var(--white);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-pop);
+  overflow-y: auto;
+  outline: none;
+  animation: selIn 0.12s ease-out;
+}
+@keyframes selIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+.sel-opcao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  font-size: 13.5px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.sel-opcao.ativa { background: var(--cream); }
+.sel-lista:focus-visible .sel-opcao.ativa { box-shadow: inset 0 0 0 2px var(--green); }
+.sel-opcao.selecionada { font-weight: 600; }
+.sel-opcao-conteudo { display: inline-flex; align-items: center; min-width: 0; }
+.sel-check { width: 14px; height: 14px; flex-shrink: 0; stroke: var(--ink); stroke-width: 2.6; fill: none; }

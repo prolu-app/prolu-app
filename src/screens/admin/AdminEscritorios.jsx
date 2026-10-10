@@ -9,6 +9,7 @@ import AdminEscritoriosGestao from './AdminEscritoriosGestao.jsx'
 import AdminEscritorioDetalhe from './AdminEscritorioDetalhe.jsx'
 import './AdminEscritorios.css'
 import './AdminEscritoriosGestao.css'
+import PageHeader, { PageContainer } from '../../components/PageHeader.jsx'
 
 // colunas de gestão (migration_045) — lidas junto com a lista, sem consulta extra
 const COLUNAS_GESTAO = 'plano, status_conta, created_at, suspensa_em, suspensao_motivo, exclusao_programada_em'
@@ -211,13 +212,11 @@ export default function AdminEscritorios() {
   if (!isProluAdmin) return null
 
   return (
-    <>
-      <div className="page-header between">
-        <div>
-          <div className="page-title">Escritórios</div>
-          <div className="page-sub">Todos os escritórios cadastrados na Prolu.</div>
-        </div>
-        {aba === 'resumo' && <div className="adm-period-pills">
+    <PageContainer>
+      <PageHeader
+        titulo="Escritórios"
+        descricao="Todos os escritórios cadastrados na Prolu."
+        acoes={aba === 'resumo' && <div className="adm-period-pills">
           {PERIOD_OPTS.map(([k, lbl]) => (
             <button
               key={k}
@@ -228,7 +227,7 @@ export default function AdminEscritorios() {
             </button>
           ))}
         </div>}
-      </div>
+      />
 
       <div className="gp-abas" role="tablist">
         {[['resumo', 'Resumo'], ['gestao', 'Gestão']].map(([k, lbl]) => (
@@ -325,6 +324,6 @@ export default function AdminEscritorios() {
           onClose={() => setDetalheId(null)}
         />
       )}
-    </>
+    </PageContainer>
   )
 }

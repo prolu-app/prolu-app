@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../services/supabaseClient.js'
 import { IconClose } from '../../components/Icons.jsx'
-import { PLANOS, rotuloPlano, rotuloStatusConta } from '../../utils/planos.js'
 import { ConfirmarPlanoModal, AcaoContaModal } from './AdminContaAcoes.jsx'
-import { StatusContaPill } from './AdminEscritoriosGestao.jsx'
+import { OPCOES_PLANO } from './AdminEscritoriosGestao.jsx'
+import Select from '../../components/Select.jsx'
+import { PlanoTag, StatusTag } from '../../components/PlanoTag.jsx'
 
 const ROLE_LABEL = { master: 'Master', gestor: 'Gestor', comum: 'Colaborador', prolu_admin: 'Prolu' }
 const ROLE_PILL = { master: 'pill-dark', gestor: 'pill-blue', comum: 'pill-gray', prolu_admin: 'pill-dark' }
@@ -27,8 +28,8 @@ function fmtDataHora(iso) {
   return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-function valorHistorico(h, valor) {
-  return h.tipo === 'plano' ? rotuloPlano(valor) || '—' : rotuloStatusConta(valor) || '—'
+function TagHistorico({ tipo, valor }) {
+  return tipo === 'plano' ? <PlanoTag plano={valor} /> : <StatusTag status={valor} />
 }
 
 // Detalhe de um escritório (prolu_admin). O resumo comercial usa o MESMO
@@ -97,8 +98,8 @@ export default function AdminEscritorioDetalhe({ escritorio: e, periodOpts, peri
           <div className="gp-det-titulos">
             <h2 className="gp-det-nome" id="gp-det-nome">{e.nome}</h2>
             <div className="gp-det-meta">
-              <span className="pill pill-dark">{rotuloPlano(e.plano) || '—'}</span>
-              <StatusContaPill status={e.statusConta} />
+              <PlanoTag plano={e.plano} />
+              <StatusTag status={e.statusConta} />
               <span>Criado em {fmtDate(e.criadoEm)}</span>
             </div>
           </div>
@@ -130,7 +131,7 @@ export default function AdminEscritorioDetalhe({ escritorio: e, periodOpts, peri
             <div className="esc-stat"><span className="esc-stat-label">Fechamentos</span><span className="esc-stat-val">{e.qtdFechamentos}</span></div>
             <div className="esc-stat"><span className="esc-stat-label">Valor fechado</span><span className="esc-stat-val">{fmtMoney(e.valorFechamentos)}</span></div>
             <div className="esc-stat"><span className="esc-stat-label">Conversão</span><span className="esc-stat-val">{e.taxaConversao !== null ? `${e.taxaConversao}%` : '—'}</span></div>
-            <div className="esc-stat"><span className="esc-stat-label">Último acesso</span><span className="esc-stat-val esc-stat-date">{fmtDate(e.ultimoAcesso)}</span></div>
+            <div className="esc-stat"><span className="esc-stat-label">Última atividade no CRM</span><span className="esc-stat-val esc-stat-date">{fmtDate(e.ultimoAcesso)}</span></div>
           </div>
         </section>
 
@@ -153,7 +154,7 @@ export default function AdminEscritorioDetalhe({ escritorio: e, periodOpts, peri
                   <tr>
                     <th scope="col">Pessoa</th>
                     <th scope="col">Perfil</th>
-                    <th scope="col">Último login</th>
+                    <th scope="col">Última atividade</th>
                     <th scope="col">Base de Conhecimento</th>
                   </tr>
                 </thead>
@@ -188,14 +189,24 @@ export default function AdminEscritorioDetalhe({ escritorio: e, periodOpts, peri
 
         {/* e) conta e plano */}
         <section className="gp-secao">
-          <h3 className="section-title gp-secao-titulo">Conta e plano</h3>
+          <div className="gp-secao-head">
+            <h3 className="section-title gp-secao-titulo">Conta e plano</h3>
+          </div>
           <div className="gp-acoes">
-            <label className="gp-acao-plano">
-              <span className="modal-label">Plano</span>
-              <select className="gp-select gp-select-plano" value={e.plano || ''} onChange={ev => setTrocaPlano(ev.target.value)}>
-                {PLANOS.map(p => <option key={p} value={p}>{rotuloPlano(p)}</option>)}
-              </select>
-            </label>
+            <div className="gp-acao-plano">
+              <span className="modal-label" id="gp-det-plano-rotulo">Plano</span>
+              <div className="gp-acao-plano-linha">
+                <Select
+                  variante="pill"
+                  value={e.plano}
+                  options={OPCOES_PLANO}
+                  renderOption={o => <PlanoTag plano={o.value} />}
+                  onChange={setTrocaPlano}
+                  ariaLabel={`Plano de ${e.nome}`}
+                />
+                <StatusTag status={e.statusConta} />
+              </div>
+            </div>
             <div className="gp-acao-botoes">
               {e.statusConta === 'ativa' && <button className="btn-cancel" onClick={() => setAcao('suspender')}>Suspender</button>}
               {e.statusConta === 'suspensa' && <button className="btn-confirm" onClick={() => setAcao('reativar')}>Reativar</button>}
@@ -204,7 +215,12 @@ export default function AdminEscritorioDetalhe({ escritorio: e, periodOpts, peri
             </div>
           </div>
 
-          <h4 className="gp-hist-titulo">Histórico de mudanças</h4>
+        </section>
+
+        <section className="gp-secao">
+          <div className="gp-secao-head">
+            <h3 className="section-title gp-secao-titulo">Histórico de mudanças</h3>
+          </div>
           {historico === null ? (
             <p className="esc-loading">Carregando…</p>
           ) : historicoErro ? (
@@ -217,7 +233,7 @@ export default function AdminEscritorioDetalhe({ escritorio: e, periodOpts, peri
                 <li key={h.id} className="gp-hist-item">
                   <div className="gp-hist-linha">
                     <span className="gp-hist-tipo">{h.tipo === 'plano' ? 'Plano' : 'Status'}</span>
-                    <span>{valorHistorico(h, h.valor_anterior)} → <strong>{valorHistorico(h, h.valor_novo)}</strong></span>
+                    <span className="gp-hist-de-para"><TagHistorico tipo={h.tipo} valor={h.valor_anterior} /> <span aria-label="para">→</span> <TagHistorico tipo={h.tipo} valor={h.valor_novo} /></span>
                     {h.tipo === 'status' && h.valor_novo === 'encerrando' && h.exclusao_programada_em && (
                       <span className="gp-hist-extra">exclusão em {fmtDia(h.exclusao_programada_em)}</span>
                     )}

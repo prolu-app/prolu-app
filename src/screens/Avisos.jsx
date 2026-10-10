@@ -4,6 +4,7 @@ import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { IconPlus, IconTrash } from '../components/Icons.jsx'
 import './Avisos.css'
+import PageHeader, { PageContainer } from '../components/PageHeader.jsx'
 
 const CORES = ['green', 'orange', 'violet', 'blue']
 const COR_LABELS = { green: 'Verde', orange: 'Laranja', violet: 'Roxo', blue: 'Azul' }
@@ -74,16 +75,16 @@ export default function Avisos() {
   if (!isProluAdmin) return null
 
   return (
-    <>
-      <div className="page-header between">
-        <div>
-          <div className="page-title">Avisos</div>
-          <div className="page-sub">Banners exibidos na tela Início para todos os usuários.</div>
-        </div>
-        <button className="btn-primary" onClick={() => { setForm(EMPTY_FORM); setModal(true) }}>
-          <IconPlus /> Novo aviso
-        </button>
-      </div>
+    <PageContainer>
+      <PageHeader
+        titulo="Avisos"
+        descricao="Banners exibidos na tela Início para todos os usuários."
+        acoes={(
+          <button className="btn-primary" onClick={() => { setForm(EMPTY_FORM); setModal(true) }}>
+            <IconPlus /> Novo aviso
+          </button>
+        )}
+      />
 
       {loading ? (
         <div className="avisos-empty">Carregando…</div>
@@ -194,6 +195,6 @@ export default function Avisos() {
           </div>
         </div>
       )}
-    </>
+    </PageContainer>
   )
 }

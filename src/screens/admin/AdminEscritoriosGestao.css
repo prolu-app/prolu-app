@@ -1,7 +1,7 @@
 /* ════════ Escritórios → aba Gestão + detalhe (Passo 2) ════════ */
 
 /* ── abas Resumo / Gestão (mesmo visual das abas de Configurações) ── */
-.gp-abas { display: flex; gap: 6px; margin: 22px 0 4px; border-bottom: 1px solid var(--ink-divider); }
+.gp-abas { display: flex; gap: 6px; margin: 0 0 4px; border-bottom: 1px solid var(--ink-divider); }
 .gp-aba {
   border: none; background: none; cursor: pointer; position: relative;
   font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 600;
@@ -17,12 +17,7 @@
 /* ── filtros ── */
 .gp-filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 22px 0 20px; }
 .gp-busca { margin: 0; flex: 1 1 260px; }
-.gp-select {
-  border: 1.5px solid var(--ink-divider); background: var(--white); color: var(--ink);
-  border-radius: var(--r-md); padding: 8px 12px; font-size: 13.5px; font-family: inherit; cursor: pointer;
-}
-.gp-select:focus { outline: none; border-color: var(--ink-40); }
-.gp-select-plano { border-radius: 99px; padding: 6px 12px; font-size: 13px; font-weight: 500; background: var(--cream); border-color: transparent; }
+.gp-filtro { min-width: 170px; }
 
 /* ── tabela ── */
 .gp-tabela-wrap {
@@ -83,11 +78,16 @@
 .gp-det-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 6px; font-size: 12.5px; color: var(--ink-60); }
 .gp-entrar { white-space: nowrap; }
 
-.gp-secao { margin-top: 10px; }
-.gp-secao-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.gp-secao-head .adm-period-pills { margin-top: 18px; }
-.gp-secao-titulo { margin-top: 26px; margin-bottom: 12px; }
-.gp-secao-head .gp-secao-titulo { margin-bottom: 12px; }
+/* ritmo vertical: mesmo espaço antes de cada seção e entre título e conteúdo */
+.gp-secao { margin-top: 34px; }
+.gp-det-head + .gp-secao, .gp-aviso + .gp-secao { margin-top: 26px; }
+.gp-secao-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap;
+  margin-bottom: 16px; min-height: 38px;
+}
+.gp-secao-head .gp-secao-titulo { margin: 0; }
+.gp-secao-head .adm-period-pills { margin: 0; }
+.gp-secao-head .adm-period-pill { padding: 8px 16px; font-size: 12.5px; }
 
 .gp-stats {
   display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;
@@ -100,20 +100,21 @@
 .gp-kb-barra span { display: block; height: 100%; background: var(--green-deep); border-radius: 99px; }
 .gp-kb-num { font-size: 12.5px; font-weight: 600; }
 .gp-kb-ultima { font-size: 11.5px; color: var(--ink-40); }
-.gp-kb-geral { font-size: 12.5px; color: var(--ink-60); margin-top: 14px; }
+.gp-kb-geral { font-size: 12.5px; color: var(--ink-60); }
 
 .gp-acoes {
   display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;
   background: var(--white); border-radius: var(--r-lg); box-shadow: var(--shadow-rest); padding: 18px 20px;
 }
 .gp-acao-plano { display: flex; flex-direction: column; }
+.gp-acao-plano-linha { display: flex; align-items: center; gap: 10px; }
 .gp-acao-botoes { display: flex; gap: 8px; flex-wrap: wrap; }
 .gp-btn-perigo { color: var(--red); }
 
-.gp-hist-titulo { font-size: 13px; font-weight: 600; margin: 22px 0 10px; }
 .gp-hist { list-style: none; display: flex; flex-direction: column; gap: 8px; }
 .gp-hist-item { background: var(--white); border-radius: var(--r-md); padding: 12px 16px; box-shadow: var(--shadow-rest); }
 .gp-hist-linha { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13.5px; }
+.gp-hist-de-para { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-40); }
 .gp-hist-tipo {
   font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
   background: var(--gray-soft); color: var(--ink-60); padding: 3px 8px; border-radius: 99px;
@@ -127,5 +128,5 @@
   .gp-det-nome { font-size: 26px; }
   .gp-stats { grid-template-columns: repeat(2, 1fr); }
   .gp-acoes { align-items: stretch; }
-  .gp-filtros .gp-select { flex: 1 1 140px; }
+  .gp-filtros .gp-filtro { flex: 1 1 140px; }
 }
