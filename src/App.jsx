@@ -17,6 +17,7 @@ import Precificacao from './screens/Precificacao.jsx'
 import PrecificacaoDetalhe from './screens/PrecificacaoDetalhe.jsx'
 import ModelosEtapas from './screens/ModelosEtapas.jsx'
 import PrecificacaoEtiquetas from './screens/PrecificacaoEtiquetas.jsx'
+import ValorHora from './screens/ValorHora.jsx'
 import Clientes from './screens/Clientes.jsx'
 import Formularios from './screens/Formularios.jsx'
 import FormularioEditor from './screens/FormularioEditor.jsx'
@@ -132,6 +133,8 @@ export default function App() {
         <Route path="/precificacao" element={<RotaProtegida temAcesso={acesso.precificacao}><Precificacao /></RotaProtegida>} />
         <Route path="/precificacao/modelos" element={<RotaProtegida temAcesso={acesso.precificacao}><ModelosEtapas /></RotaProtegida>} />
         <Route path="/precificacao/etiquetas" element={<RotaProtegida temAcesso={acesso.precificacao}><PrecificacaoEtiquetas /></RotaProtegida>} />
+        <Route path="/precificacao/valor-hora" element={<RotaProtegida temAcesso={acesso.precificacao}><ValorHora /></RotaProtegida>} />
+        <Route path="/precificacao/valor-hora/:id" element={<RotaProtegida temAcesso={acesso.precificacao}><ValorHora /></RotaProtegida>} />
         <Route path="/precificacao/:id" element={<RotaProtegida temAcesso={acesso.precificacao}><PrecificacaoDetalhe /></RotaProtegida>} />
         <Route path="/clientes" element={<RotaProtegida temAcesso={acesso.contatos}><Clientes /></RotaProtegida>} />
         <Route path="/formularios" element={<RotaProtegida temAcesso={acesso.formularios}><Formularios /></RotaProtegida>} />

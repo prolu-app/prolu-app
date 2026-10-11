@@ -155,7 +155,7 @@ export default function Precificacao() {
                   <button onClick={() => { setConfigAberto(false); navigate('/precificacao/etiquetas') }}>
                     Gerenciar etiquetas
                   </button>
-                  <button className="pz-config-disabled" title="Em breve">
+                  <button onClick={() => { setConfigAberto(false); navigate('/precificacao/valor-hora') }}>
                     Valor da hora
                   </button>
                 </div>
