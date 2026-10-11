@@ -9,7 +9,13 @@ import './CursoVitrine.css'
 // Botão do convite de um curso sem acesso (migration_052):
 //   venda avulsa = Sim → "Comprar este curso" (link) ou "Fale com o Comercial"
 //   venda avulsa = Não → upgrade (página de planos, sem "Comprar")
-export function BotaoCurso({ curso, escritorio, planoAtual, className = 'btn-primary bp-btn' }) {
+// compacto: botões pequenos e sem sombra dos cards da lista ("Comprar" e
+// "Fazer upgrade" primários; "Fale com o Comercial" com contorno)
+export function BotaoCurso({ curso, escritorio, planoAtual, className = 'btn-primary bp-btn', compacto = false }) {
+  if (compacto) {
+    const secundario = curso.venda_avulsa && !curso.checkout_url
+    className = `kb-btn-compacto ${secundario ? 'kb-btn-contorno' : 'kb-btn-primario'}`
+  }
   if (curso.venda_avulsa) {
     return (
       <a className={className} href={curso.checkout_url || linkWhatsappCurso({ escritorio, curso: curso.titulo })}

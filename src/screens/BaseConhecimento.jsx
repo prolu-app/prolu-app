@@ -11,7 +11,7 @@ import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { FOLDERS } from '../data/seed.js'
 import {
   IconPlus, IconCheck, IconBack, IconPlay, IconChevronDown,
-  IconChevronLeft, IconChevronRight, IconEdit, IconTrash, IconBase, IconPdf, IconVideo, IconTexto, IconSparkle,
+  IconChevronLeft, IconChevronRight, IconEdit, IconTrash, IconBase, IconPdf, IconVideo, IconTexto, IconSparkle, IconEye,
 } from '../components/Icons.jsx'
 import RichEditor from '../components/RichEditor.jsx'
 import './BaseConhecimento.css'
@@ -646,7 +646,7 @@ export default function BaseConhecimento() {
     return (
       <div className="folder-card" key={p.id} onClick={() => setCurrentPastaId(p.id)}>
         <div className={`folder-cover ${COVER_CLASS[p.cover] || 'cover-green'}`}>
-          {isProlu && <span className="kb-badge-prolu">Prolu</span>}
+          {isProlu && <TagStatusCurso liberado />}
           <div className="folder-icon"><IconBase /></div>
           <div className="folder-cover-end">
             {podeEditarPasta(p) && (
@@ -661,11 +661,9 @@ export default function BaseConhecimento() {
         <div className="folder-body">
           <div className="folder-title-row">
             <div className="folder-title">{p.title}</div>
-            {!(p.tipos_usuario || TODOS_OS_TIPOS).includes('comum') && (
-              <span className="kb-badge-nivel">{(p.tipos_usuario || []).includes('gestor') ? 'Gestor+' : 'Master'}</span>
-            )}
           </div>
           <div className="folder-sub">{p.sub}</div>
+          <LegendaTipos tipos={p.tipos_usuario} />
           <div className="folder-progress">
             <div className="folder-progress-head">
               <span><strong>{fprog.done}</strong> de {fprog.total} aulas</span>
@@ -678,6 +676,24 @@ export default function BaseConhecimento() {
     )
   }
 
+  // ── peças dos cards de curso ──
+  // status no topo da capa (só cursos Prolu, com um escritório em contexto)
+  function TagStatusCurso({ liberado }) {
+    if (isAdminMode) return null
+    return liberado
+      ? <span className="kb-status kb-status-ok"><IconCheck aria-hidden="true" /> Liberado</span>
+      : <span className="kb-status kb-status-upgrade"><IconSparkle aria-hidden="true" /> Upgrade</span>
+  }
+  // quem vê (tipos de usuário): só para quem gerencia e só quando não são os 3
+  function LegendaTipos({ tipos }) {
+    const lista = tipos || TODOS_OS_TIPOS
+    if (!(isProluAdmin || isGestorOuSuperior) || TODOS_OS_TIPOS.every(t => lista.includes(t))) return null
+    const nomes = TIPOS_USUARIO.filter(t => lista.includes(t.value)).map(t => t.label)
+    const texto = nomes.length === 1 ? `Visível só para ${nomes[0]}` : `Visível para ${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`
+    return <span className="kb-legenda-tipos"><IconEye aria-hidden="true" /> {texto}</span>
+  }
+  const listaPlanos = (planos) => new Intl.ListFormat('pt-BR', { style: 'long', type: 'conjunction' }).format(planos.map(rotuloPlano))
+
   // card de um curso (pasta Prolu) sem acesso: dados de vitrine (kb_cursos),
   // estrela verde e o botão certo (comprar/Comercial ou upgrade)
   function renderFolderVitrine(c) {
@@ -685,21 +701,23 @@ export default function BaseConhecimento() {
       <div className="folder-card folder-card-vitrine" key={c.id} onClick={() => setVitrinePastaId(c.id)}
         role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter') setVitrinePastaId(c.id) }}>
         <div className={`folder-cover ${COVER_CLASS[c.cor_capa] || 'cover-green'}`}>
-          <span className="kb-badge-prolu kb-badge-vitrine"><IconSparkle aria-hidden="true" /> Curso</span>
+          <TagStatusCurso liberado={false} />
           <div className="folder-icon"><IconBase /></div>
         </div>
         <div className="folder-body">
-          <div className="folder-title-row"><div className="folder-title">{c.titulo}</div></div>
+          <div className="folder-title-row"><div className="folder-title folder-title-vitrine">{c.titulo}</div></div>
           <div className="folder-sub">{c.descricao}</div>
           <div className="folder-vitrine-info">
             <span>{c.aulas} {c.aulas === 1 ? 'aula' : 'aulas'}</span>
+            <LegendaTipos tipos={c.tipos_usuario} />
             {(c.planos || []).length > 0 && (
-              <span className="folder-vitrine-planos">
-                Disponível {c.planos.length === 1 ? 'no plano' : 'nos planos'} {c.planos.map(pl => <PlanoTag key={pl} plano={pl} />)}
+              <span className="folder-vitrine-tarja">
+                <IconSparkle aria-hidden="true" />
+                Disponível {c.planos.length === 1 ? 'no plano' : 'nos planos'} {listaPlanos(c.planos)}
               </span>
             )}
           </div>
-          <BotaoCurso curso={c} escritorio={escritorioNome} planoAtual={planoAtual} className="btn-primary folder-vitrine-btn" />
+          <BotaoCurso curso={c} escritorio={escritorioNome} planoAtual={planoAtual} compacto />
         </div>
       </div>
     )

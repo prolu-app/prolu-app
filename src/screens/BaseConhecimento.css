@@ -400,12 +400,8 @@
 }
 
 /* ── cursos (migration_050): vitrine de pasta de curso sem acesso ── */
-.kb-badge-vitrine { display: inline-flex; align-items: center; gap: 5px; opacity: 1 !important; }
-.kb-badge-vitrine svg { width: 11px; height: 11px; stroke: var(--cor-vitrine); stroke-width: 2.2; fill: none; stroke-linejoin: round; stroke-linecap: round; }
 .folder-card-vitrine .folder-cover { filter: saturate(0.7); }
 .folder-vitrine-info { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; font-size: 12.5px; color: var(--ink-60); }
-.folder-vitrine-planos { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.folder-vitrine-btn { margin-top: 14px; padding: 8px 16px; font-size: 12.5px; }
 .kb-curso-select { width: 100%; }
 .kb-curso-hint { font-size: 12px; color: var(--ink-40); margin-top: 6px; line-height: 1.4; }
 .player-pdf-item[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
@@ -414,3 +410,47 @@
 .kb-aula-plano.on { opacity: 1; border-color: var(--ink); }
 .kb-aula-plano:focus-visible { outline: 2px solid var(--green-deep); outline-offset: 2px; }
 .kb-progress-acesso { text-transform: none; letter-spacing: 0; font-weight: 500; }
+
+/* ── cards de curso: status no topo, legenda de tipos, vitrine discreta ── */
+.kb-status {
+  display: inline-flex; align-items: center; gap: 5px; border-radius: 99px;
+  padding: 4px 10px 4px 8px; font-size: 11.5px; font-weight: 600; line-height: 1.3;
+  box-shadow: 0 1px 3px rgba(18, 18, 16, 0.12);
+}
+.kb-status svg { width: 12px; height: 12px; fill: none; stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+/* sem acesso: alerta suave (laranja claro da paleta), texto escuro */
+.kb-status-upgrade { background: var(--orange-soft); color: var(--ink); }
+.kb-status-upgrade svg { stroke: var(--orange-ink); }
+/* com acesso: verde suave */
+.kb-status-ok { background: var(--green-soft); color: var(--green-ink); }
+.kb-status-ok svg { stroke: var(--green-ink); }
+
+/* quem vê: legenda neutra, contorno fino (diferente da tag de status) */
+.kb-legenda-tipos {
+  display: inline-flex; align-items: center; gap: 5px; align-self: flex-start;
+  margin-top: 8px; padding: 2px 8px; border: 1px solid var(--ink-divider); border-radius: 99px;
+  font-size: 11px; color: var(--ink-60);
+}
+.kb-legenda-tipos svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+.folder-vitrine-info .kb-legenda-tipos { margin-top: 0; }
+
+/* card sem acesso */
+.folder-title-vitrine { color: var(--ink-60); }
+.folder-vitrine-tarja {
+  display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
+  background: var(--cream); border: 1px solid var(--ink-divider); border-radius: var(--r-sm);
+  padding: 5px 9px; font-size: 12px; font-weight: 400; color: var(--ink-60);
+}
+.folder-vitrine-tarja svg { width: 11px; height: 11px; flex-shrink: 0; stroke: var(--cor-vitrine); stroke-width: 2.2; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+
+/* botões compactos dos cards (sem sombra) */
+.kb-btn-compacto {
+  display: inline-flex; align-items: center; justify-content: center; margin-top: 14px;
+  padding: 6px 14px; border-radius: 99px; font-size: 12.5px; font-weight: 600;
+  text-decoration: none; cursor: pointer; transition: background 0.15s, border-color 0.15s;
+}
+.kb-btn-primario { background: var(--green); color: var(--ink); border: 1px solid var(--green); }
+.kb-btn-primario:hover { background: var(--green-deep); border-color: var(--green-deep); }
+.kb-btn-contorno { background: var(--white); color: var(--ink); border: 1px solid rgba(18, 18, 16, 0.22); }
+.kb-btn-contorno:hover { border-color: var(--ink); }
+.kb-btn-compacto:focus-visible { outline: 2px solid var(--green-deep); outline-offset: 2px; }
