@@ -76,3 +76,27 @@
 @media (max-width: 760px) {
   .acu-campos { grid-template-columns: 1fr; }
 }
+
+/* ── 052: lista de cursos (pastas) + modal Acesso ── */
+.acu-tabela-wrap { background: var(--white); border-radius: var(--r-lg); box-shadow: var(--shadow-rest); overflow-x: auto; padding: 6px 14px; }
+.acu-tabela-cursos { min-width: 760px; }
+.acu-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.acu-btn-acesso { padding: 7px 16px; font-size: 13px; white-space: nowrap; }
+.acu-modal-acesso { width: 560px; max-height: calc(100vh - 32px); overflow-y: auto; }
+.acu-bloco-primeiro { margin-top: 0; }
+.acu-tipo {
+  border: 1.5px solid var(--ink-divider); background: var(--white); border-radius: 99px; padding: 6px 14px;
+  cursor: pointer; font-family: inherit; font-size: 13px; color: var(--ink-60);
+}
+.acu-tipo.on { border-color: var(--ink); color: var(--ink); font-weight: 600; background: var(--cream); }
+.acu-tipo:disabled { cursor: default; }
+.acu-tipo:focus-visible { outline: 2px solid var(--green-deep); outline-offset: 2px; }
+.acu-linha { display: flex; gap: 28px; flex-wrap: wrap; }
+.acu-sim-nao { display: flex; gap: 6px; }
+.acu-erro { font-size: 12px; color: var(--red); margin-top: 6px; }
+.acu-btn-mini { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 12.5px; }
+.acu-btn-mini svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 2.4; fill: none; }
+.acu-libs { list-style: none; display: flex; flex-direction: column; gap: 2px; max-height: 220px; overflow-y: auto; }
+.acu-libs li { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--ink-divider); font-size: 13px; }
+.acu-libs li:last-child { border-bottom: none; }
+.acu-libs li.revogada { color: var(--ink-40); }

@@ -13,3 +13,22 @@
 .cv-secao-titulo { display: inline-flex; align-items: center; gap: 8px; }
 .cv-secao-titulo svg { width: 13px; height: 13px; stroke: var(--cor-vitrine); stroke-width: 2.2; fill: none; stroke-linejoin: round; stroke-linecap: round; }
 .cv-via { font-family: 'Rubik', sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--ink-60); background: var(--gray-soft); border-radius: 99px; padding: 1px 8px; }
+
+/* aula bloqueada pelo plano dentro do curso (regra por aula) */
+.lesson-row-bloqueada { position: relative; cursor: default; flex-wrap: wrap; gap: 10px; }
+.lesson-row-bloqueada:hover { background: transparent; }
+.lesson-bloq-tela {
+  display: flex; align-items: center; gap: 14px; flex: 1; min-width: 200px;
+  filter: blur(3px); opacity: 0.6; pointer-events: none; user-select: none;
+}
+.lesson-bloq-convite {
+  display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  font-size: 12.5px; color: var(--ink-60);
+}
+.lesson-bloq-convite > svg { width: 13px; height: 13px; stroke: var(--cor-vitrine); stroke-width: 2.2; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.lesson-bloq-btn {
+  margin-left: 4px; font-size: 12.5px; font-weight: 600; color: var(--ink);
+  background: var(--green); border-radius: 99px; padding: 5px 12px; text-decoration: none;
+}
+.lesson-bloq-btn:hover { box-shadow: 0 4px 14px rgba(184, 212, 15, 0.45); }
+.nav-sr-cv { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

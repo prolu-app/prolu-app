@@ -409,3 +409,7 @@
 .kb-curso-select { width: 100%; }
 .kb-curso-hint { font-size: 12px; color: var(--ink-40); margin-top: 6px; line-height: 1.4; }
 .player-pdf-item[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
+.kb-aula-planos { display: flex; flex-wrap: wrap; gap: 6px; }
+.kb-aula-plano { border: 1.5px solid var(--ink-divider); background: var(--white); border-radius: 99px; padding: 4px 7px; cursor: pointer; opacity: 0.55; }
+.kb-aula-plano.on { opacity: 1; border-color: var(--ink); }
+.kb-aula-plano:focus-visible { outline: 2px solid var(--green-deep); outline-offset: 2px; }

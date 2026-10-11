@@ -225,3 +225,12 @@ export function linkWhatsappCurso({ escritorio, curso } = {}) {
   if (escritorio) partes.push(`Escritório: ${escritorio}`)
   return `https://wa.me/${WHATSAPP_COMERCIAL}?text=${encodeURIComponent(partes.join('\n'))}`
 }
+
+// Upgrade a partir de uma lista de planos (curso/aula): o menor plano da lista
+// acima do plano atual; nenhum acima = página de planos sem parâmetro
+export function linkUpgradePara(planosLista, planoAtual) {
+  const alvo = [...(planosLista || [])]
+    .filter(p => nivelPlano(p) > nivelPlano(planoAtual))
+    .sort((a, b) => nivelPlano(a) - nivelPlano(b))[0]
+  return alvo ? `/planos?plano=${alvo}` : '/planos'
+}
