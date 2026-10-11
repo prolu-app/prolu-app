@@ -878,11 +878,20 @@ export default function BaseConhecimento() {
     ].sort((a, b) => a.ordem - b.ordem)
   }
 
-
-  const prog = pastaProgress(pasta)
+  // aulas bloqueadas pelo plano no curso aberto (vitrine). Ficam fora do
+  // progresso; no "vendo como" do admin a RLS entrega todas, então são tiradas aqui.
+  const idsBloqueadas = new Set((estruturaPasta?.modulos || []).flatMap(m => (m.aulas || []).filter(a => !a.liberada).map(a => a.id)))
+  const totalAulasCurso = pasta ? pastaLessons(pasta).filter(l => !idsBloqueadas.has(l.id)).length + idsBloqueadas.size : 0
+  const progBase = pastaProgress(pasta)
+  const prog = (() => {
+    if (!pasta || idsBloqueadas.size === 0) return progBase
+    const livres = pastaLessons(pasta).filter(l => !idsBloqueadas.has(l.id))
+    const done = livres.filter(l => l.done).length
+    return { total: livres.length, done, pct: livres.length ? Math.round((done / livres.length) * 100) : 0 }
+  })()
   const circ = 150.8
   const dashoffset = circ - (circ * prog.pct) / 100
-  const nextLesson = pastaLessons(pasta).find(l => !l.done)
+  const nextLesson = pastaLessons(pasta).find(l => !l.done && !idsBloqueadas.has(l.id))
 
   // ════════ VIEW: AULA (tela dividida) ════════
   if (playerLesson) {
@@ -1015,7 +1024,10 @@ export default function BaseConhecimento() {
           <text x="29" y="34" textAnchor="middle" fill="white" fontFamily="Abhaya Libre, serif" fontSize="13" fontWeight="600">{prog.pct}%</text>
         </svg>
         <div className="kb-progress-text">
-          <div className="kb-progress-label">Progresso neste curso</div>
+          <div className="kb-progress-label">
+            Progresso neste curso
+            {idsBloqueadas.size > 0 && <span className="kb-progress-acesso"> · {prog.total} de {totalAulasCurso} aulas no seu plano</span>}
+          </div>
           <div className="kb-progress-val"><span>{prog.done}</span> de {prog.total} aulas assistidas</div>
           <div className="kb-progress-sub">
             {nextLesson ? `Continue de onde parou: ${nextLesson.title}` : 'Você concluiu todas as aulas deste curso 🎉'}
@@ -1038,7 +1050,11 @@ export default function BaseConhecimento() {
               <div className="module-number">{String(idx + 1).padStart(2, '0')}</div>
               <div className="module-info">
                 <div className="module-title">{m.title}</div>
-                <div className="module-meta">{m.lessons.length} aulas</div>
+                <div className="module-meta">{(() => {
+                  const itens = mesclarAulas(m)
+                  const livres = itens.filter(x => !x.bloqueada).length
+                  return livres === itens.length ? `${itens.length} aulas` : `${livres} de ${itens.length} aulas`
+                })()}</div>
               </div>
               <div className="module-progress-mini">
                 <div className="module-progress-track"><div className="module-progress-fill" style={{ width: `${mp.pct}%` }} /></div>

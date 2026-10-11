@@ -17,10 +17,14 @@
 /* aula bloqueada pelo plano dentro do curso (regra por aula) */
 .lesson-row-bloqueada { position: relative; cursor: default; flex-wrap: wrap; gap: 10px; }
 .lesson-row-bloqueada:hover { background: transparent; }
-.lesson-bloq-tela {
-  display: flex; align-items: center; gap: 14px; flex: 1; min-width: 200px;
-  filter: blur(3px); opacity: 0.6; pointer-events: none; user-select: none;
+/* só checkbox e ícone ficam desfocados; o título é legível (só mais apagado:
+   --ink-60 sobre branco = 6,4:1) */
+.lesson-bloq-borrado {
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  filter: blur(2px); opacity: 0.55; pointer-events: none; user-select: none;
 }
+.lesson-bloq-info { flex: 1; min-width: 160px; }
+.lesson-bloq-titulo { color: var(--ink-60); font-weight: 400; }
 .lesson-bloq-convite {
   display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px;
   font-size: 12.5px; color: var(--ink-60);
@@ -31,4 +35,8 @@
   background: var(--green); border-radius: 99px; padding: 5px 12px; text-decoration: none;
 }
 .lesson-bloq-btn:hover { box-shadow: 0 4px 14px rgba(184, 212, 15, 0.45); }
-.nav-sr-cv { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 860px) {
+  /* no celular o convite desce para a linha de baixo, alinhado ao título */
+  .lesson-row-bloqueada { padding-left: 22px; }
+  .lesson-bloq-convite { width: 100%; padding-left: 60px; }
+}

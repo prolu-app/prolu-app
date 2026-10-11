@@ -413,3 +413,4 @@
 .kb-aula-plano { border: 1.5px solid var(--ink-divider); background: var(--white); border-radius: 99px; padding: 4px 7px; cursor: pointer; opacity: 0.55; }
 .kb-aula-plano.on { opacity: 1; border-color: var(--ink); }
 .kb-aula-plano:focus-visible { outline: 2px solid var(--green-deep); outline-offset: 2px; }
+.kb-progress-acesso { text-transform: none; letter-spacing: 0; font-weight: 500; }

@@ -63,21 +63,23 @@ export function VitrineCurso({ curso, escritorio, planoAtual, children }) {
 }
 
 // Aula bloqueada pelo plano DENTRO de um curso que o escritório já tem:
-// título desfocado + "Disponível nos planos X" e upgrade (nunca "Comprar").
+// título legível (mais apagado), checkbox e ícone desfocados, "Disponível nos
+// planos X" e upgrade (nunca "Comprar"). Linha não clicável: nada carrega.
 export function AulaBloqueada({ aula, planoAtual, Icone }) {
   const telaRef = useCallback((el) => { if (el) el.setAttribute('inert', '') }, [])
   return (
-    <div className="lesson-row lesson-row-bloqueada">
-      <div className="lesson-bloq-tela" ref={telaRef} aria-hidden="true">
+    <div className="lesson-row lesson-row-bloqueada" aria-disabled="true">
+      {/* checkbox e ícone: desfocados e inertes; o título fica legível */}
+      <div className="lesson-bloq-borrado" ref={telaRef} aria-hidden="true">
         <div className="lesson-check pend" />
-        <div className="lesson-info">
-          <div className="lesson-title">{Icone && <Icone tipo={aula.tipo} />}<span>{aula.titulo}</span></div>
-        </div>
+        {Icone && <Icone tipo={aula.tipo} />}
+      </div>
+      <div className="lesson-info lesson-bloq-info">
+        <div className="lesson-title lesson-bloq-titulo">{aula.titulo}</div>
       </div>
       <div className="lesson-bloq-convite">
         <IconSparkle aria-hidden="true" />
         <span className="lesson-bloq-texto">
-          <span className="nav-sr-cv">Aula “{aula.titulo}”: </span>
           Disponível {aula.planos.length === 1 ? 'no plano' : 'nos planos'}
         </span>
         <span className="cv-planos-tags">{aula.planos.map(p => <PlanoTag key={p} plano={p} />)}</span>
