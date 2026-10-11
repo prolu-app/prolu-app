@@ -88,15 +88,24 @@ select a->>'titulo' as aula, a->>'liberada' as liberada, a->'planos' as planos
   from jsonb_array_elements(kb_pasta_vitrine('00000000-0000-0000-0000-00000000a052')->'modulos'->0->'aulas') a;
 reset role;
 
--- Pro e Business: veem as 4 (esperado: 4 e 4)
+-- Pro e Business: veem as 4 (esperado: 4 e 4).
+-- Antes de trocar o plano, limpa a identidade simulada: com ela ativa, o
+-- gatilho do Passo 1 entende que é o próprio master trocando o plano e recusa.
+select set_config('request.jwt.claims', '', true);
 update empresas set plano = 'pro' where id = (select empresa_id from usuarios where email = 'andresouzavr@gmail.com');
+select set_config('request.jwt.claims', json_build_object(
+  'sub', (select auth_id from usuarios where email = 'andresouzavr@gmail.com'), 'role', 'authenticated')::text, true);
 set local role authenticated;
 select count(*) as aulas_pro from kb_aulas where modulo_id = '00000000-0000-0000-0000-00000000b052';
 reset role;
+select set_config('request.jwt.claims', '', true);
 update empresas set plano = 'business' where id = (select empresa_id from usuarios where email = 'andresouzavr@gmail.com');
+select set_config('request.jwt.claims', json_build_object(
+  'sub', (select auth_id from usuarios where email = 'andresouzavr@gmail.com'), 'role', 'authenticated')::text, true);
 set local role authenticated;
 select count(*) as aulas_business from kb_aulas where modulo_id = '00000000-0000-0000-0000-00000000b052';
 reset role;
+select set_config('request.jwt.claims', '', true);
 
 -- curso sem venda avulsa recusa liberação avulsa e link de compra (esperado: ERRO em cada um; rode um de cada vez)
 -- select liberar_curso((select empresa_id from usuarios where email = 'andresouzavr@gmail.com'), '00000000-0000-0000-0000-00000000a052');
