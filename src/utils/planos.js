@@ -15,6 +15,8 @@ export const PLANOS = ['starter', 'pro', 'business', 'mentoria', 'consultoria']
 export const WHATSAPP_COMERCIAL = '5543991115017'
 
 // precoMes: valor por mês em reais (número); 0 = Grátis. Formatação em precoPlano().
+// itens: linhas extras no card do plano em /planos (abaixo da descrição).
+// comoFunciona: o card ganha "Ver como funciona" (textos em planosComoFunciona.js).
 export const PLANO_INFO = {
   starter: {
     rotulo: 'Starter',
@@ -36,12 +38,16 @@ export const PLANO_INFO = {
     descricao: 'Método completo e acompanhamento em grupo da Prolu.',
     precoMes: 500,
     servico: true,
+    itens: ['1 encontro em grupo por mês'],
+    comoFunciona: true,
   },
   consultoria: {
     rotulo: 'Consultoria',
     descricao: 'Tudo da Mentoria, com acompanhamento individual da Prolu.',
     precoMes: 2300,
     servico: true,
+    itens: ['1 encontro individual por mês'],
+    comoFunciona: true,
   },
 }
 

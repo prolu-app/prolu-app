@@ -1,10 +1,12 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useConta } from '../contexts/ContaContext.jsx'
 import { IconCheck } from '../components/Icons.jsx'
 import PageHeader, { PageContainer } from '../components/PageHeader.jsx'
 import { PlanoTag } from '../components/PlanoTag.jsx'
+import ComoFuncionaModal from '../components/ComoFuncionaModal.jsx'
+import { COMO_FUNCIONA } from '../utils/planosComoFunciona.js'
 import {
   PLANOS, PLANO_INFO, COMPARATIVO, planoLibera, planoValido, rotuloPlano, limitePlano,
   precoPlano, precoPlanoMes, linkWhatsappComercial,
@@ -35,6 +37,16 @@ export default function Planos() {
   const [larguras, setLarguras] = useState([])
   const [rolagemX, setRolagemX] = useState(0)
   const [faixaVisivel, setFaixaVisivel] = useState(false)
+
+  // modal "Como funciona" (Mentoria/Consultoria): plano aberto + link que abriu,
+  // para devolver o foco ao fechar
+  const [comoFunciona, setComoFunciona] = useState(null)
+  const origemModalRef = useRef(null)
+  const fecharComoFunciona = useCallback(() => {
+    setComoFunciona(null)
+    const origem = origemModalRef.current
+    if (origem) requestAnimationFrame(() => origem.focus())
+  }, [])
 
   const escritorio = conta?.nome || user?.empresa || ''
   const whatsapp = linkWhatsappComercial({ escritorio, planoAtual, planoDesejado: escolhido })
@@ -136,7 +148,24 @@ export default function Planos() {
                         {PLANO_INFO[p].precoMes > 0 && <span>/mês</span>}
                       </span>
                       <span className="pl-desc">{PLANO_INFO[p].descricao}</span>
+                      {PLANO_INFO[p].itens?.length > 0 && (
+                        <span className="pl-itens">
+                          {PLANO_INFO[p].itens.map((item) => (
+                            <span key={item} className="pl-item"><span className="pl-sim" aria-hidden="true"><IconCheck /></span>{item}</span>
+                          ))}
+                        </span>
+                      )}
                     </button>
+                    {PLANO_INFO[p].comoFunciona && COMO_FUNCIONA[p] && (
+                      <button
+                        type="button"
+                        className="pl-como-funciona"
+                        aria-haspopup="dialog"
+                        onClick={(e) => { origemModalRef.current = e.currentTarget; setComoFunciona(p) }}
+                      >
+                        Ver como funciona
+                      </button>
+                    )}
                   </th>
                 )
               })}
@@ -191,6 +220,14 @@ export default function Planos() {
           Falar com o Comercial
         </a>
       </div>
+
+      {comoFunciona && (
+        <ComoFuncionaModal
+          conteudo={COMO_FUNCIONA[comoFunciona]}
+          whatsappUrl={linkWhatsappComercial({ escritorio, planoAtual, planoDesejado: comoFunciona })}
+          onFechar={fecharComoFunciona}
+        />
+      )}
     </PageContainer>
   )
 }

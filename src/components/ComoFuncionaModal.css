@@ -1,0 +1,83 @@
+/* Modal "Como funciona" (/planos) — base em .modal-overlay/.modal (index.css) */
+.cf-modal {
+  width: 560px;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.cf-cabeca {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 24px 24px 0 28px;
+}
+.cf-titulo { margin-bottom: 0; }
+.cf-fechar {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-60);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.cf-fechar:hover { background: var(--gray-soft); color: var(--ink); }
+.cf-fechar:focus-visible { outline: 2px solid var(--green-deep); outline-offset: 1px; }
+.cf-fechar svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; fill: none; }
+
+/* só o miolo rola: título e ações ficam sempre visíveis */
+.cf-corpo {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 28px 4px;
+}
+.cf-resumo { font-size: 14px; line-height: 1.6; color: var(--ink); margin: 0; }
+.cf-secao { margin-top: 20px; }
+.cf-secao-titulo {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  color: var(--ink-60);
+  margin: 0 0 8px;
+}
+.cf-lista { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.cf-lista li { font-size: 13.5px; line-height: 1.55; color: var(--ink); }
+.cf-lista li::marker { color: var(--green-deep); }
+
+.cf-acoes {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 18px 28px 24px;
+  border-top: 1px solid var(--ink-divider);
+  margin-top: 18px;
+}
+.cf-btn { text-decoration: none; }
+.cf-pagina {
+  font-size: 13px;
+  color: var(--ink-60);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cf-pagina:hover { color: var(--ink); }
+
+@media (max-width: 560px) {
+  .cf-cabeca { padding: 18px 16px 0 20px; }
+  .cf-corpo { padding: 12px 20px 4px; }
+  .cf-acoes { padding: 14px 20px 18px; flex-direction: column; align-items: stretch; text-align: center; gap: 12px; }
+  .cf-titulo { font-size: 20px; }
+}
