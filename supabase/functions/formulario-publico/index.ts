@@ -225,12 +225,18 @@ Deno.serve(async (req) => {
   const situacaoEnvios = async () => {
     const { data, error } = await supabase.rpc('form_situacao_envios', { p_empresa_id: form.empresa_id })
     if (error) console.error('[formulario-publico] form_situacao_envios', error)
-    return (data || null) as { esgotado?: boolean } | null
+    return (data || null) as { esgotado?: boolean; mes?: string } | null
   }
 
   // ── carregar ──
   if (body.acao === 'carregar') {
-    if ((await situacaoEnvios())?.esgotado) return jsonResponse({ error: PAUSADO, pausado: true }, 403)
+    const situacao = await situacaoEnvios()
+    if (situacao?.esgotado) {
+      // o aviso também sai daqui: quem abre o formulário já pausado nunca
+      // chega a enviar. A marcação atômica do mês evita e-mail repetido.
+      if (situacao.mes) emSegundoPlano('formulario-limite-aviso', { empresa_id: form.empresa_id, mes: situacao.mes })
+      return jsonResponse({ error: PAUSADO, pausado: true }, 403)
+    }
     const escritorio = (form.empresas as { nome?: string } | null)?.nome || null
     return jsonResponse({
       formulario: {
