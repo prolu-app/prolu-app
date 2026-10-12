@@ -18,7 +18,7 @@
 //
 // Em qualquer texto, **assim** fica em negrito.
 // Ícones disponíveis (Icons.jsx): calendario, pessoas, play, dinheiro, agente,
-// crm, alvo, indicadores, grafico, seta, sparkle.
+// crm, formulario, alvo, indicadores, grafico, seta, sparkle.
 //
 // Não coloque aqui preço, datas de turma, fidelidade nem prazos de inscrição
 // (ficam desatualizados): o preço já aparece no card do plano.
@@ -30,9 +30,9 @@ export const COMO_FUNCIONA = {
     passos: {
       itens: [
         { icone: 'calendario', titulo: 'Acompanhamento mensal', texto: 'Encontros em grupo ao vivo, uma vez por mês, com **orientações individualizadas** para o seu escritório.' },
-        { icone: 'pessoas', titulo: 'Prospecção', texto: 'Mais pedidos de orçamento bons e **entrada constante de projetos**.' },
-        { icone: 'dinheiro', titulo: 'Precificação e proposta', texto: 'Cobrar o que o seu trabalho vale e **apresentar a proposta** com processo definido.' },
-        { icone: 'indicadores', titulo: 'Gestão financeira', texto: 'Um **financeiro saudável**, com mais previsibilidade.' },
+        { icone: 'formulario', titulo: 'Pedidos de orçamento', texto: 'Posicionamento e conteúdo preparados para atrair **bons pedidos de orçamento**, e não qualquer pedido.' },
+        { icone: 'pessoas', titulo: 'Atendimento e proposta', texto: 'Um processo **centrado no cliente** e coerente do primeiro contato à proposta, para **elevar a percepção de valor**.' },
+        { icone: 'seta', titulo: 'Crescimento constante', texto: 'Bons fechamentos, precificação e condições de pagamento, juntos, garantem **mais previsibilidade de caixa**.' },
       ],
     },
     cartoes: {

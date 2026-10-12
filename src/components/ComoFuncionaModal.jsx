@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef } from 'react'
-import { IconAgente, IconArrowUpRight, IconCalendar, IconCheck, IconClientes, IconClose, IconCRM, IconDashboard, IconIndicadores, IconMoney, IconPlay, IconSparkle, IconTarget } from './Icons.jsx'
+import { IconAgente, IconArrowUpRight, IconCalendar, IconCheck, IconClientes, IconClose, IconCRM, IconDashboard, IconFormulario, IconIndicadores, IconMoney, IconPlay, IconSparkle, IconTarget } from './Icons.jsx'
 import { PlanoTag } from './PlanoTag.jsx'
 import './ComoFuncionaModal.css'
 
@@ -13,6 +13,7 @@ const ICONES = {
   dinheiro: IconMoney,
   agente: IconAgente,
   crm: IconCRM,
+  formulario: IconFormulario,
   alvo: IconTarget,
   indicadores: IconIndicadores,
   grafico: IconDashboard,

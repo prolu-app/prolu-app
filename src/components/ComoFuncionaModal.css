@@ -38,11 +38,11 @@
   padding: 26px 26px 0 36px;
 }
 .cf-cabeca-txt { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
-.cf-titulo { margin: 0; font-family: 'Abhaya Libre', serif; font-weight: 600; font-size: 30px; line-height: 1.1; letter-spacing: -0.3px; }
+.cf-titulo { margin: 0; font-family: 'Abhaya Libre', serif; font-weight: 600; font-size: 25px; line-height: 1.15; letter-spacing: -0.2px; }
 .cf-fechar {
   flex-shrink: 0;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border: none;
   border-radius: 50%;
   background: none;
@@ -54,7 +54,7 @@
 }
 .cf-fechar:hover { background: var(--gray-soft); color: var(--ink); }
 .cf-fechar:focus-visible { outline: 2px solid var(--green-deep); outline-offset: 1px; }
-.cf-fechar svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
+.cf-fechar svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; fill: none; }
 
 /* ── corpo (rola) ── */
 .cf-corpo {
@@ -64,7 +64,7 @@
   overscroll-behavior: contain;
   padding: 12px 36px 30px;
 }
-.cf-resumo { margin: 0; max-width: 720px; font-size: 15px; line-height: 1.6; color: var(--ink-80); }
+.cf-resumo { margin: 0; max-width: 680px; font-size: 13.5px; line-height: 1.6; color: var(--ink-80); }
 .cf-resumo strong { color: var(--ink); font-weight: 600; }
 
 /* destaques: números grandes na cor do plano */
@@ -91,12 +91,12 @@
 }
 .cf-destaque-valor {
   font-family: 'Abhaya Libre', serif;
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 700;
   line-height: 1.1;
   color: var(--cf-acento);
 }
-.cf-destaque-rotulo { font-size: 13px; line-height: 1.4; color: var(--ink-60); }
+.cf-destaque-rotulo { font-size: 12.5px; line-height: 1.4; color: var(--ink-60); }
 
 /* grade: passos | para quem é  /  cartões em largura total */
 .cf-grade {
@@ -114,12 +114,12 @@
 
 .cf-bloco-titulo {
   font-family: 'Montserrat', sans-serif;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.9px;
   text-transform: uppercase;
   color: var(--ink-60);
-  margin: 0 0 14px;
+  margin: 0 0 12px;
 }
 
 /* passos numerados, com linha vertical ligando os números */
@@ -129,35 +129,35 @@
 .cf-passo:not(:last-child)::before {
   content: '';
   position: absolute;
-  left: 13px;
-  top: 30px;
+  left: 11px;
+  top: 26px;
   bottom: 2px;
   width: 1.5px;
   background: var(--gray-soft);
 }
 .cf-passo-num {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: var(--green);
   color: var(--ink);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
-.cf-passo-txt { font-size: 14px; line-height: 1.5; color: var(--ink-80); padding-top: 4px; }
+.cf-passo-txt { font-size: 13px; line-height: 1.5; color: var(--ink-80); padding-top: 4px; }
 .cf-passo-txt strong { color: var(--ink); font-weight: 600; }
 
 /* tópicos com ícone em outline verde (Mentoria) */
-.cf-topicos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 18px; }
-.cf-topico { display: flex; gap: 14px; align-items: flex-start; }
+.cf-topicos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.cf-topico { display: flex; gap: 12px; align-items: flex-start; }
 .cf-topico-icone {
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   border: 1.5px solid var(--green-deep);
   background: var(--white);
@@ -166,29 +166,29 @@
   align-items: center;
   justify-content: center;
 }
-.cf-topico-icone svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+.cf-topico-icone svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.8; fill: none; }
 .cf-topico-txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding-top: 1px; }
-.cf-topico-titulo { font-size: 15px; font-weight: 600; line-height: 1.35; color: var(--ink); }
-.cf-topico-texto { font-size: 14px; line-height: 1.5; color: var(--ink-80); }
+.cf-topico-titulo { font-size: 13.5px; font-weight: 600; line-height: 1.35; color: var(--ink); }
+.cf-topico-texto { font-size: 13px; line-height: 1.5; color: var(--ink-80); }
 .cf-topico-texto strong { color: var(--ink); font-weight: 600; }
 
 /* para quem é */
 .cf-para {
   list-style: none;
   margin: 0;
-  padding: 18px 20px;
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   border: 1px solid rgba(18, 18, 16, 0.10);
   border-radius: var(--r-md);
 }
-.cf-para li { display: flex; gap: 10px; font-size: 14px; line-height: 1.5; color: var(--ink-80); }
+.cf-para li { display: flex; gap: 10px; font-size: 13px; line-height: 1.5; color: var(--ink-80); }
 .cf-para strong { color: var(--ink); font-weight: 600; }
 .cf-para-check {
   flex-shrink: 0;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   margin-top: 2px;
   border-radius: 50%;
   background: var(--green);
@@ -196,7 +196,7 @@
   align-items: center;
   justify-content: center;
 }
-.cf-para-check svg { width: 10px; height: 10px; stroke: var(--ink); stroke-width: 3.2; fill: none; }
+.cf-para-check svg { width: 9px; height: 9px; stroke: var(--ink); stroke-width: 3.2; fill: none; }
 
 /* cartões (o que está incluído / o que acompanhamos) */
 .cf-cartoes {
@@ -209,8 +209,8 @@
 }
 .cf-cartao {
   display: flex;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
+  padding: 14px;
   border: 1px solid rgba(18, 18, 16, 0.10);
   border-radius: var(--r-md);
   background: var(--white);
@@ -218,8 +218,8 @@
 }
 .cf-cartao-icone {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: var(--r-sm);
   background: var(--green-soft);
   color: var(--green-ink);
@@ -227,10 +227,10 @@
   align-items: center;
   justify-content: center;
 }
-.cf-cartao-icone svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+.cf-cartao-icone svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 1.8; fill: none; }
 .cf-cartao-txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.cf-cartao-titulo { font-size: 14px; font-weight: 600; line-height: 1.35; color: var(--ink); }
-.cf-cartao-texto { font-size: 13px; line-height: 1.45; color: var(--ink-60); }
+.cf-cartao-titulo { font-size: 13px; font-weight: 600; line-height: 1.35; color: var(--ink); }
+.cf-cartao-texto { font-size: 12.5px; line-height: 1.45; color: var(--ink-60); }
 
 /* ── rodapé fixo ── */
 .cf-acoes {
@@ -269,9 +269,10 @@
   .cf-overlay { padding: 8px; }
   .cf-modal { max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); }
   .cf-cabeca { padding: 16px 12px 0 20px; }
+  .cf-fechar { width: 44px; height: 44px; }
   .cf-titulo { font-size: 24px; }
   .cf-corpo { padding: 10px 20px 22px; }
-  .cf-resumo { font-size: 14px; }
+  .cf-resumo { font-size: 13.5px; }
 
   .cf-destaques-4, .cf-destaques-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* número ímpar de destaques: o último ocupa a linha toda (sem buraco) */
@@ -288,7 +289,6 @@
   }
   .cf-cartoes { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .cf-cartao { padding: 12px 14px; }
-  .cf-cartao-icone { width: 32px; height: 32px; }
 
   .cf-acoes { flex-direction: column-reverse; align-items: stretch; gap: 8px; padding: 12px 20px 16px; }
 }
