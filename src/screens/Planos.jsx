@@ -223,6 +223,7 @@ export default function Planos() {
 
       {comoFunciona && (
         <ComoFuncionaModal
+          plano={comoFunciona}
           conteudo={COMO_FUNCIONA[comoFunciona]}
           whatsappUrl={linkWhatsappComercial({ escritorio, planoAtual, planoDesejado: comoFunciona })}
           onFechar={fecharComoFunciona}

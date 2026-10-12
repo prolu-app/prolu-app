@@ -1,26 +1,30 @@
-/* Modal "Como funciona" (/planos) — base em .modal-overlay/.modal (index.css) */
+/* Modal "Como funciona" (/planos) — base em .modal-overlay/.modal (index.css).
+   Cabeçalho e rodapé fixos; só o corpo rola. --cf-acento vem do plano. */
 .cf-modal {
-  width: 560px;
-  max-height: calc(100vh - 32px);
-  max-height: calc(100dvh - 32px);
+  width: 1000px;
+  max-width: 100%;
+  max-height: 90vh;
+  max-height: 90dvh;
   display: flex;
   flex-direction: column;
   padding: 0;
   overflow: hidden;
 }
 
+/* ── cabeçalho ── */
 .cf-cabeca {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 24px 24px 0 28px;
+  gap: 16px;
+  padding: 26px 26px 0 36px;
 }
-.cf-titulo { margin-bottom: 0; }
+.cf-cabeca-txt { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
+.cf-titulo { margin: 0; font-size: 30px; line-height: 1.1; letter-spacing: -0.3px; }
 .cf-fechar {
   flex-shrink: 0;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   border: none;
   border-radius: 50%;
   background: none;
@@ -32,52 +36,218 @@
 }
 .cf-fechar:hover { background: var(--gray-soft); color: var(--ink); }
 .cf-fechar:focus-visible { outline: 2px solid var(--green-deep); outline-offset: 1px; }
-.cf-fechar svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; fill: none; }
+.cf-fechar svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
 
-/* só o miolo rola: título e ações ficam sempre visíveis */
+/* ── corpo (rola) ── */
 .cf-corpo {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 14px 28px 4px;
+  padding: 12px 36px 30px;
 }
-.cf-resumo { font-size: 14px; line-height: 1.6; color: var(--ink); margin: 0; }
-.cf-secao { margin-top: 20px; }
-.cf-secao-titulo {
+.cf-resumo { margin: 0; max-width: 720px; font-size: 15px; line-height: 1.6; color: var(--ink-80); }
+.cf-resumo strong { color: var(--ink); font-weight: 600; }
+
+/* destaques: números grandes na cor do plano */
+.cf-destaques {
+  list-style: none;
+  margin: 22px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.cf-destaques-4 { grid-template-columns: repeat(4, 1fr); }
+.cf-destaques-3 { grid-template-columns: repeat(3, 1fr); }
+.cf-destaques-2 { grid-template-columns: repeat(2, 1fr); }
+.cf-destaques-1 { grid-template-columns: 1fr; }
+.cf-destaque {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 18px;
+  background: var(--cream);
+  border-radius: var(--r-md);
+  border-top: 3px solid var(--cf-acento);
+  min-width: 0;
+}
+.cf-destaque-valor {
+  font-family: 'Abhaya Libre', serif;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--cf-acento);
+}
+.cf-destaque-rotulo { font-size: 13px; line-height: 1.4; color: var(--ink-60); }
+
+/* grade: passos | para quem é  /  cartões em largura total */
+.cf-grade {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  grid-template-areas:
+    "passos para"
+    "cartoes cartoes";
+  gap: 30px 40px;
+  margin-top: 30px;
+}
+.cf-area-passos { grid-area: passos; }
+.cf-area-para { grid-area: para; }
+.cf-area-cartoes { grid-area: cartoes; }
+
+.cf-bloco-titulo {
   font-family: 'Montserrat', sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.9px;
   text-transform: uppercase;
   color: var(--ink-60);
-  margin: 0 0 8px;
+  margin: 0 0 14px;
 }
-.cf-lista { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
-.cf-lista li { font-size: 13.5px; line-height: 1.55; color: var(--ink); }
-.cf-lista li::marker { color: var(--green-deep); }
 
+/* passos numerados, com linha vertical ligando os números */
+.cf-passos { list-style: none; margin: 0; padding: 0; }
+.cf-passo { position: relative; display: flex; gap: 14px; padding-bottom: 16px; }
+.cf-passo:last-child { padding-bottom: 0; }
+.cf-passo:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 13px;
+  top: 30px;
+  bottom: 2px;
+  width: 1.5px;
+  background: var(--gray-soft);
+}
+.cf-passo-num {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--green);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.cf-passo-txt { font-size: 14px; line-height: 1.5; color: var(--ink-80); padding-top: 4px; }
+.cf-passo-txt strong { color: var(--ink); font-weight: 600; }
+
+/* para quem é */
+.cf-para {
+  list-style: none;
+  margin: 0;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid rgba(18, 18, 16, 0.10);
+  border-radius: var(--r-md);
+}
+.cf-para li { display: flex; gap: 10px; font-size: 14px; line-height: 1.5; color: var(--ink-80); }
+.cf-para strong { color: var(--ink); font-weight: 600; }
+.cf-para-check {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: var(--green);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.cf-para-check svg { width: 10px; height: 10px; stroke: var(--ink); stroke-width: 3.2; fill: none; }
+
+/* cartões (o que está incluído / o que acompanhamos) */
+.cf-cartoes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.cf-cartao {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(18, 18, 16, 0.10);
+  border-radius: var(--r-md);
+  background: var(--white);
+  min-width: 0;
+}
+.cf-cartao-icone {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-sm);
+  background: var(--green-soft);
+  color: var(--green-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.cf-cartao-icone svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+.cf-cartao-txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cf-cartao-titulo { font-size: 14px; font-weight: 600; line-height: 1.35; color: var(--ink); }
+.cf-cartao-texto { font-size: 13px; line-height: 1.45; color: var(--ink-60); }
+
+/* ── rodapé fixo ── */
 .cf-acoes {
   display: flex;
   align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding: 18px 28px 24px;
-  border-top: 1px solid var(--ink-divider);
-  margin-top: 18px;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 36px;
+  border-top: 1px solid rgba(18, 18, 16, 0.08);
+  background: var(--white);
 }
-.cf-btn { text-decoration: none; }
+.cf-btn { text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
 .cf-pagina {
-  font-size: 13px;
-  color: var(--ink-60);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border: 1px solid rgba(18, 18, 16, 0.22);
+  border-radius: 99px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+  text-decoration: none;
 }
-.cf-pagina:hover { color: var(--ink); }
+.cf-pagina:hover { border-color: var(--ink); }
+.cf-pagina:focus-visible, .cf-btn:focus-visible { outline: 2px solid var(--green-deep); outline-offset: 2px; }
 
-@media (max-width: 560px) {
-  .cf-cabeca { padding: 18px 16px 0 20px; }
-  .cf-corpo { padding: 12px 20px 4px; }
-  .cf-acoes { padding: 14px 20px 18px; flex-direction: column; align-items: stretch; text-align: center; gap: 12px; }
-  .cf-titulo { font-size: 20px; }
+/* ── tablet ── */
+@media (max-width: 1080px) {
+  .cf-cartoes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ── celular e tablet estreito: coluna única ── */
+@media (max-width: 899px) {
+  .cf-overlay { padding: 8px; }
+  .cf-modal { max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); }
+  .cf-cabeca { padding: 16px 12px 0 20px; }
+  .cf-titulo { font-size: 24px; }
+  .cf-corpo { padding: 10px 20px 22px; }
+  .cf-resumo { font-size: 14px; }
+
+  .cf-destaques-4, .cf-destaques-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cf-destaque { padding: 12px 14px; }
+  .cf-destaque-valor { font-size: 21px; }
+  .cf-destaque-rotulo { font-size: 12.5px; }
+
+  .cf-grade {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "passos" "cartoes" "para";
+    gap: 26px;
+    margin-top: 24px;
+  }
+  .cf-cartoes { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .cf-cartao { padding: 12px 14px; }
+  .cf-cartao-icone { width: 32px; height: 32px; }
+
+  .cf-acoes { flex-direction: column-reverse; align-items: stretch; gap: 8px; padding: 12px 20px 16px; }
 }
