@@ -14,7 +14,7 @@
 //
 // Em qualquer texto, **assim** fica em negrito.
 // Ícones disponíveis (Icons.jsx): calendario, pessoas, play, dinheiro, agente,
-// crm, alvo, indicadores, grafico, sparkle.
+// crm, alvo, indicadores, grafico, seta, sparkle.
 //
 // Não coloque aqui preço, datas de turma, fidelidade nem prazos de inscrição
 // (ficam desatualizados): o preço já aparece no card do plano.
@@ -46,7 +46,7 @@ export const COMO_FUNCIONA = {
         { icone: 'play', titulo: 'Curso Posicionamento e Vendas', texto: 'Incluído na mentoria.' },
         { icone: 'dinheiro', titulo: 'Prolu Precificação', texto: 'Ferramenta de precificação.' },
         { icone: 'agente', titulo: 'Agente Prolu', texto: 'Uma IA para dúvidas do dia a dia comercial.' },
-        { icone: 'crm', titulo: 'Prolu App', texto: 'CRM e dashboard para a gestão comercial.' },
+        { icone: 'grafico', titulo: 'Prolu App', texto: 'CRM e dashboard para a gestão comercial.' },
       ],
     },
     paraQuem: [
@@ -79,7 +79,7 @@ export const COMO_FUNCIONA = {
       itens: [
         { icone: 'alvo', titulo: 'Organização estratégica e comercial', texto: 'Método de atendimento, reunião e proposta; conteúdo voltado ao cliente ideal para atrair pedidos de orçamento.' },
         { icone: 'indicadores', titulo: 'Gestão comercial e análises', texto: 'Pedidos, fechamentos, valor total fechado, ticket médio, posicionamento percebido e tipo de projeto e cliente atraídos.' },
-        { icone: 'grafico', titulo: 'Tráfego pago', texto: 'Orientação para o escritório fazer o tráfego pago por conta própria.' },
+        { icone: 'seta', titulo: 'Tráfego pago', texto: 'Orientação para o escritório fazer o tráfego pago por conta própria.' },
       ],
     },
     paraQuem: [

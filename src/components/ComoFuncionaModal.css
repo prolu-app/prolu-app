@@ -1,6 +1,24 @@
-/* Modal "Como funciona" (/planos) — base em .modal-overlay/.modal (index.css).
+/* Modal "Como funciona" (/planos) — classes próprias, sem .modal global.
    Cabeçalho e rodapé fixos; só o corpo rola. --cf-acento vem do plano. */
+.cf-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(18, 18, 16, 0.35);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: overlayIn 0.2s;
+}
 .cf-modal {
+  box-sizing: border-box;
+  background: var(--white);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-pop);
+  animation: modalIn 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.1);
   width: 1000px;
   max-width: 100%;
   max-height: 90vh;
@@ -20,7 +38,7 @@
   padding: 26px 26px 0 36px;
 }
 .cf-cabeca-txt { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
-.cf-titulo { margin: 0; font-size: 30px; line-height: 1.1; letter-spacing: -0.3px; }
+.cf-titulo { margin: 0; font-family: 'Abhaya Libre', serif; font-weight: 600; font-size: 30px; line-height: 1.1; letter-spacing: -0.3px; }
 .cf-fechar {
   flex-shrink: 0;
   width: 44px;
@@ -235,6 +253,8 @@
   .cf-resumo { font-size: 14px; }
 
   .cf-destaques-4, .cf-destaques-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* número ímpar de destaques: o último ocupa a linha toda (sem buraco) */
+  .cf-destaques-3 .cf-destaque:last-child { grid-column: 1 / -1; }
   .cf-destaque { padding: 12px 14px; }
   .cf-destaque-valor { font-size: 21px; }
   .cf-destaque-rotulo { font-size: 12.5px; }
@@ -250,4 +270,9 @@
   .cf-cartao-icone { width: 32px; height: 32px; }
 
   .cf-acoes { flex-direction: column-reverse; align-items: stretch; gap: 8px; padding: 12px 20px 16px; }
+}
+
+@media (max-width: 420px) {
+  .cf-destaque-valor { font-size: 19px; }
+  .cf-titulo { font-size: 22px; }
 }
