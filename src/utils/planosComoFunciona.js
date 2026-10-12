@@ -18,7 +18,7 @@
 //
 // Em qualquer texto, **assim** fica em negrito.
 // Ícones disponíveis (Icons.jsx): calendario, pessoas, play, dinheiro, agente,
-// crm, formulario, alvo, indicadores, grafico, seta, sparkle.
+// crm, formulario, alvo, indicadores, grafico, seta, sparkle, engrenagem, livro.
 //
 // Não coloque aqui preço, datas de turma, fidelidade nem prazos de inscrição
 // (ficam desatualizados): o preço já aparece no card do plano.
@@ -60,17 +60,19 @@ export const COMO_FUNCIONA = {
     passos: {
       itens: [
         { icone: 'calendario', titulo: 'Acompanhamento individual', texto: 'Um encontro por mês, de 2 horas, só com o seu escritório, com **direcionamento claro de ações** e WhatsApp aberto para dúvidas e decisões.' },
-        { icone: 'formulario', titulo: 'Organização comercial e estratégica', texto: 'Atendimento, reunião e proposta organizados, e conteúdo voltado ao **cliente ideal** para atrair os pedidos de orçamento certos.' },
-        { icone: 'indicadores', titulo: 'Análise dos números', texto: 'Pedidos, fechamentos, ticket médio e posicionamento percebido mostram **o que ajustar a cada mês**.' },
-        { icone: 'seta', titulo: 'Crescimento constante', texto: 'Para quem já entrega bons projetos crescer com **mais constância, projetos melhores** e posicionamento mais forte.' },
+        { icone: 'formulario', titulo: 'Ajuste comercial', texto: 'O ponto de partida: atendimento, reunião e proposta coerentes, e conteúdo voltado ao **cliente ideal** para atrair os pedidos de orçamento certos.' },
+        { icone: 'pessoas', titulo: 'Equipe e produtividade', texto: 'Depois, a equipe: **organização interna, capacitação e produtividade** para o escritório entregar mais.' },
+        { icone: 'seta', titulo: 'Negócio saudável', texto: 'Um escritório que cresce **por estratégia e por conta própria**, e não pelo esforço do dono.' },
       ],
     },
     cartoes: {
       titulo: 'O que acompanhamos',
       itens: [
-        { icone: 'alvo', titulo: 'Organização estratégica e comercial', texto: 'Método de atendimento, reunião e proposta; conteúdo voltado ao cliente ideal para atrair pedidos de orçamento.' },
-        { icone: 'indicadores', titulo: 'Gestão comercial e análises', texto: 'Pedidos, fechamentos, valor total fechado, ticket médio, posicionamento percebido e tipo de projeto e cliente atraídos.' },
-        { icone: 'seta', titulo: 'Tráfego pago', texto: 'Orientação para o escritório fazer o tráfego pago por conta própria.' },
+        { icone: 'indicadores', titulo: 'Indicadores de crescimento', texto: 'Pedidos, fechamentos, valor fechado e ticket médio, mês a mês.' },
+        { icone: 'grafico', titulo: 'Produtividade da equipe', texto: 'Como a equipe produz e onde dá para produzir melhor.' },
+        { icone: 'engrenagem', titulo: 'Organização interna', texto: 'Processos, rotinas e responsabilidades definidos.' },
+        { icone: 'sparkle', titulo: 'Construção de marca', texto: 'Posicionamento, conteúdo para o cliente ideal e orientação para o tráfego pago.' },
+        { icone: 'livro', titulo: 'Capacitação da equipe', texto: 'Equipe preparada para atender, propor e produzir no padrão do escritório.' },
       ],
     },
     paraQuem: [

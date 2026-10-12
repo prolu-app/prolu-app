@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef } from 'react'
-import { IconAgente, IconArrowUpRight, IconCalendar, IconCheck, IconClientes, IconClose, IconCRM, IconDashboard, IconFormulario, IconIndicadores, IconMoney, IconPlay, IconSparkle, IconTarget } from './Icons.jsx'
+import { IconAgente, IconArrowUpRight, IconBase, IconCalendar, IconCheck, IconClientes, IconClose, IconCRM, IconDashboard, IconFormulario, IconIndicadores, IconMoney, IconPlay, IconSettings, IconSparkle, IconTarget } from './Icons.jsx'
 import { PlanoTag } from './PlanoTag.jsx'
 import './ComoFuncionaModal.css'
 
@@ -19,6 +19,8 @@ const ICONES = {
   grafico: IconDashboard,
   seta: IconArrowUpRight,
   sparkle: IconSparkle,
+  engrenagem: IconSettings,
+  livro: IconBase,
 }
 
 // cor dos números dos destaques: a do plano, sempre com contraste AA no branco
