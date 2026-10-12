@@ -72,9 +72,22 @@ export function rotuloStatusConta(status) {
   return STATUS_CONTA[status]?.rotulo || status || ''
 }
 
+// Limites numéricos por plano (plano ausente = sem limite). ESPELHO no banco:
+// empresa_limite() (supabase/migration_054_limite_envios_selo.sql) — ao mudar
+// um número aqui, mudar lá também. O bloqueio vale no servidor; aqui serve
+// para textos (painel de formulários, /planos).
+//   envios_form_mes: envios de formulário por mês, somando todos os formulários
+export const LIMITES = {
+  starter: { envios_form_mes: 5 },
+}
+
+// Limite do plano (null = sem limite)
+export function limitePlano(plano, chave) {
+  const v = LIMITES[plano]?.[chave]
+  return Number.isFinite(v) ? v : null
+}
+
 // Recurso → plano mínimo. `beneficio` é o texto curto do cartão da vitrine.
-// Para limites numéricos (Passo 4), acrescentar aqui um mapa por plano
-// (ex.: LIMITES = { starter: { usuarios: 1, pedidos_mes: 5 }, ... }).
 export const RECURSOS = {
   // Recursos do plano grátis, listados para o comparativo de /planos ler tudo
   // desta matriz. Não precisam de bloqueio (ficam fora de empresa_libera()).
@@ -84,6 +97,13 @@ export const RECURSOS = {
   // não dependem de plano
   formularios_whatsapp: { plano: 'starter', rotulo: 'Formulários + Notificações WhatsApp' },
   base_conhecimento: { plano: 'starter', rotulo: 'Base de Conhecimento' },
+  // Minha Página sem o selo "Feito com Prolu": no Starter o selo é fixo
+  // (pagina_publica decide no servidor, migration_054)
+  selo_removivel: {
+    plano: 'pro',
+    rotulo: 'Remover o selo "Feito com Prolu" da Minha Página',
+    beneficio: 'Deixe a sua página só com a sua marca, sem o selo "Feito com Prolu".',
+  },
   painel_comercial: {
     plano: 'pro',
     rotulo: 'Painel Comercial',
@@ -133,7 +153,9 @@ export const COMPARATIVO = [
     itens: [
       { rotulo: 'CRM e Precificação', recurso: 'crm_precificacao' },
       { rotulo: 'Minha Página', recurso: 'minha_pagina' },
-      { rotulo: 'Formulários + Notificações WhatsApp', recurso: 'formularios_whatsapp' },
+      // limite: no plano com limite, a célula mostra o número no lugar do ✓
+      { rotulo: 'Formulários + Notificações WhatsApp', recurso: 'formularios_whatsapp', limite: 'envios_form_mes', limiteTexto: (n) => `${n} envios/mês` },
+      { rotulo: 'Minha Página sem o selo "Feito com Prolu"', recurso: 'selo_removivel' },
       { rotulo: 'Painel Comercial', recurso: 'painel_comercial' },
       { rotulo: 'Indicadores e Metas', recurso: 'indicadores' },
     ],

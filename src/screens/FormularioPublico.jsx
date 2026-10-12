@@ -25,6 +25,10 @@ const carregarTelefone = () => import('react-phone-number-input')
 // aplicada aqui e, portanto, no iframe. Depois do envio: mensagem (textos
 // do escritório ou padrão) ou redirecionamento, conforme a resposta da função.
 //
+// Limite de envios do mês (migration_054): a função responde { pausado } e a
+// página mostra só a mensagem genérica (sem campos, sem falar de plano).
+// Rodapé: só o nome do escritório, em texto simples.
+//
 // Classes prolu-form__* são as mesmas do embed cru (public/embed.js), onde
 // são contrato público para o CSS do site — não renomear.
 
@@ -90,7 +94,8 @@ export default function FormularioPublico() {
   const slug = slugFormulario // identifica o formulário nas mensagens para o embed.js
   const slugs = { slug_escritorio: slugEscritorio, slug_formulario: slugFormulario }
   const embed = new URLSearchParams(window.location.search).get('embed') === '1'
-  const [estado, setEstado] = useState('carregando') // carregando | pronto | indisponivel | redirecionando | enviado
+  const [estado, setEstado] = useState('carregando') // carregando | pronto | indisponivel | pausado | redirecionando | enviado
+  const [pausado, setPausado] = useState('') // mensagem genérica do limite do mês
   const [form, setForm] = useState(null)
   const [campos, setCampos] = useState([])
   const [valores, setValores] = useState({})
@@ -114,6 +119,7 @@ export default function FormularioPublico() {
     let vivo = true
     chamar({ acao: 'carregar', ...slugs }).then(({ data, error }) => {
       if (!vivo) return
+      if (error?.pausado) { setPausado(error.error); setEstado('pausado'); return }
       if (error || !data?.formulario) { setEstado('indisponivel'); return }
       setForm(data.formulario)
       setCampos(data.campos || [])
@@ -183,6 +189,13 @@ export default function FormularioPublico() {
     setEnviando(true)
     const { data, error } = await chamar({ acao: 'enviar', ...slugs, respostas: valores, _site: honeypot })
     setEnviando(false)
+    if (error?.pausado) {
+      setPausado(error.error)
+      setEstado('pausado')
+      if (embed) avisarSite('enviado', { slug }) // traz a mensagem para a tela no site
+      else window.scrollTo({ top: 0 })
+      return
+    }
     if (error) {
       if (error.erros) { setErros(error.erros); focarPrimeiroErro(error.erros) }
       setErroGeral(error.error || 'Não foi possível enviar. Tente novamente.')
@@ -230,6 +243,12 @@ export default function FormularioPublico() {
           <div className="prolu-form__mensagem prolu-form__mensagem--indisponivel">
             <h1 className="prolu-form__titulo">Formulário indisponível</h1>
             <p className="prolu-form__texto">Este formulário não existe ou não está mais recebendo respostas.</p>
+          </div>
+        )}
+
+        {estado === 'pausado' && (
+          <div className="prolu-form__mensagem prolu-form__mensagem--pausado" role="status">
+            <p className="prolu-form__texto">{pausado}</p>
           </div>
         )}
 
@@ -341,7 +360,8 @@ export default function FormularioPublico() {
           </form>
         )}
       </main>
-      <footer className="prolu-pagina__rodape">Feito com Prolu</footer>
+      {/* nome do escritório (sem link); sem nome, sem rodapé e sem espaço vazio */}
+      {estado !== 'pausado' && form?.escritorio && <footer className="prolu-pagina__rodape">{form.escritorio}</footer>}
     </div>
   )
 }

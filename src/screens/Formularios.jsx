@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
-import { IconPlus, IconCopy, IconTrash } from '../components/Icons.jsx'
+import { IconPlus, IconCopy, IconTrash, IconAlert } from '../components/Icons.jsx'
+import { useConta } from '../contexts/ContaContext.jsx'
+import { PLANOS, nivelPlano, limitePlano, rotuloPlano } from '../utils/planos.js'
+import '../components/BloqueioPlano.css'
 import { excluirFormulario, duplicarFormulario } from '../services/formulariosAcoes.js'
 import { slugify, comSufixo } from '../utils/slug.js'
 import './Formularios.css'
@@ -16,6 +19,62 @@ import PageHeader, { PageContainer } from '../components/PageHeader.jsx'
 function fmtData(iso) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('pt-BR')
+}
+
+// Envios de formulário do mês (migration_054), só quando o plano tem limite:
+// contador, aviso no penúltimo envio e card de upgrade no limite. Os números
+// vêm do banco (form_envios_mes); quem bloqueia é a formulario-publico.
+function EnviosDoMes({ empresaId }) {
+  const { plano } = useConta()
+  const navigate = useNavigate()
+  const [situacao, setSituacao] = useState(null)
+
+  useEffect(() => {
+    let vivo = true
+    setSituacao(null)
+    if (!supabaseReady || !empresaId) return
+    supabase.rpc('form_envios_mes', { p_empresa_id: empresaId }).then(({ data, error }) => {
+      if (error) console.error('[formularios] envios do mês', error)
+      if (vivo) setSituacao(data || null)
+    })
+    return () => { vivo = false }
+  }, [empresaId])
+
+  const limite = situacao?.limite
+  if (!Number.isFinite(limite)) return null
+  const usados = Math.min(situacao.usados || 0, limite)
+  // menor plano acima do atual sem esse limite
+  const destino = PLANOS.find(p => nivelPlano(p) > nivelPlano(plano) && limitePlano(p, 'envios_form_mes') == null) || 'pro'
+
+  if (usados >= limite) {
+    return (
+      <section className="bp-card fm-envios-card" aria-labelledby="fm-envios-titulo">
+        <span className="bp-tag">Formulários</span>
+        <h2 className="bp-titulo" id="fm-envios-titulo">Os formulários pararam de receber respostas este mês</h2>
+        <p className="bp-texto">
+          Você usou os {limite} envios do plano {rotuloPlano(plano) || 'atual'}. Os pedidos que já chegaram continuam no CRM.
+          A contagem recomeça no dia 1º; para voltar a receber agora, sem limite, mude para o plano <strong>{rotuloPlano(destino)}</strong>.
+        </p>
+        <button className="btn-primary bp-btn" onClick={() => navigate(`/planos?plano=${destino}`)}>Fazer upgrade</button>
+        <Link className="bp-link" to="/planos">Ver planos</Link>
+      </section>
+    )
+  }
+
+  const quase = usados >= limite - 1
+  return (
+    <div className={`fm-envios${quase ? ' fm-envios-quase' : ''}`} role="status">
+      <div className="fm-envios-linha">
+        <span><strong>{usados} de {limite}</strong> envios usados este mês</span>
+        <span className="fm-envios-barra" aria-hidden="true"><span style={{ width: `${(usados / limite) * 100}%` }} /></span>
+      </div>
+      {quase && (
+        <p className="fm-envios-aviso">
+          <IconAlert aria-hidden="true" /> Falta 1 envio para o limite do plano {rotuloPlano(plano)} neste mês. Depois dele, os formulários param de receber respostas até o dia 1º. <Link to={`/planos?plano=${destino}`}>Ver planos</Link>
+        </p>
+      )}
+    </div>
+  )
 }
 
 // Liga/desliga usado na lista e no editor
@@ -218,6 +277,8 @@ export default function Formularios() {
       {!podeEditar && activeEmpresaId && (
         <p className="fm-readonly-note">Formulários de outro escritório — somente leitura.</p>
       )}
+
+      <EnviosDoMes empresaId={activeEmpresaId} />
 
       {loading ? (
         <p className="fm-empty">Carregando…</p>

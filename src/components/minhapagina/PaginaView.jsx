@@ -4,6 +4,9 @@
 // slug_formulario, estilo, imagem_url, imagem_modo }.
 // Imagem do link (migration_042): "icone" = pequena à esquerda, texto segue
 // centralizado; "banner" = largura total no topo e o link vira card.
+// Selo "Feito com Prolu" (migration_054): `selo` vem decidido de fora — na
+// página pública, pela função pagina_publica (no Starter é sempre true); na
+// prévia, pelo plano da conta. Cores fixas, independentes do estilo da página.
 
 import { useEffect } from 'react'
 import {
@@ -12,13 +15,16 @@ import {
 import { ehDominioCurto } from '../../utils/slug.js'
 import './PaginaView.css'
 
+const URL_SELO = 'https://prolu.com.br/?utm_source=selo&utm_medium=minha-pagina'
+
 function hrefDoLink(link, slugEscritorio) {
   // no domínio curto sem /e/ (prolu.link/<escritório>/<formulário>); no app, /e/…
   if (link.tipo === 'formulario') return link.slug_formulario ? `${ehDominioCurto() ? '' : '/e'}/${slugEscritorio}/${link.slug_formulario}` : null
   return link.url || null
 }
 
-export default function PaginaView({ config, links, slugEscritorio, escritorio, previa = false }) {
+export default function PaginaView({ config, links, slugEscritorio, escritorio, previa = false, selo }) {
+  const mostrarSelo = typeof selo === 'boolean' ? selo : config.rodape_prolu
   useEffect(() => { carregarFonte(config.fonte) }, [config.fonte])
 
   const nome = config.nome_exibicao.trim() || escritorio || ''
@@ -66,11 +72,14 @@ export default function PaginaView({ config, links, slugEscritorio, escritorio, 
           </nav>
         )}
 
-        {config.rodape_prolu && (
-          <a className="mp-rodape" href="https://prolu.com.br" target="_blank" rel="noopener noreferrer" style={{ color: config.cor_texto_bio }}
-            {...(previa ? { tabIndex: -1, onClick: e => e.preventDefault() } : {})}>
-            Feito com Prolu
-          </a>
+        {mostrarSelo && (
+          <div className="mp-selo-wrap">
+            <a className="mp-selo" href={URL_SELO} target="_blank" rel="noopener"
+              {...(previa ? { tabIndex: -1, onClick: e => e.preventDefault() } : {})}>
+              <img src="/prolu_app_icon_logo.png" alt="" width="20" height="20" />
+              Feito com Prolu
+            </a>
+          </div>
         )}
       </div>
     </div>

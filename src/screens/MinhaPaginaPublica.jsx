@@ -32,5 +32,7 @@ export default function MinhaPaginaPublica() {
 
   if (estado === 'carregando') return <div className="mp-estado" aria-busy="true" />
   if (estado === 'indisponivel') return <div className="mp-estado"><p>Esta página não está disponível.</p></div>
-  return <PaginaView config={dados.config} links={dados.links} slugEscritorio={dados.slug} escritorio={dados.escritorio} />
+  // selo decidido no servidor (pagina_publica, migration_054); antes dela, o flag salvo
+  const selo = typeof dados.selo === 'boolean' ? dados.selo : dados.config.rodape_prolu
+  return <PaginaView config={dados.config} links={dados.links} slugEscritorio={dados.slug} escritorio={dados.escritorio} selo={selo} />
 }

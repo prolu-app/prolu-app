@@ -6,7 +6,7 @@ import { IconCheck } from '../components/Icons.jsx'
 import PageHeader, { PageContainer } from '../components/PageHeader.jsx'
 import { PlanoTag } from '../components/PlanoTag.jsx'
 import {
-  PLANOS, PLANO_INFO, COMPARATIVO, planoLibera, planoValido, rotuloPlano,
+  PLANOS, PLANO_INFO, COMPARATIVO, planoLibera, planoValido, rotuloPlano, limitePlano,
   precoPlano, precoPlanoMes, linkWhatsappComercial,
 } from '../utils/planos.js'
 import './Planos.css'
@@ -154,11 +154,14 @@ export default function Planos() {
                   <th scope="row" className="pl-recurso-col">{linha.rotulo}</th>
                   {PLANOS.map((p) => {
                     const inclui = planoLibera(p, linha.recurso)
+                    const limite = linha.limite ? limitePlano(p, linha.limite) : null
                     return (
                       <td key={p} className={classeColuna(p)}>
                         {!inclui
                           ? <span className="pl-nao" aria-label="Não incluído">—</span>
-                          : linha.emBreve
+                          : limite != null
+                            ? <span className="pl-limite">{linha.limiteTexto(limite)}</span>
+                            : linha.emBreve
                             ? <span className="pl-chip-breve">em breve</span>
                             : <span className="pl-sim" aria-label="Incluído"><IconCheck /></span>}
                       </td>

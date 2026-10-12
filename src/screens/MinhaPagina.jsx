@@ -9,9 +9,11 @@
 // prolu_admin visitando outro escritório só lê (RLS da migration_041).
 
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
+import { useConta } from '../contexts/ContaContext.jsx'
+import { planoMinimo, rotuloPlano } from '../utils/planos.js'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { FmSwitch } from './Formularios.jsx'
 import { Linha, Segmentos } from './FormularioAparencia.jsx'
@@ -156,6 +158,9 @@ export default function MinhaPagina() {
   const aba = ABAS.some(a => a.id === params.get('aba')) ? params.get('aba') : 'perfil'
   const podeEditar = activeEmpresaId != null && activeEmpresaId === user?.empresaId
   const off = !podeEditar
+  // Starter: selo fixo (o servidor também impõe, em pagina_publica); o flag salvo fica como está
+  const { planoLibera } = useConta()
+  const seloFixo = !planoLibera('selo_removivel')
 
   const [estado, setEstado] = useState('carregando') // carregando | pronto | erro
   const [empresa, setEmpresa] = useState(null) // { nome, slug }
@@ -507,8 +512,10 @@ export default function MinhaPagina() {
               <FmSwitch ligado={config.publicada} disabled={off} rotulo="Publicar a página" onChange={v => mudar({ publicada: v })} />
               <span className="fm-status-texto">{config.publicada ? 'Publicada' : 'Não publicada'}</span>
             </Linha>
-            <Linha rotulo="Rodapé">
-              <FmSwitch ligado={config.rodape_prolu} disabled={off} rotulo='Mostrar "Feito com Prolu"' onChange={v => mudar({ rodape_prolu: v })} />
+            <Linha rotulo="Rodapé" dica={seloFixo && (
+              <>Remover o selo "Feito com Prolu" é recurso dos planos pagos, a partir do {rotuloPlano(planoMinimo('selo_removivel'))}. <Link to={`/planos?plano=${planoMinimo('selo_removivel')}`}>Ver planos</Link></>
+            )}>
+              <FmSwitch ligado={seloFixo || config.rodape_prolu} disabled={off || seloFixo} rotulo='Mostrar "Feito com Prolu"' onChange={v => mudar({ rodape_prolu: v })} />
               <span className="fm-status-texto">Mostrar "Feito com Prolu"</span>
             </Linha>
             <Linha rotulo="Link público">
@@ -526,7 +533,7 @@ export default function MinhaPagina() {
           <div className="mp-previa-rotulo">Prévia</div>
           <PreviaCelular>
             {/* normalizada como na página pública: a prévia mostra exatamente o que vai ao ar */}
-            <PaginaView config={normalizarPagina(config)} links={linksPrevia} slugEscritorio={empresa.slug} escritorio={empresa.nome} previa />
+            <PaginaView config={normalizarPagina(config)} links={linksPrevia} slugEscritorio={empresa.slug} escritorio={empresa.nome} previa selo={seloFixo || config.rodape_prolu} />
           </PreviaCelular>
           {podeEditar && (
             <div className={`mp-status${hasUnsavedChanges ? ' pendente' : ' salvo'}`} role="status">

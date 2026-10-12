@@ -209,6 +209,7 @@
 }
 .pl-sim svg { width: 10px; height: 10px; stroke: var(--ink); stroke-width: 3.2; fill: none; }
 .pl-nao { color: var(--ink-30); }
+.pl-limite { font-size: 12px; font-weight: 600; color: var(--ink-60); white-space: nowrap; }
 
 .pl-sr {
   position: absolute;

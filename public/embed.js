@@ -188,10 +188,10 @@
 
   function mensagem(raiz, tipo, titulo, texto, botao) {
     raiz.textContent = ''
-    raiz.setAttribute('data-estado', tipo === 'sucesso' ? 'enviado' : 'indisponivel')
+    raiz.setAttribute('data-estado', tipo === 'sucesso' ? 'enviado' : tipo)
     var box = el('div', 'prolu-form__mensagem prolu-form__mensagem--' + tipo)
-    if (tipo === 'sucesso') box.setAttribute('role', 'status')
-    box.appendChild(el('h2', 'prolu-form__titulo', titulo))
+    if (tipo !== 'indisponivel') box.setAttribute('role', 'status')
+    if (titulo) box.appendChild(el('h2', 'prolu-form__titulo', titulo))
     box.appendChild(el('p', 'prolu-form__texto', texto))
     // botão opcional do agradecimento (abre em nova aba)
     if (botao && typeof botao.texto === 'string' && typeof botao.url === 'string' && URL_RE.test(botao.url)) {
@@ -220,6 +220,8 @@
     host.appendChild(raiz)
 
     chamar(api, { acao: 'carregar', slug_escritorio: slugs.slug_escritorio, slug_formulario: slugs.slug_formulario }).then(function (res) {
+      // limite do mês (migration_054): só a mensagem genérica da função
+      if (res.error && res.error.pausado) { mensagem(raiz, 'pausado', null, res.error.error); return }
       if (res.error || !res.data || !res.data.formulario) {
         mensagem(raiz, 'indisponivel', 'Formulário indisponível', 'Este formulário não existe ou não está mais recebendo respostas.')
         return
@@ -422,6 +424,7 @@
         enviando = false
         botao.disabled = false
         botao.textContent = textoBotao
+        if (res.error && res.error.pausado) { mensagem(raiz, 'pausado', null, res.error.error); return }
         if (res.error) {
           if (res.error.erros) aplicarErros(res.error.erros)
           erroGeral.textContent = res.error.error || 'Não foi possível enviar. Tente novamente.'
