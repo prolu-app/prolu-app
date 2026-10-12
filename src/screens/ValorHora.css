@@ -130,21 +130,24 @@
 .vh-antigo-acoes .btn-cancel svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
 
 /* ── aba Custos: dono ── */
-.vh-dono-opcoes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
-.vh-dono-opcao {
-  display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; text-align: left; cursor: pointer;
-  border: 1.5px solid var(--ink-divider); border-radius: var(--r-md); background: var(--white);
-  font-family: inherit; color: var(--ink-60); transition: border-color 0.15s, background 0.15s;
+.vh-dono-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; }
+.vh-sim-nao { display: inline-flex; gap: 2px; background: var(--cream); border-radius: 99px; padding: 3px; }
+.vh-sim-nao button {
+  border: none; background: none; padding: 5px 16px; border-radius: 99px; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 500; color: var(--ink-60);
 }
-.vh-dono-opcao:hover:not(:disabled) { border-color: rgba(18, 18, 16, 0.25); }
-.vh-dono-opcao.on { border-color: var(--ink); background: var(--green-soft); color: var(--ink); }
-.vh-dono-opcao:disabled { cursor: default; }
-.vh-dono-opcao:focus-visible { outline: 2px solid var(--green-deep); outline-offset: 2px; }
-.vh-dono-opcao-titulo { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--ink); }
-.vh-dono-opcao-texto { font-size: 12.5px; line-height: 1.5; }
-.vh-radio { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--ink-40); flex-shrink: 0; position: relative; }
-.vh-dono-opcao.on .vh-radio { border-color: var(--ink); }
-.vh-dono-opcao.on .vh-radio::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--ink); }
+.vh-sim-nao button.on { background: var(--white); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(18, 18, 16, 0.12); }
+.vh-sim-nao button:disabled { cursor: default; }
+.vh-sim-nao button:focus-visible { outline: 2px solid var(--green-deep); outline-offset: 1px; }
+.vh-dono-opcoes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.vh-dono-opcao {
+  display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border-radius: var(--r-sm);
+  border: 1px solid var(--ink-divider); color: var(--ink-40); transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.vh-dono-opcao.on { border-color: var(--green-deep); background: var(--green-soft); color: var(--ink-80); }
+.vh-dono-opcao-titulo { font-size: 12.5px; font-weight: 600; }
+.vh-dono-opcao.on .vh-dono-opcao-titulo { color: var(--ink); }
+.vh-dono-opcao-texto { font-size: 12px; line-height: 1.45; }
 
 /* ── aba Custos: lista única ── */
 .vh-lista { background: var(--white); border-radius: var(--r-lg); box-shadow: var(--shadow-rest); padding: 8px 16px 16px; }

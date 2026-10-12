@@ -473,19 +473,24 @@ function AbaCustos({ dados, calc, podeEditar, atualizar }) {
   return (
     <>
       <div className="vh-bloco">
-        <h2 className="vh-secao-titulo">Considerar as horas produtivas do dono?</h2>
-        <div className="vh-dono-opcoes" role="radiogroup" aria-label="Considerar as horas produtivas do dono?">
-          {OPCOES_DONO.map(o => {
-            const on = dados.dono_considera_horas === o.valor
-            return (
-              <button key={o.titulo} type="button" role="radio" aria-checked={on} disabled={!podeEditar}
-                className={`vh-dono-opcao${on ? ' on' : ''}`}
-                onClick={() => atualizar(d => ({ ...d, dono_considera_horas: o.valor }))}>
-                <span className="vh-dono-opcao-titulo"><span className="vh-radio" aria-hidden="true" /> {o.titulo}</span>
-                <span className="vh-dono-opcao-texto">{o.texto}</span>
-              </button>
-            )
-          })}
+        <div className="vh-dono-topo">
+          <h2 className="vh-secao-titulo">Considerar as horas produtivas do dono?</h2>
+          <div className="vh-sim-nao" role="group" aria-label="Considerar as horas produtivas do dono?">
+            {OPCOES_DONO.map(o => (
+              <button key={o.titulo} type="button" className={dados.dono_considera_horas === o.valor ? 'on' : ''}
+                aria-pressed={dados.dono_considera_horas === o.valor} disabled={!podeEditar}
+                onClick={() => atualizar(d => ({ ...d, dono_considera_horas: o.valor }))}>{o.titulo}</button>
+            ))}
+          </div>
+        </div>
+        {/* as duas legendas ficam visíveis; a escolhida fica destacada */}
+        <div className="vh-dono-opcoes">
+          {OPCOES_DONO.map(o => (
+            <div key={o.titulo} className={`vh-dono-opcao${dados.dono_considera_horas === o.valor ? ' on' : ''}`}>
+              <span className="vh-dono-opcao-titulo">{o.titulo}</span>
+              <span className="vh-dono-opcao-texto">{o.texto}</span>
+            </div>
+          ))}
         </div>
       </div>
 
