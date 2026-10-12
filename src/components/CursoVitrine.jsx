@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { IconSparkle } from './Icons.jsx'
 import { PlanoTag } from './PlanoTag.jsx'
-import { linkWhatsappCurso, linkUpgradePara } from '../utils/planos.js'
+import { linkWhatsappCurso, linkUpgradePara, precoCurso } from '../utils/planos.js'
 import './BloqueioPlano.css'
 import './CursoVitrine.css'
 
@@ -31,6 +31,14 @@ export function BotaoCurso({ curso, escritorio, planoAtual, className = 'btn-pri
   )
 }
 
+// Preço da venda avulsa. O servidor só manda 'preco' para curso BLOQUEADO
+// com venda avulsa = Sim (kb_cursos / kb_pasta_vitrine, migration_055).
+export function PrecoCurso({ curso, className = 'cv-preco' }) {
+  const texto = curso.venda_avulsa ? precoCurso(curso.preco) : ''
+  if (!texto) return null
+  return <span className={className}><span className="cv-preco-rotulo">Curso avulso</span> {texto}</span>
+}
+
 function DisponivelNosPlanos({ planos }) {
   if (!planos?.length) return <p className="cv-planos">Disponível para compra avulsa.</p>
   return (
@@ -49,6 +57,7 @@ export function ConviteCurso({ curso, escritorio, planoAtual }) {
       <h2 className="bp-titulo" id={`cv-titulo-${curso.id}`}>{curso.titulo}</h2>
       {curso.descricao && <p className="bp-texto">{curso.descricao}</p>}
       <DisponivelNosPlanos planos={curso.planos} />
+      <PrecoCurso curso={curso} />
       <BotaoCurso curso={curso} escritorio={escritorio} planoAtual={planoAtual} />
     </section>
   )

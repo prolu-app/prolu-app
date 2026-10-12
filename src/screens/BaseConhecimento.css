@@ -454,3 +454,22 @@
 .kb-btn-contorno { background: var(--white); color: var(--ink); border: 1px solid rgba(18, 18, 16, 0.22); }
 .kb-btn-contorno:hover { border-color: var(--ink); }
 .kb-btn-compacto:focus-visible { outline: 2px solid var(--green-deep); outline-offset: 2px; }
+
+/* ── migration_055: preço da venda avulsa no card bloqueado ── */
+.folder-vitrine-acao {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: 8px 12px; margin-top: 14px;
+}
+.folder-vitrine-acao .kb-btn-compacto { margin-top: 0; }
+.folder-vitrine-preco {
+  font-size: 14px; font-weight: 600; color: var(--ink);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+/* vitrine de uma seção da página ("Seu escritório", aba Painel) */
+.kb-vitrine-secao { min-height: 360px; max-height: none; margin-top: 14px; }
+.kb-vitrine-secao .bp-tela { max-height: 440px; overflow: hidden; }
+.kb-vitrine-secao .folders-grid { margin-top: 0; }
+@media (max-width: 860px) {
+  .kb-vitrine-secao { min-height: 400px; }
+}

@@ -1,7 +1,8 @@
 // Planos do Prolu App — ÚNICA fonte, no front, de rótulos, textos, preços e da
 // matriz plano × recurso. O banco tem o espelho da matriz em
 // empresa_libera() (supabase/migration_045_planos_conta.sql): ao mudar o plano
-// mínimo de um recurso aqui, mudar lá também.
+// mínimo de um recurso aqui, mudar lá também (versão atual da função:
+// supabase/migration_055_base_propria_painel_preco.sql).
 //
 // Regra central: o PERFIL (role) decide o que aparece no menu; o PLANO nunca
 // esconde nada — só decide se o que está visível fica liberado ou vira
@@ -119,6 +120,21 @@ export const RECURSOS = {
     rotulo: 'Equipe',
     beneficio: 'Convide sua equipe para trabalhar junto no Prolu App.',
   },
+  // seção "Seu escritório" da Base de Conhecimento: abaixo do Business fica
+  // em vitrine; o servidor recusa criar/editar/apagar (kb_pode_escrever,
+  // migration_055). O conteúdo já criado nunca é apagado.
+  base_propria: {
+    plano: 'business',
+    rotulo: 'Base de conhecimento do escritório',
+    beneficio: 'Crie cursos e processos internos do seu escritório, com vídeos, PDFs e textos para a equipe.',
+  },
+  // aba Painel da Base de Conhecimento (progresso da equipe): o progresso dos
+  // outros usuários só sai do banco com o recurso (migration_055)
+  kb_painel: {
+    plano: 'business',
+    rotulo: 'Painel de progresso da equipe',
+    beneficio: 'Acompanhe quantas aulas cada pessoa da equipe já concluiu, curso a curso.',
+  },
   // Projetos: ainda sem funcionalidade (menu desativado, "em breve" em /planos).
   // Fora de empresa_libera() no banco de propósito: não há dado nem escrita
   // para bloquear no servidor até a área existir.
@@ -173,6 +189,8 @@ export const COMPARATIVO = [
     grupo: 'Método Prolu',
     itens: [
       { rotulo: 'Base de Conhecimento', recurso: 'base_conhecimento' },
+      { rotulo: 'Base de conhecimento do escritório', recurso: 'base_propria' },
+      { rotulo: 'Painel de progresso da equipe', recurso: 'kb_painel' },
       { rotulo: 'Plano Prático', recurso: 'ferramentas_mentoria' },
       { rotulo: 'Cliente Ideal', recurso: 'ferramentas_mentoria' },
       { rotulo: 'Agente Prolu', recurso: 'ferramentas_mentoria' },
@@ -246,6 +264,13 @@ export function linkWhatsappCurso({ escritorio, curso } = {}) {
   if (curso) partes.push(`Curso: ${curso}`)
   if (escritorio) partes.push(`Escritório: ${escritorio}`)
   return `https://wa.me/${WHATSAPP_COMERCIAL}?text=${encodeURIComponent(partes.join('\n'))}`
+}
+
+// Preço de curso avulso: "R$ 297,00" (sempre com centavos); vazio sem preço
+export function precoCurso(v) {
+  const n = v == null || v === '' ? NaN : Number(v)
+  if (!Number.isFinite(n)) return ''
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 // Upgrade a partir de uma lista de planos (curso/aula): o menor plano da lista

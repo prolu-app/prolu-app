@@ -5,8 +5,9 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import { useConta } from '../contexts/ContaContext.jsx'
 import { VitrineCurso, AulaBloqueada, BotaoCurso } from '../components/CursoVitrine.jsx'
 import { PlanoTag } from '../components/PlanoTag.jsx'
+import { CartaoVitrine } from '../components/BloqueioPlano.jsx'
 import { useUrlsAssinadas } from '../utils/kbArquivos.js'
-import { PLANOS, rotuloPlano } from '../utils/planos.js'
+import { PLANOS, rotuloPlano, precoCurso } from '../utils/planos.js'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { FOLDERS } from '../data/seed.js'
 import {
@@ -162,7 +163,11 @@ export default function BaseConhecimento() {
   const [vitrinePastaId, setVitrinePastaId] = useState(null)
   const [vitrinePasta, setVitrinePasta] = useState(null) // dados de kb_pasta_vitrine | 'erro'
   const [estruturaPasta, setEstruturaPasta] = useState(null) // aulas bloqueadas do curso aberto
-  const { conta, plano: planoAtual } = useConta()
+  const { conta, plano: planoAtual, planoLibera } = useConta()
+  // a partir do Business (migration_055): abaixo, a seção "Seu escritório" e o
+  // Painel ficam em vitrine; o servidor recusa a escrita e o progresso da equipe
+  const basePropriaLiberada = planoLibera('base_propria')
+  const painelLiberado = planoLibera('kb_painel')
   const [kbTab, setKbTab] = useState('cursos')
   const [loading, setLoading] = useState(true)
   const [currentPastaId, setCurrentPastaId] = useState(null)
@@ -189,8 +194,9 @@ export default function BaseConhecimento() {
   // Conteúdo Prolu (empresa_id null): só prolu_admin.
   const podeEditarProlu = isProluAdmin
   // Conteúdo da empresa: gestor ou master da própria empresa (o banco usa
-  // auth_empresa_id(), então prolu_admin visitando outro escritório não edita).
-  const podeEditarEmpresa = isGestorOuSuperior
+  // auth_empresa_id(), então prolu_admin visitando outro escritório não edita),
+  // com a base própria no plano (kb_pode_escrever, migration_055).
+  const podeEditarEmpresa = isGestorOuSuperior && basePropriaLiberada
   // Pode criar/editar/excluir dentro de uma pasta específica?
   function podeEditarPasta(pasta) {
     if (!pasta || pasta.empresa_id == null) return podeEditarProlu
@@ -695,7 +701,10 @@ export default function BaseConhecimento() {
   const listaPlanos = (planos) => new Intl.ListFormat('pt-BR', { style: 'long', type: 'conjunction' }).format(planos.map(rotuloPlano))
 
   // card de um curso (pasta Prolu) sem acesso: dados de vitrine (kb_cursos),
-  // estrela verde e o botão certo (comprar/Comercial ou upgrade)
+  // estrela verde e o botão certo (comprar/Comercial ou upgrade). Sem a
+  // legenda de tipos ("Visível só para Master"): ela só vale em curso que o
+  // escritório abre. Preço: o servidor só manda em curso bloqueado com venda
+  // avulsa = Sim (migration_055).
   function renderFolderVitrine(c) {
     return (
       <div className="folder-card folder-card-vitrine" key={c.id} onClick={() => setVitrinePastaId(c.id)}
@@ -709,7 +718,6 @@ export default function BaseConhecimento() {
           <div className="folder-sub">{c.descricao}</div>
           <div className="folder-vitrine-info">
             <span>{c.aulas} {c.aulas === 1 ? 'aula' : 'aulas'}</span>
-            <LegendaTipos tipos={c.tipos_usuario} />
             {(c.planos || []).length > 0 && (
               <span className="folder-vitrine-tarja">
                 <IconSparkle aria-hidden="true" />
@@ -717,7 +725,10 @@ export default function BaseConhecimento() {
               </span>
             )}
           </div>
-          <BotaoCurso curso={c} escritorio={escritorioNome} planoAtual={planoAtual} compacto />
+          <div className="folder-vitrine-acao">
+            <BotaoCurso curso={c} escritorio={escritorioNome} planoAtual={planoAtual} compacto />
+            {c.venda_avulsa && precoCurso(c.preco) && <span className="folder-vitrine-preco">{precoCurso(c.preco)}</span>}
+          </div>
         </div>
       </div>
     )
@@ -841,11 +852,24 @@ export default function BaseConhecimento() {
         )}
 
         {podeVerPainel && kbTab === 'painel' ? (
-          <PainelEquipe activeEmpresaId={activeEmpresaId} currentUserId={user?.id} />
+          painelLiberado
+            ? <PainelEquipe activeEmpresaId={activeEmpresaId} currentUserId={user?.id} />
+            : <VitrineSecao recurso="kb_painel"><PainelExemplo /></VitrineSecao>
         ) : (
           <>
             {renderSecoesProlu(pastasProlu)}
 
+            {!basePropriaLiberada ? (
+              (isGestorOuSuperior || pastasEmpresa.length > 0) && (
+                <>
+                  <div className="kb-section-label"><span>Seu escritório</span></div>
+                  {/* pastas reais (só leitura, inertes) ou exemplos, se ainda não há nenhuma */}
+                  <VitrineSecao recurso="base_propria">
+                    <div className="folders-grid">{(pastasEmpresa.length ? pastasEmpresa : PASTAS_EXEMPLO).slice(0, 3).map(renderFolder)}</div>
+                  </VitrineSecao>
+                </>
+              )
+            ) : (<>
             {(podeEditarEmpresa || pastasEmpresa.length > 0) && (
               <div className="kb-section-label">
                 <span>Seu escritório</span>
@@ -869,6 +893,7 @@ export default function BaseConhecimento() {
                 <p>Adicione seus próprios cursos e processos internos para sua equipe.</p>
               </div>
             )}
+            </>)}
           </>
         )}
 
@@ -1301,6 +1326,62 @@ function DeleteModal({ type, nome, onClose, onConfirm }) {
           <button className="btn-danger" onClick={onConfirm}>Excluir</button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ════════ Vitrines do plano (migration_055) ════════
+// Trecho da tela desfocado, inerte e somente leitura, com o cartão
+// "Disponível no plano X" por cima — o mesmo efeito de BloqueioPlano, numa
+// seção da página em vez da tela inteira.
+function VitrineSecao({ recurso, children }) {
+  const telaRef = (el) => { if (el) el.setAttribute('inert', '') }
+  return (
+    <div className="bp-wrap kb-vitrine-secao">
+      <div className="bp-tela" ref={telaRef} aria-hidden="true">{children}</div>
+      <div className="bp-overlay"><CartaoVitrine recurso={recurso} /></div>
+    </div>
+  )
+}
+
+// "Seu escritório" sem pastas e sem o plano: cards de exemplo (nada do banco)
+const PASTAS_EXEMPLO = [
+  { id: 'exemplo-1', title: 'Boas-vindas à equipe', sub: 'Como o escritório trabalha', cover: 'green' },
+  { id: 'exemplo-2', title: 'Processo de projeto', sub: 'Do briefing à entrega', cover: 'blue' },
+  { id: 'exemplo-3', title: 'Padrões de detalhamento', sub: 'Modelos e checklists', cover: 'orange' },
+].map((p, i) => ({
+  ...p, ordem: i, empresa_id: 'exemplo', tipos_usuario: TODOS_OS_TIPOS, planos: [], venda_avulsa: false,
+  modules: [{ id: `${p.id}-m`, title: 'Módulo', ordem: 0, lessons: Array.from({ length: 4 }, (_, j) => ({ id: `${p.id}-a${j}`, done: j <= i })) }],
+}))
+
+// Painel sem o plano: linhas de exemplo — o progresso da equipe não sai do
+// banco abaixo do Business (policy de kb_progresso, migration_055)
+const PAINEL_EXEMPLO = [
+  { nome: 'Ana', role: 'gestor', done: 9, total: 12 },
+  { nome: 'Bruno', role: 'comum', done: 5, total: 12 },
+  { nome: 'Carla', role: 'comum', done: 2, total: 12 },
+]
+function PainelExemplo() {
+  return (
+    <div className="painel-lista">
+      {PAINEL_EXEMPLO.map(l => {
+        const pct = Math.round((l.done / l.total) * 100)
+        return (
+          <div className="painel-card" key={l.nome}>
+            <div className="painel-card-head">
+              <div className="painel-avatar">{l.nome.charAt(0)}</div>
+              <div className="painel-card-info">
+                <div className="painel-card-name">
+                  {l.nome}
+                  <span className={`pill ${ROLE_PILL_PAINEL[l.role]}`}>{ROLE_LABEL_PAINEL[l.role]}</span>
+                </div>
+                <div className="painel-card-meta"><strong>{l.done}</strong> de {l.total} aulas concluídas · {pct}%</div>
+                <div className="painel-progress-bar"><div className="painel-progress-fill" style={{ width: `${pct}%` }} /></div>
+              </div>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

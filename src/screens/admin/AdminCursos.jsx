@@ -6,13 +6,13 @@ import PageHeader, { PageContainer } from '../../components/PageHeader.jsx'
 import { PlanoTag } from '../../components/PlanoTag.jsx'
 import { IconPlus, IconSearch } from '../../components/Icons.jsx'
 import { FmSwitch, FmConfirmar } from '../Formularios.jsx'
-import { PLANOS, rotuloPlano } from '../../utils/planos.js'
+import { PLANOS, rotuloPlano, precoCurso } from '../../utils/planos.js'
 import './AdminEscritorios.css'
 import './AdminCursos.css'
 
 // Cursos = pastas Prolu da Base de Conhecimento (migration_052). O modal
 // "Acesso" de cada curso define: planos (lista explícita), tipos de usuário,
-// venda avulsa (Sim/Não), link de compra e ativo; com venda avulsa = Sim, as
+// venda avulsa (Sim/Não), link de compra, preço e ativo; com venda avulsa = Sim, as
 // liberações avulsas por escritório. Tudo validado no servidor
 // (admin_salvar_acesso_curso, liberar_curso, revogar_curso + triggers).
 // Módulos e aulas continuam sendo editados na Base de Conhecimento.
@@ -30,6 +30,17 @@ function msgErro(error, padrao) {
   return ['42501', '22023', 'P0002', '23514'].includes(error?.code) && error.message ? error.message : padrao
 }
 const alternar = (lista, v) => (lista.includes(v) ? lista.filter(x => x !== v) : [...lista, v])
+
+// Preço digitado ("297", "297,50", "1.297,50", "R$ 297") → número; '' = sem
+// preço; NaN = inválido. O servidor valida de novo (admin_salvar_acesso_curso).
+function lerPreco(texto) {
+  const t = String(texto ?? '').replace(/R\$|\s/g, '')
+  if (!t) return ''
+  const normal = t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t
+  if (!/^\d{1,8}(\.\d{1,2})?$/.test(normal)) return NaN
+  return Number(normal)
+}
+const precoParaCampo = (v) => (v == null ? '' : Number(v).toFixed(2).replace('.', ','))
 
 export default function AdminCursos() {
   const { isProluAdmin } = useAuth()
@@ -89,6 +100,7 @@ export default function AdminCursos() {
                   <td className="acu-data">{c.tipos_usuario.map(t => ROTULO_TIPO[t] || t).join(', ')}</td>
                   <td>
                     {c.venda_avulsa ? <span className="pill pill-violet">Sim</span> : <span className="pill pill-gray">Não</span>}
+                    {c.venda_avulsa && c.preco_avulso != null && <div className="acu-hint">{precoCurso(c.preco_avulso)}</div>}
                     {c.venda_avulsa && c.liberacoes_ativas > 0 && <div className="acu-hint">{c.liberacoes_ativas} {c.liberacoes_ativas === 1 ? 'escritório avulso' : 'escritórios avulsos'}</div>}
                   </td>
                   <td className="acu-data">{c.aulas}{c.aulas_com_regra > 0 && <div>{c.aulas_com_regra} com regra de plano</div>}</td>
@@ -116,7 +128,7 @@ function AcessoModal({ curso, empresas, onFechar, onSalvo, onLiberacoesMudaram }
   const toast = useToast()
   const [form, setForm] = useState({
     planos: curso.planos, tipos: curso.tipos_usuario, ativo: curso.ativo,
-    venda: curso.venda_avulsa, link: curso.checkout_url || '',
+    venda: curso.venda_avulsa, link: curso.checkout_url || '', preco: precoParaCampo(curso.preco_avulso),
   })
   const [confirmar, setConfirmar] = useState(false)
   const [salvando, setSalvando] = useState(false)
@@ -148,6 +160,12 @@ function AcessoModal({ curso, empresas, onFechar, onSalvo, onLiberacoesMudaram }
     if (!curso.venda_avulsa && form.venda && curso.aulas_com_regra > 0) {
       itens.push(`Venda avulsa ligada: ${curso.aulas_com_regra} ${curso.aulas_com_regra === 1 ? 'aula com regra de plano passa' : 'aulas com regra de plano passam'} a ser liberada${curso.aulas_com_regra === 1 ? '' : 's'} para todos que têm o curso.`)
     }
+    const precoNovo = lerPreco(form.preco)
+    const precoAntes = curso.preco_avulso == null ? '' : Number(curso.preco_avulso)
+    const precoDepois = form.venda && !Number.isNaN(precoNovo) ? precoNovo : ''
+    if (precoAntes !== precoDepois) {
+      itens.push(precoDepois === '' ? 'O preço deixa de aparecer nos cards.' : `Preço nos cards: ${precoCurso(precoDepois)}.`)
+    }
     if (curso.venda_avulsa && !form.venda && curso.liberacoes_ativas > 0) {
       itens.push(`Venda avulsa desligada: ${curso.liberacoes_ativas} ${curso.liberacoes_ativas === 1 ? 'escritório perde' : 'escritórios perdem'} o acesso avulso (liberações revogadas).`)
     }
@@ -155,12 +173,15 @@ function AcessoModal({ curso, empresas, onFechar, onSalvo, onLiberacoesMudaram }
   }, [form, curso])
 
   const linkInvalido = form.venda && form.link.trim() && !/^https:\/\/\S+$/i.test(form.link.trim())
+  const precoLido = lerPreco(form.preco)
+  const precoInvalido = form.venda && Number.isNaN(precoLido)
 
   async function salvar() {
     setSalvando(true)
     const { data, error } = await supabase.rpc('admin_salvar_acesso_curso', {
       p_pasta_id: curso.id, p_planos: form.planos, p_tipos: form.tipos, p_ativo: form.ativo,
       p_venda_avulsa: form.venda, p_checkout_url: form.venda ? form.link : null,
+      p_preco: form.venda && precoLido !== '' && !Number.isNaN(precoLido) ? precoLido : null,
     })
     setSalvando(false)
     setConfirmar(false)
@@ -239,7 +260,7 @@ function AcessoModal({ curso, empresas, onFechar, onSalvo, onLiberacoesMudaram }
             <div className="acu-sim-nao" role="radiogroup" aria-label="Venda avulsa disponível">
               {[[true, 'Sim'], [false, 'Não']].map(([v, lbl]) => (
                 <button key={lbl} type="button" role="radio" aria-checked={form.venda === v}
-                  className={`acu-tipo${form.venda === v ? ' on' : ''}`} onClick={() => setForm(f => ({ ...f, venda: v }))}>{lbl}</button>
+                  className={`acu-tipo${form.venda === v ? ' on' : ''}`} onClick={() => setForm(f => ({ ...f, venda: v, ...(v ? {} : { preco: '' }) }))}>{lbl}</button>
               ))}
             </div>
           </div>
@@ -256,6 +277,17 @@ function AcessoModal({ curso, empresas, onFechar, onSalvo, onLiberacoesMudaram }
             ? 'Sim: curso vendido separadamente. Quem tem acesso (plano ou avulso) vê todas as aulas; não há regra de plano por aula.'
             : 'Não: acesso só pelo plano e tipo de usuário. Permite regra de plano por aula; sem link de compra e sem escritórios avulsos.'}
         </p>
+
+        {form.venda && (
+          <div className="acu-bloco">
+            <label className="modal-label" htmlFor="acu-preco">Preço (opcional)</label>
+            <input id="acu-preco" className="modal-input acu-preco" inputMode="decimal" value={form.preco} placeholder="Ex.: 297,00"
+              onChange={e => setForm(f => ({ ...f, preco: e.target.value }))} aria-invalid={precoInvalido || undefined} />
+            {precoInvalido
+              ? <p className="acu-erro">Use só números, com até 2 casas decimais (ex.: 297,00).</p>
+              : <p className="acu-hint">Aparece no card do curso só para quem ainda não tem acesso.</p>}
+          </div>
+        )}
 
         {form.venda && (
           <div className="acu-bloco">
@@ -297,7 +329,7 @@ function AcessoModal({ curso, empresas, onFechar, onSalvo, onLiberacoesMudaram }
 
         <div className="modal-actions">
           <button className="btn-cancel" onClick={onFechar}>Cancelar</button>
-          <button className="btn-confirm" disabled={linkInvalido || !form.tipos.includes('master')} onClick={() => setConfirmar(true)}>Salvar acesso</button>
+          <button className="btn-confirm" disabled={linkInvalido || precoInvalido || !form.tipos.includes('master')} onClick={() => setConfirmar(true)}>Salvar acesso</button>
         </div>
       </div>
     </div>
