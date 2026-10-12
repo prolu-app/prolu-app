@@ -6,7 +6,11 @@
 //   titulo       — título do modal
 //   resumo       — 1 ou 2 frases curtas, logo abaixo do título
 //   destaques    — [{ valor, rotulo }]: 3 ou 4 cartões com um número/fato grande
-//   passos       — { titulo, itens: [{ titulo, texto }] }: "Como funciona", numerado
+//                  (opcional: sem destaques, a faixa some)
+//   passos       — { titulo, itens: [{ titulo, texto, icone? }] }: "Como funciona".
+//                  Sem titulo, a seção vem sem cabeçalho. Com icone, cada item é
+//                  um tópico com ícone em outline verde (título em cima, texto
+//                  embaixo); sem icone, passos numerados.
 //   cartoes      — { titulo, itens: [{ icone, titulo, texto }] }: "O que está
 //                  incluído" (Mentoria) / "O que acompanhamos" (Consultoria)
 //   paraQuem     — [texto]: "Para quem é", um item por linha
@@ -23,19 +27,12 @@ export const COMO_FUNCIONA = {
   mentoria: {
     titulo: 'Como funciona a Mentoria',
     resumo: 'Mentoria em grupo para arquitetos, com foco no **comercial do escritório**. Método, acompanhamento e entrada constante de projetos com financeiro saudável.',
-    destaques: [
-      { valor: '12 meses', rotulo: 'de acompanhamento contínuo' },
-      { valor: '1 encontro/mês', rotulo: 'em grupo, ao vivo, de 2 horas' },
-      { valor: 'WhatsApp', rotulo: 'dúvidas e revisões durante o mês' },
-      { valor: '6 itens', rotulo: 'incluídos na mentoria' },
-    ],
     passos: {
-      titulo: 'Como funciona',
       itens: [
-        { titulo: '12 meses', texto: 'de acompanhamento contínuo.' },
-        { titulo: 'Um gargalo por mês:', texto: 'prospecção, precificação, apresentação de proposta ou gestão financeira.' },
-        { titulo: 'Encontro em grupo ao vivo', texto: 'uma vez por mês, de 2 horas, com diagnóstico do escritório.' },
-        { titulo: 'Grupo no WhatsApp', texto: 'para dúvidas e revisões durante o mês.' },
+        { icone: 'calendario', titulo: 'Acompanhamento mensal', texto: 'Encontros em grupo ao vivo, uma vez por mês, com **orientações individualizadas** para o seu escritório.' },
+        { icone: 'pessoas', titulo: 'Prospecção', texto: 'Mais pedidos de orçamento bons e **entrada constante de projetos**.' },
+        { icone: 'dinheiro', titulo: 'Precificação e proposta', texto: 'Cobrar o que o seu trabalho vale e **apresentar a proposta** com processo definido.' },
+        { icone: 'indicadores', titulo: 'Gestão financeira', texto: 'Um **financeiro saudável**, com mais previsibilidade.' },
       ],
     },
     cartoes: {

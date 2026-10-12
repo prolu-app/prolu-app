@@ -92,16 +92,34 @@ export default function ComoFuncionaModal({ plano, conteudo, whatsappUrl, onFech
 
           <div className="cf-grade">
             {passos?.itens?.length > 0 && (
-              <section className="cf-bloco cf-area-passos" aria-labelledby="cf-passos">
-                <h3 className="cf-bloco-titulo" id="cf-passos">{passos.titulo}</h3>
-                <ol className="cf-passos">
-                  {passos.itens.map((p, i) => (
-                    <li key={p.titulo} className="cf-passo">
-                      <span className="cf-passo-num" aria-hidden="true">{i + 1}</span>
-                      <span className="cf-passo-txt"><strong>{p.titulo}</strong> <Rico texto={p.texto} /></span>
-                    </li>
-                  ))}
-                </ol>
+              <section className="cf-bloco cf-area-passos" aria-labelledby={passos.titulo ? 'cf-passos' : undefined} aria-label={passos.titulo ? undefined : 'Como funciona'}>
+                {passos.titulo && <h3 className="cf-bloco-titulo" id="cf-passos">{passos.titulo}</h3>}
+                {passos.itens.some(p => p.icone) ? (
+                  // tópicos com ícone em outline verde (título em cima, texto embaixo)
+                  <ul className="cf-topicos">
+                    {passos.itens.map(p => {
+                      const Icone = ICONES[p.icone] || IconCheck
+                      return (
+                        <li key={p.titulo} className="cf-topico">
+                          <span className="cf-topico-icone" aria-hidden="true"><Icone /></span>
+                          <span className="cf-topico-txt">
+                            <span className="cf-topico-titulo">{p.titulo}</span>
+                            {p.texto && <span className="cf-topico-texto"><Rico texto={p.texto} /></span>}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : (
+                  <ol className="cf-passos">
+                    {passos.itens.map((p, i) => (
+                      <li key={p.titulo} className="cf-passo">
+                        <span className="cf-passo-num" aria-hidden="true">{i + 1}</span>
+                        <span className="cf-passo-txt"><strong>{p.titulo}</strong> <Rico texto={p.texto} /></span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
               </section>
             )}
 

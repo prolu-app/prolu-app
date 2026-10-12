@@ -151,6 +151,27 @@
 .cf-passo-txt { font-size: 14px; line-height: 1.5; color: var(--ink-80); padding-top: 4px; }
 .cf-passo-txt strong { color: var(--ink); font-weight: 600; }
 
+/* tópicos com ícone em outline verde (Mentoria) */
+.cf-topicos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 18px; }
+.cf-topico { display: flex; gap: 14px; align-items: flex-start; }
+.cf-topico-icone {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1.5px solid var(--green-deep);
+  background: var(--white);
+  color: var(--green-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.cf-topico-icone svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+.cf-topico-txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding-top: 1px; }
+.cf-topico-titulo { font-size: 15px; font-weight: 600; line-height: 1.35; color: var(--ink); }
+.cf-topico-texto { font-size: 14px; line-height: 1.5; color: var(--ink-80); }
+.cf-topico-texto strong { color: var(--ink); font-weight: 600; }
+
 /* para quem é */
 .cf-para {
   list-style: none;
