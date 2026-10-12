@@ -20,6 +20,13 @@
 // formulario-notificacao e formulario-whatsapp em segundo plano depois de gravar)
 // e 039 (radio, checkbox, opção "Outro", página de agradecimento condicional).
 //
+// Limite de envios por mês (migration_054): cada envio válido reserva uma
+// vaga em formulario_envios_mes (form_reservar_envio, atômica) antes de
+// gravar; se a gravação falhar, a vaga é devolvida. Com o limite do plano
+// esgotado, o visitante só vê PAUSADO (nunca plano nem limite) — no
+// "carregar" o formulário já abre assim — e o escritório recebe um e-mail
+// (formulario-limite-aviso, uma vez por mês).
+//
 // Também atende o embed (public/embed.js): o modo "cru" chama esta função
 // direto do site do escritório (CORS liberado, sem apikey — verify_jwt off).
 
@@ -29,6 +36,9 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+
+// mensagem única ao visitante quando o limite do mês acabou (sem falar de plano)
+const PAUSADO = 'Este formulário não está recebendo respostas no momento'
 
 function jsonResponse(body: unknown, status: number) {
   return new Response(JSON.stringify(body), {
@@ -190,8 +200,37 @@ Deno.serve(async (req) => {
   const campos = (camposRaw || []) as Campo[]
   const colunas = new Map((colunasRaw || []).map(c => [c.id, lerColuna(c)]))
 
+  // Chamada a outra Edge Function em segundo plano, sem atrasar a resposta ao
+  // visitante: notificações e aviso de limite. waitUntil mantém o fetch vivo
+  // depois da resposta — sem ele o runtime pode encerrar a função e cortar a
+  // chamada no meio. Falha só vai para o log.
+  const emSegundoPlano = (funcao: string, payload: unknown) => {
+    const tarefa = fetch(`${(Deno.env.get('SUPABASE_URL') || '').replace(/\/+$/, '')}/functions/v1/${funcao}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+      },
+      body: JSON.stringify(payload),
+    })
+      .then(async r => { if (!r.ok) console.error(`[formulario-publico] ${funcao}`, r.status, await r.text()) })
+      .catch(e => console.error(`[formulario-publico] ${funcao}`, e))
+    // deno-lint-ignore no-explicit-any
+    const runtime = (globalThis as any).EdgeRuntime
+    if (runtime?.waitUntil) runtime.waitUntil(tarefa)
+  }
+
+  // envios do mês do escritório (migration_054). Falha na consulta não
+  // derruba o formulário: o bloqueio de verdade é a reserva no "enviar".
+  const situacaoEnvios = async () => {
+    const { data, error } = await supabase.rpc('form_situacao_envios', { p_empresa_id: form.empresa_id })
+    if (error) console.error('[formulario-publico] form_situacao_envios', error)
+    return (data || null) as { esgotado?: boolean } | null
+  }
+
   // ── carregar ──
   if (body.acao === 'carregar') {
+    if ((await situacaoEnvios())?.esgotado) return jsonResponse({ error: PAUSADO, pausado: true }, 403)
     const escritorio = (form.empresas as { nome?: string } | null)?.nome || null
     return jsonResponse({
       formulario: {
@@ -253,6 +292,21 @@ Deno.serve(async (req) => {
   }
   if (Object.keys(erros).length) return jsonResponse({ error: 'Verifique os campos destacados.', erros }, 422)
 
+  // ── vaga do mês (depois do honeypot e da validação: só envio válido conta) ──
+  const { data: reserva, error: reservaErr } = await supabase.rpc('form_reservar_envio', { p_empresa_id: form.empresa_id })
+  // erro na reserva (ex.: banco indisponível) não perde o pedido: segue sem contar
+  if (reservaErr) console.error('[formulario-publico] form_reservar_envio', reservaErr)
+  const vaga = (reservaErr ? null : reserva) as { aceito?: boolean; mes?: string } | null
+  if (vaga && vaga.aceito === false) {
+    emSegundoPlano('formulario-limite-aviso', { empresa_id: form.empresa_id, mes: vaga.mes })
+    return jsonResponse({ error: PAUSADO, pausado: true }, 403)
+  }
+  const devolverVaga = async () => {
+    if (!vaga?.aceito || !vaga.mes) return
+    const { error } = await supabase.rpc('form_devolver_envio', { p_empresa_id: form.empresa_id, p_mes: vaga.mes })
+    if (error) console.error('[formulario-publico] form_devolver_envio', error)
+  }
+
   // ── monta o registro do CRM ──
   const porSlug = (s: string) => [...colunas.values()].find(c => c.slug === s)
   const linha: Record<string, unknown> = {}
@@ -289,6 +343,7 @@ Deno.serve(async (req) => {
     .select('id').single()
   if (linhaErr || !nova) {
     console.error('[formulario-publico] crm_linhas', linhaErr)
+    await devolverVaga()
     return jsonResponse({ error: 'Não foi possível enviar agora. Tente novamente.' }, 500)
   }
 
@@ -301,6 +356,7 @@ Deno.serve(async (req) => {
       // sem a ficha o pedido ficaria incompleto: desfaz o registro
       console.error('[formulario-publico] crm_fichas', fichaErr)
       await supabase.from('crm_linhas').delete().eq('id', nova.id)
+      await devolverVaga()
       return jsonResponse({ error: 'Não foi possível enviar agora. Tente novamente.' }, 500)
     }
   }
@@ -326,27 +382,11 @@ Deno.serve(async (req) => {
 
   // ── notificações: em segundo plano, sem atrasar a resposta ao visitante ──
   // Cada canal só é chamado se estiver ligado no formulário (a função do canal
-  // confere de novo). waitUntil mantém o fetch vivo depois da resposta — sem
-  // ele o runtime pode encerrar a função e cortar a chamada no meio. Falha em
-  // qualquer canal só vai para o log: o lead já está gravado.
+  // confere de novo). Falha em qualquer canal só vai para o log: o lead já
+  // está gravado.
   const respostasNotif = campos
     .filter(c => valores[c.id] !== undefined)
     .map(c => ({ label: c.label || 'Pergunta', valor: valores[c.id], tipo: c.tipo, campo_id: c.id }))
-  const emSegundoPlano = (funcao: string, payload: unknown) => {
-    const tarefa = fetch(`${(Deno.env.get('SUPABASE_URL') || '').replace(/\/+$/, '')}/functions/v1/${funcao}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-      },
-      body: JSON.stringify(payload),
-    })
-      .then(async r => { if (!r.ok) console.error(`[formulario-publico] ${funcao}`, r.status, await r.text()) })
-      .catch(e => console.error(`[formulario-publico] ${funcao}`, e))
-    // deno-lint-ignore no-explicit-any
-    const runtime = (globalThis as any).EdgeRuntime
-    if (runtime?.waitUntil) runtime.waitUntil(tarefa)
-  }
   // e-mail (Fase 4, migration_034)
   if (form.notif_ativa === true && form.notif_email_ativa === true) {
     emSegundoPlano('formulario-notificacao', { formulario_id: form.id, respostas: respostasNotif, crm_linha_id: nova.id })
