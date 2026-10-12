@@ -30,7 +30,7 @@ export const CENTRO_PADRAO = 'Geral'
 export const PADRAO_PRODUTIVO = { horas_dia: 8, dias_semana: 5, pct_produtivo: 85 }
 // linha de pró-labore/retirada que produz projeto (dono não produz o tempo todo).
 // VALORES PROVISÓRIOS, A CALIBRAR POR ANDRÉ.
-export const PADRAO_DONO = { horas_dia: 4, dias_semana: 5, pct_produtivo: 50 }
+export const PADRAO_DONO = { horas_dia: 8, dias_semana: 5, pct_produtivo: 50 }
 export const NOME_PRO_LABORE = 'Pró-labore / retirada do dono'
 
 // ── formatação (pt-BR) ──
