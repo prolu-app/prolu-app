@@ -8,24 +8,22 @@ import Select from '../components/Select.jsx'
 import { useSomenteLeitura } from '../components/BloqueioPlano.jsx'
 import { IconPlus, IconTrash, IconCopy, IconEdit, IconBack, IconAlert, IconChevronDown, IconCheck } from '../components/Icons.jsx'
 import {
-  calcular, normalizarDados, normalizarItemEstrutura, normalizarPessoa, sincronizarDono, dadosVazios, dadosExemplo,
-  encargosPadraoItem, crescePadraoItem, funcaoInfo, pctEstimado, foraProjetoSugerido, horasSemanais, totalForaProjeto,
-  horaNecessaria, fmtMoeda, fmtNum, fmtPct,
+  calcular, normalizarDados, normalizarCusto, sincronizarDono, dadosVazios, dadosExemplo, formatoAntigo,
+  encargosPadrao, pctEstimado, horasSemanais, totalForaProjeto, TIPOS_CUSTO, CATEGORIAS_FORA,
+  PADRAO_PRODUTIVO, PADRAO_DONO, fmtMoeda, fmtNum, fmtPct,
 } from '../utils/valorHora.js'
-import { TIPOS_CUSTO, FUNCOES, CATEGORIAS_FORA, LEMBRETE_CUSTOS, NOTA_UTILIZACAO } from '../utils/valorHoraPadroes.js'
 import './ValorHora.css'
 
-// Valor-hora: referência de CUSTO-hora do escritório (tabela da migration_053).
-// Independente da Precificação: nada daqui é levado para as precificações.
-// Cenários soltos (sem "ativo"/"padrão"); `dados` guarda só as entradas e os
-// resultados saem de src/utils/valorHora.js. Três métodos, um por porte:
-// Método Prolu (recomendado), Centro de custo e Começando.
+// Valor-hora: referência de CUSTO-hora do escritório (tabela da migration_053,
+// dados no formato versao 3). Independente da Precificação: nada daqui é
+// levado para as precificações. Cenários soltos (sem "ativo"/"padrão").
+// Um método recomendado (Método Prolu) + comparativo por centro de custo.
+// Cenários em formato antigo (v1/v2) não são convertidos: a tela avisa.
 
 const AVISO_CUSTO = 'Valor de custo, sem margem e sem impostos. Aplique-os na precificação.'
 const CHAVE_ABA = 'prolu:valor-hora:aba'
 const ABAS = [
-  { id: 'estrutura', label: 'Estrutura' },
-  { id: 'equipe', label: 'Equipe' },
+  { id: 'custos', label: 'Custos' },
   { id: 'resultado', label: 'Resultado' },
   { id: 'comparativo', label: 'Comparativo' },
 ]
@@ -108,7 +106,7 @@ function ListaCenarios() {
     setOcupado(true)
     const { data: orig, error: e1 } = await supabase.from('valor_hora_cenarios').select('nome, dados').eq('id', c.id).single()
     const { error } = e1 ? { error: e1 } : await supabase.from('valor_hora_cenarios').insert({
-      empresa_id: activeEmpresaId, nome: `${orig.nome} (cópia)`.slice(0, 120), dados: normalizarDados(orig.dados), created_by: user.id,
+      empresa_id: activeEmpresaId, nome: `${orig.nome} (cópia)`.slice(0, 120), dados: formatoAntigo(orig.dados) ? orig.dados : normalizarDados(orig.dados), created_by: user.id,
     })
     setOcupado(false)
     if (error) { toast('Erro ao duplicar'); return }
@@ -131,7 +129,7 @@ function ListaCenarios() {
       <Link to="/precificacao" className="vh-voltar"><IconBack /> Precificação</Link>
       <PageHeader
         titulo="Valor-hora"
-        descricao="Referência do custo-hora do escritório. Monte cenários e veja o valor-hora pelo Método Prolu e pelos outros métodos; o valor que você usa na precificação continua sendo digitado lá."
+        descricao="Referência do custo-hora do escritório. Monte cenários e veja o valor-hora recomendado pelo Método Prolu e o comparativo por centro de custo; o valor que você usa na precificação continua sendo digitado lá."
         acoes={podeEditar && (
           <button className="btn-primary" onClick={() => setNovo({ nome: '' })}><IconPlus /> Novo cenário</button>
         )}
@@ -232,20 +230,23 @@ const ATRASO_SALVAR = 800
 function lerAba() {
   try {
     const a = localStorage.getItem(CHAVE_ABA)
-    return ABAS.some(x => x.id === a) ? a : 'estrutura'
-  } catch { return 'estrutura' }
+    return ABAS.some(x => x.id === a) ? a : 'custos'
+  } catch { return 'custos' }
 }
 
 function EditorCenario({ id }) {
   const toast = useToast()
+  const navigate = useNavigate()
   const podeEditar = usePodeEditar()
 
   const [cenario, setCenario] = useState(null)   // { id, nome }
   const [dados, setDados] = useState(null)
+  const [antigo, setAntigo] = useState(false)    // formato v1/v2: só avisa
   const [loading, setLoading] = useState(true)
   const [nome, setNome] = useState('')
   const [status, setStatus] = useState('salvo')  // salvo | pendente | salvando | erro
   const [aba, setAba] = useState(lerAba)
+  const [confirmarExcluir, setConfirmarExcluir] = useState(false)
 
   const pendenteRef = useRef(null)      // dados ainda não gravados
   const timerRef = useRef(null)
@@ -259,8 +260,9 @@ function EditorCenario({ id }) {
     if (error) toast('Erro ao carregar cenário')
     setCenario(data || null)
     setNome(data?.nome || '')
-    // cenários da primeira versão da tela são convertidos aqui (e gravados na próxima edição)
-    setDados(data ? normalizarDados(data.dados) : null)
+    const velho = !!data && formatoAntigo(data.dados)
+    setAntigo(velho)
+    setDados(data && !velho ? normalizarDados(data.dados) : null)
     setLoading(false)
   }
 
@@ -283,7 +285,7 @@ function EditorCenario({ id }) {
     return () => window.removeEventListener('beforeunload', antesDeSair)
   }, [salvarAgora])
 
-  // toda edição passa por sincronizarDono: as linhas do dono acompanham o pró-labore
+  // toda edição passa por sincronizarDono: o pró-labore segue o toggle do dono
   const atualizar = useCallback((fn) => {
     if (!podeEditar) return
     setDados(atual => {
@@ -312,14 +314,50 @@ function EditorCenario({ id }) {
     setStatus(pendenteRef.current ? 'pendente' : 'salvo')
   }
 
+  async function excluirAntigo() {
+    const { error } = await supabase.from('valor_hora_cenarios').delete().eq('id', id)
+    if (error) { toast('Erro ao excluir'); return }
+    toast('Cenário excluído')
+    navigate('/precificacao/valor-hora')
+  }
+
   const calc = useMemo(() => (dados ? calcular(dados) : null), [dados])
 
   if (loading) return <PageContainer><p className="vh-vazio">Carregando…</p></PageContainer>
-  if (!cenario || !dados) {
+  if (!cenario) {
     return (
       <PageContainer>
         <Link to="/precificacao/valor-hora" className="vh-voltar"><IconBack /> Cenários</Link>
         <p className="vh-vazio">Cenário não encontrado.</p>
+      </PageContainer>
+    )
+  }
+  if (antigo) {
+    return (
+      <PageContainer>
+        <Link to="/precificacao/valor-hora" className="vh-voltar"><IconBack /> Cenários</Link>
+        <div className="vh-bloco vh-antigo">
+          <h1 className="vh-antigo-titulo">{cenario.nome}</h1>
+          <p className="vh-alerta"><IconAlert aria-hidden="true" /> Este cenário usa um formato antigo; crie um novo.</p>
+          {podeEditar && (
+            <div className="vh-antigo-acoes">
+              <Link className="btn-primary" to="/precificacao/valor-hora">Voltar e criar um novo</Link>
+              <button className="btn-cancel" onClick={() => setConfirmarExcluir(true)}><IconTrash /> Excluir este cenário</button>
+            </div>
+          )}
+        </div>
+        {confirmarExcluir && (
+          <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setConfirmarExcluir(false) }}>
+            <div className="modal">
+              <div className="modal-title">Excluir cenário</div>
+              <p className="modal-delete-warn">Excluir o cenário “{cenario.nome}”? Essa ação não pode ser desfeita.</p>
+              <div className="modal-actions">
+                <button className="btn-cancel" onClick={() => setConfirmarExcluir(false)}>Cancelar</button>
+                <button className="btn-danger" onClick={excluirAntigo}>Excluir</button>
+              </div>
+            </div>
+          </div>
+        )}
       </PageContainer>
     )
   }
@@ -336,10 +374,9 @@ function EditorCenario({ id }) {
           disabled={!podeEditar} onChange={(e) => setNome(e.target.value)} onBlur={salvarNome}
           onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }} />
         <div className="vh-faixa-valor">
-          <span className="vh-faixa-rotulo">Valor-hora recomendado (Método Prolu)</span>
-          <strong>{calc.metodos.m1.valor == null ? '—' : <>{fmtMoeda(calc.metodos.m1.valor)}<small>/h</small></>}</strong>
+          <span className="vh-faixa-rotulo">Valor-hora recomendado</span>
+          <strong>{calc.prolu.valor == null ? '—' : <>{fmtMoeda(calc.prolu.valor)}<small>/h</small></>}</strong>
         </div>
-        <span className="vh-faixa-fo" title="Ocupação produtiva">FO {fmtNum(dados.fo, 1)}%</span>
         <StatusSalvo status={status} podeEditar={podeEditar} />
       </div>
 
@@ -357,8 +394,7 @@ function EditorCenario({ id }) {
       </div>
 
       <section role="tabpanel" id={`vh-painel-${aba}`} aria-labelledby={`vh-aba-${aba}`}>
-        {aba === 'estrutura' && <AbaEstrutura {...ctx} />}
-        {aba === 'equipe' && <AbaEquipe {...ctx} />}
+        {aba === 'custos' && <AbaCustos {...ctx} />}
         {aba === 'resultado' && <AbaResultado {...ctx} />}
         {aba === 'comparativo' && <AbaComparativo {...ctx} />}
       </section>
@@ -369,15 +405,11 @@ function EditorCenario({ id }) {
 function StatusSalvo({ status, podeEditar }) {
   if (!podeEditar) return <span className="vh-status">Somente leitura</span>
   if (status === 'erro') return <span className="vh-status vh-status-erro"><IconAlert aria-hidden="true" /> Erro ao salvar</span>
-  if (status === 'salvo') return <span className="vh-status vh-status-ok"><IconCheck aria-hidden="true" /> Salvo</span>
+  if (status === 'salvo') return <span className="vh-status vh-status-ok"><IconCheck aria-hidden="true" /> Atualizações salvas</span>
   return <span className="vh-status">Salvando…</span>
 }
 
 // ── peças comuns ──
-function Celula({ rotulo, children, className = '' }) {
-  return <span className={`vh-cel ${className}`} role="cell"><span className="vh-cel-rotulo" aria-hidden="true">{rotulo}</span>{children}</span>
-}
-
 function Numero({ valor, onChange, prefixo, sufixo, max = 1e9, disabled, ariaLabel, id }) {
   return (
     <span className={`vh-numero${disabled ? ' disabled' : ''}`}>
@@ -415,437 +447,266 @@ function Ajuda({ texto, rotulo }) {
   )
 }
 
-// ════════════════════════ aba Estrutura ════════════════════════
-function AbaEstrutura({ dados, calc, podeEditar, atualizar }) {
-  const setItem = (itemId, patch) => atualizar(d => ({ ...d, estrutura: d.estrutura.map(x => (x.id === itemId ? { ...x, ...patch } : x)) }))
+const AJUDA = {
+  equipe: 'Equipe produtiva: arquitetos e estagiários que produzem projeto. Não entra quem trabalha só no financeiro ou administrativo.',
+  centro: 'Centro de custo: setor (criação, detalhamento, orçamento) ou função (arquitetos, estagiários). Se não usa setores, deixe “Geral”.',
+  encargos: 'Encargos: férias, 13º, FGTS e outros custos sobre o salário.',
+  pct: '% produtivo: parte do tempo que vira projeto de cliente; o resto é reunião, comercial, administrativo.',
+}
 
-  // troca de tipo / pró-labore: o padrão novo só substitui o valor que ainda era o padrão antigo
-  function trocarTipo(i, tipo) {
+// ════════════════════════ aba Custos ════════════════════════
+const OPCOES_DONO = [
+  { valor: false, titulo: 'Não', texto: 'Você administra e suas horas não entram na produção. O pró-labore continua como custo de estrutura: o escritório precisa se pagar mesmo sem as suas horas. Se você produzir projetos, essas horas ficam como ganho extra.' },
+  { valor: true, titulo: 'Sim', texto: 'Você produz projetos e vende suas horas. O pró-labore deixa de ser custo de estrutura e vira uma linha da equipe produtiva. Coloque poucas horas produtivas para você: dono não produz o tempo todo.' },
+]
+
+function AbaCustos({ dados, calc, podeEditar, atualizar }) {
+  const setCusto = (cid, patch) => atualizar(d => ({ ...d, custos: d.custos.map(x => (x.id === cid ? { ...x, ...patch } : x)) }))
+
+  // o padrão novo só substitui o encargo que ainda era o padrão antigo
+  function trocarTipo(c, tipo) {
     const patch = { tipo }
-    if (i.encargos_pct === encargosPadraoItem(i.tipo, i.pro_labore)) patch.encargos_pct = encargosPadraoItem(tipo, i.pro_labore)
-    if (i.cresce_com_equipe === crescePadraoItem(i.tipo, i.pro_labore)) patch.cresce_com_equipe = crescePadraoItem(tipo, i.pro_labore)
-    setItem(i.id, patch)
-  }
-  function trocarProLabore(i, proLabore) {
-    const patch = { pro_labore: proLabore }
-    if (i.encargos_pct === encargosPadraoItem(i.tipo, i.pro_labore)) patch.encargos_pct = encargosPadraoItem(i.tipo, proLabore)
-    if (i.cresce_com_equipe === crescePadraoItem(i.tipo, i.pro_labore)) patch.cresce_com_equipe = crescePadraoItem(i.tipo, proLabore)
-    setItem(i.id, patch)
+    if (c.encargos_pct === encargosPadrao(c.tipo, c.pro_labore)) patch.encargos_pct = encargosPadrao(tipo, c.pro_labore)
+    setCusto(c.id, patch)
   }
 
   return (
     <>
-      <div className="vh-bloco vh-campos-linha">
-        <label className="vh-campo vh-campo-hf">
-          <span className="modal-label">Horas de funcionamento por mês</span>
-          <Numero valor={dados.horas_funcionamento} sufixo="h" max={744} disabled={!podeEditar}
-            onChange={(v) => atualizar(d => ({ ...d, horas_funcionamento: v }))} />
-          <span className="vh-hint">Horas em que o escritório fica aberto no mês, no relógio.</span>
-        </label>
-        <div className="vh-resumo-num">
-          <span>Hora de funcionamento</span>
-          <strong>{fmtMoeda(calc.horaFuncionamento)}<small>/h</small></strong>
-          <span className="vh-hint">Estrutura ÷ horas de funcionamento</span>
+      <div className="vh-bloco">
+        <h2 className="vh-secao-titulo">Considerar as horas produtivas do dono?</h2>
+        <div className="vh-dono-opcoes" role="radiogroup" aria-label="Considerar as horas produtivas do dono?">
+          {OPCOES_DONO.map(o => {
+            const on = dados.dono_considera_horas === o.valor
+            return (
+              <button key={o.titulo} type="button" role="radio" aria-checked={on} disabled={!podeEditar}
+                className={`vh-dono-opcao${on ? ' on' : ''}`}
+                onClick={() => atualizar(d => ({ ...d, dono_considera_horas: o.valor }))}>
+                <span className="vh-dono-opcao-titulo"><span className="vh-radio" aria-hidden="true" /> {o.titulo}</span>
+                <span className="vh-dono-opcao-texto">{o.texto}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
 
       <div className="vh-secao-head">
-        <h2 className="vh-secao-titulo">Custos da estrutura</h2>
-        <p className="vh-secao-sub">Tudo o que o escritório gasta por mês para funcionar, inclusive pessoas que não produzem projeto e o pró-labore do dono.</p>
+        <h2 className="vh-secao-titulo">Custos mensais</h2>
+        <p className="vh-secao-sub">Inclua todos os custos do escritório: marketing, contabilidade, softwares e assinaturas, depreciação de equipamentos, reserva.</p>
       </div>
-      <div className="vh-tabela" role="table" aria-label="Custos da estrutura">
-        <div className="vh-linha vh-linha-cab" role="row">
-          <span role="columnheader">Nome</span><span role="columnheader">Tipo</span><span role="columnheader">Valor mensal</span>
-          <span role="columnheader">Encargos</span><span role="columnheader">Pró-labore</span><span role="columnheader">Total</span><span />
+
+      <div className="vh-lista">
+        <div className="vh-linha vh-linha-cab" aria-hidden="true">
+          <span>Nome</span><span>Tipo</span><span>Custo mensal</span>
+          <span className="vh-cab-ajuda">Encargos <Ajuda rotulo="encargos" texto={AJUDA.encargos} /></span>
+          <span className="vh-cab-ajuda">Produz projeto? <Ajuda rotulo="equipe produtiva" texto={AJUDA.equipe} /></span>
+          <span />
         </div>
-        {calc.estrutura.map(i => (
-          <div className={`vh-linha${i.fora ? ' vh-linha-fora' : ''}`} role="row" key={i.id}>
-            <Celula rotulo="Nome"><input className="vh-input" value={i.nome} maxLength={80} placeholder="Ex.: Aluguel" disabled={!podeEditar}
-              aria-label="Nome do custo" onChange={(e) => setItem(i.id, { nome: e.target.value })} /></Celula>
-            <Celula rotulo="Tipo"><Select value={i.tipo} options={TIPOS_CUSTO} ariaLabel="Tipo" disabled={!podeEditar}
-              onChange={(v) => trocarTipo(i, v)} className="vh-select" /></Celula>
-            <Celula rotulo="Valor mensal"><Numero valor={i.valor_mensal} prefixo="R$" disabled={!podeEditar} ariaLabel="Valor mensal"
-              onChange={(v) => setItem(i.id, { valor_mensal: v })} /></Celula>
-            <Celula rotulo="Encargos"><Numero valor={i.encargos_pct} sufixo="%" max={1000} disabled={!podeEditar} ariaLabel="Encargos"
-              onChange={(v) => setItem(i.id, { encargos_pct: v })} /></Celula>
-            <Celula rotulo="Pró-labore">
-              <label className="vh-check"><input type="checkbox" checked={i.pro_labore} disabled={!podeEditar}
-                onChange={(e) => trocarProLabore(i, e.target.checked)} /> <span>Pró-labore do dono</span></label>
-            </Celula>
-            <Celula rotulo="Total"><span className="vh-calc">{fmtMoeda(i.total)}</span>
-              {i.fora && <span className="vh-fora-nota">na equipe: o dono produz</span>}</Celula>
-            <span className="vh-cel-acao">{podeEditar && (
-              <button className="vh-icone-btn vh-icone-perigo" aria-label={`Remover ${i.nome || 'custo'}`} title="Remover"
-                onClick={() => atualizar(d => ({ ...d, estrutura: d.estrutura.filter(x => x.id !== i.id) }))}><IconTrash /></button>
-            )}</span>
-          </div>
+        {calc.linhas.map(c => (
+          <LinhaCusto key={c.id} c={c} podeEditar={podeEditar} donoSim={dados.dono_considera_horas}
+            onChange={(patch) => setCusto(c.id, patch)} onTipo={(t) => trocarTipo(c, t)}
+            onRemover={() => atualizar(d => ({ ...d, custos: d.custos.filter(x => x.id !== c.id) }))} />
         ))}
         {podeEditar && (
-          <button className="vh-add" onClick={() => atualizar(d => ({ ...d, estrutura: [...d.estrutura, normalizarItemEstrutura({ tipo: 'estrutura' })] }))}>
+          <button className="vh-add" onClick={() => atualizar(d => ({ ...d, custos: [...d.custos, normalizarCusto({ tipo: 'Estrutura' })] }))}>
             <IconPlus /> Adicionar custo
           </button>
         )}
-        <div className="vh-total-linha"><span>Total da estrutura</span><strong>{fmtMoeda(calc.E)}</strong></div>
+
+        <dl className="vh-resumo">
+          <div><dt>Total de estrutura</dt><dd>{fmtMoeda(calc.estrutura)}</dd></div>
+          <div><dt>Equipe produtiva (com encargos)</dt><dd>{fmtMoeda(calc.equipe)}</dd></div>
+          <div><dt>Custo total</dt><dd>{fmtMoeda(calc.custoTotal)}</dd></div>
+          <div><dt>Horas produtivas/mês</dt><dd>{fmtNum(calc.H)} h</dd></div>
+        </dl>
       </div>
-
-      <div className="vh-lembrete">
-        <strong>Costuma ficar de fora:</strong> {LEMBRETE_CUSTOS.join(', ')}.
-      </div>
-
-      <details className="vh-opcoes">
-        <summary>Opções do Método Prolu <IconChevronDown aria-hidden="true" /></summary>
-        <div className="vh-opcoes-corpo">
-          <p className="vh-secao-sub">Quais custos crescem quando a equipe cresce (aluguel maior, mais equipamentos e softwares)? Eles formam o FE: ao simular mais profissionais do que a referência, essa parte da estrutura cresce junto no Método Prolu.</p>
-          {dados.estrutura.length === 0 ? <p className="vh-hint">Nenhum custo na estrutura.</p> : (
-            <ul className="vh-cresce-lista">
-              {calc.estrutura.map(i => (
-                <li key={i.id}>
-                  <label className="vh-check">
-                    <input type="checkbox" checked={i.cresce_com_equipe} disabled={!podeEditar || i.pro_labore}
-                      onChange={(e) => setItem(i.id, { cresce_com_equipe: e.target.checked })} />
-                    <span>{i.nome || 'Sem nome'}</span>
-                  </label>
-                  <span className="vh-hint">{i.pro_labore ? 'pró-labore não cresce' : fmtMoeda(i.total)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="vh-fe-linha">FE: <strong>{fmtPct(calc.FE)}</strong> da estrutura cresce com a equipe</p>
-
-          <div className="vh-ref">
-            <label className="vh-campo">
-              <span className="modal-label">Estrutura informada para quantos profissionais produtivos?</span>
-              <Numero valor={dados.equipe_referencia} max={1000} disabled={!podeEditar}
-                onChange={(v) => atualizar(d => ({ ...d, equipe_referencia: v }))} />
-              <span className="vh-hint">Vazio = usa a equipe atual ({calc.n} {calc.n === 1 ? 'profissional' : 'profissionais'}, sem contar o dono).</span>
-            </label>
-            {podeEditar && (
-              <button className="btn-cancel vh-ref-btn" onClick={() => atualizar(d => ({ ...d, equipe_referencia: calc.n }))}>
-                Aceitar a equipe atual como referência
-              </button>
-            )}
-          </div>
-        </div>
-      </details>
+      <Alertas itens={calc.avisos} />
     </>
   )
 }
 
-// ════════════════════════ aba Equipe ════════════════════════
-function AbaEquipe({ dados, calc, podeEditar, atualizar, irPara }) {
-  const setPessoa = (pid, patch) => atualizar(d => ({ ...d, equipe: d.equipe.map(x => (x.id === pid ? { ...x, ...patch } : x)) }))
-  function trocarFuncao(p, funcao) {
-    const antes = funcaoInfo(p.funcao)
-    const depois = funcaoInfo(funcao)
-    const patch = { funcao }
-    if (p.encargos_pct === antes.encargosPct) patch.encargos_pct = depois.encargosPct
-    if (p.pct_produtivo === antes.pctProdutivo) patch.pct_produtivo = depois.pctProdutivo
-    setPessoa(p.id, patch)
-  }
-  const temProLabore = dados.estrutura.some(i => i.pro_labore)
-  const avisos = calc.avisos.map(a => a.texto)
-
-  return (
-    <>
-      <div className="vh-bloco vh-dono">
-        <div className="vh-campo">
-          <span className="modal-label">O dono produz?</span>
-          <div className="vh-sim-nao" role="group" aria-label="O dono produz?">
-            <button className={!dados.dono_produz ? 'on' : ''} aria-pressed={!dados.dono_produz} disabled={!podeEditar}
-              onClick={() => atualizar(d => ({ ...d, dono_produz: false }))}>Não</button>
-            <button className={dados.dono_produz ? 'on' : ''} aria-pressed={dados.dono_produz} disabled={!podeEditar}
-              onClick={() => atualizar(d => ({ ...d, dono_produz: true }))}>Sim</button>
-          </div>
-        </div>
-        <p className="vh-dono-texto">
-          {dados.dono_produz
-            ? 'O pró-labore saiu da estrutura e virou uma linha da equipe (custo e encargos vêm da Estrutura). Coloque poucas horas produtivas para o dono: ele não produz o tempo todo.'
-            : 'O pró-labore fica na estrutura e o dono fica fora da equipe produtiva: se o escritório funcionar, independente do dono produzir, ele tem que ganhar dinheiro.'}
-        </p>
-        {dados.dono_produz && !temProLabore && (
-          <p className="vh-alerta"><IconAlert aria-hidden="true" /> Nenhum custo está marcado como pró-labore. Marque o pró-labore na <button className="vh-link-inline" onClick={() => irPara('estrutura')}>aba Estrutura</button> para o dono entrar na equipe.</p>
-        )}
-      </div>
-
-      <div className="vh-secao-head">
-        <h2 className="vh-secao-titulo">Equipe produtiva</h2>
-        <p className="vh-secao-sub">Quem produz projeto. O % produtivo é a parte das horas que vira projeto; use “Estimar” para calcular a partir das horas fora de projeto. Encargos de 20% podem ficar baixos para CLT (férias, 13º, FGTS, INSS): ajuste por pessoa.</p>
-      </div>
-      <div className="vh-equipe">
-        {calc.pessoas.length === 0 && <p className="vh-hint vh-equipe-vazia">Nenhuma pessoa na equipe produtiva.</p>}
-        {calc.pessoas.map(p => (
-          <LinhaPessoa key={p.id} p={p} podeEditar={podeEditar}
-            onChange={(patch) => setPessoa(p.id, patch)} onFuncao={(f) => trocarFuncao(p, f)}
-            onRemover={() => atualizar(d => ({ ...d, equipe: d.equipe.filter(x => x.id !== p.id) }))} />
-        ))}
-        {podeEditar && (
-          <button className="vh-add" onClick={() => atualizar(d => ({ ...d, equipe: [...d.equipe, normalizarPessoa({ funcao: 'arquiteto' })] }))}>
-            <IconPlus /> Adicionar pessoa
-          </button>
-        )}
-        <div className="vh-total-linha">
-          <span>Equipe com encargos (Q) · horas produtivas (H)</span>
-          <strong>{fmtMoeda(calc.Q)} · {fmtNum(calc.H)} h/mês</strong>
-        </div>
-      </div>
-
-      {calc.extras > 0 && (
-        <p className="vh-nota-fe">
-          Você está simulando {calc.extras} {calc.extras === 1 ? 'profissional' : 'profissionais'} a mais: a estrutura efetiva do Método Prolu foi ajustada em {fmtMoeda(calc.ajusteEstrutura)} (FE).
-        </p>
-      )}
-      <Alertas itens={avisos} />
-    </>
-  )
-}
-
-function LinhaPessoa({ p, podeEditar, onChange, onFuncao, onRemover }) {
+function LinhaCusto({ c, podeEditar, donoSim, onChange, onTipo, onRemover }) {
   const [estimarAberto, setEstimarAberto] = useState(false)
-  const estimado = pctEstimado(p)
-  const semana = horasSemanais(p)
-  const fora = totalForaProjeto(p)
-  const pctMostrado = p.pct_modo === 'estimado' ? (estimado == null ? null : Math.round(estimado * 1000) / 10) : p.pct_produtivo
-  const vinculada = p.dono
+  const estimado = pctEstimado(c)
+  const semana = horasSemanais(c)
+  const fora = totalForaProjeto(c)
+  const pctMostrado = c.pct_modo === 'estimado' ? (estimado == null ? null : Math.round(estimado * 1000) / 10) : c.pct_produtivo
 
-  function abrirEstimar() {
-    const vazio = CATEGORIAS_FORA.every(c => p.fora_projeto[c.key] == null)
-    if (vazio && podeEditar && semana > 0) onChange({ fora_projeto: foraProjetoSugerido(p) })
-    setEstimarAberto(v => !v)
+  function marcarProduz(produz) {
+    const patch = { produz_projeto: produz }
+    // linha que nunca foi preenchida recebe os padrões de quem produz
+    if (produz && c.horas_dia == null && c.dias_semana == null) Object.assign(patch, PADRAO_PRODUTIVO)
+    onChange(patch)
   }
 
   return (
-    <div className={`vh-pessoa${vinculada ? ' vh-pessoa-dono' : ''}`}>
-      <div className="vh-pessoa-grade">
-        <label className="vh-campo vh-campo-nome"><span className="modal-label">Nome</span>
-          <input className="vh-input" value={p.nome} maxLength={80} placeholder="Ex.: Arquiteta Ana" disabled={!podeEditar || vinculada}
-            onChange={(e) => onChange({ nome: e.target.value })} /></label>
-        <div className="vh-campo"><span className="modal-label">Função</span>
-          {vinculada ? <span className="vh-fixo">Dono/sócio</span> : (
-            <Select value={p.funcao} options={FUNCOES} ariaLabel="Função" disabled={!podeEditar} onChange={onFuncao} className="vh-select" />
-          )}</div>
-        <label className="vh-campo"><span className="modal-label">Centro de custo</span>
-          <input className="vh-input" value={p.centro_custo} maxLength={40} placeholder="Geral" disabled={!podeEditar}
-            onChange={(e) => onChange({ centro_custo: e.target.value })} /></label>
-        <label className="vh-campo"><span className="modal-label">Custo mensal</span>
-          {vinculada ? <span className="vh-fixo" title="Editar na aba Estrutura">{fmtMoeda(p.custo_mensal || 0)}</span> : (
-            <Numero valor={p.custo_mensal} prefixo="R$" disabled={!podeEditar} onChange={(v) => onChange({ custo_mensal: v })} />
-          )}</label>
-        <label className="vh-campo vh-campo-curto"><span className="modal-label">Encargos</span>
-          {vinculada ? <span className="vh-fixo">{fmtNum(p.encargos_pct || 0, 1)}%</span> : (
-            <Numero valor={p.encargos_pct} sufixo="%" max={1000} disabled={!podeEditar} onChange={(v) => onChange({ encargos_pct: v })} />
-          )}</label>
-        <label className="vh-campo vh-campo-curto"><span className="modal-label">Horas/dia</span>
-          <Numero valor={p.horas_dia} sufixo="h" max={24} disabled={!podeEditar} onChange={(v) => onChange({ horas_dia: v })} /></label>
-        <label className="vh-campo vh-campo-curto"><span className="modal-label">Dias/semana</span>
-          <Numero valor={p.dias_semana} max={7} disabled={!podeEditar} onChange={(v) => onChange({ dias_semana: v })} /></label>
-        <label className="vh-campo vh-campo-curto"><span className="modal-label">Semanas/mês</span>
-          <Numero valor={p.semanas_mes} max={5} disabled={!podeEditar} onChange={(v) => onChange({ semanas_mes: v })} /></label>
-        <div className="vh-campo vh-campo-curto"><span className="modal-label">% produtivo</span>
-          <Numero valor={pctMostrado} sufixo="%" max={100} disabled={!podeEditar} ariaLabel="% produtivo"
-            onChange={(v) => onChange({ pct_produtivo: v, pct_modo: 'digitado' })} />
-          <button className={`vh-estimar-btn${estimarAberto ? ' on' : ''}`} onClick={abrirEstimar} aria-expanded={estimarAberto}>
-            {p.pct_modo === 'estimado' ? 'Estimado · ver' : 'Estimar'}
-          </button>
-        </div>
-        <div className="vh-pessoa-resumo">
-          <span><strong>{fmtNum(p.hp)} h</strong> produtivas/mês</span>
-          <span>{fmtMoeda(p.custo)} com encargos</span>
-          {vinculada && <span className="vh-hint">Custo e encargos vêm do pró-labore: edite na aba Estrutura.</span>}
-        </div>
-        {podeEditar && !vinculada && (
-          <button className="vh-icone-btn vh-icone-perigo vh-pessoa-remover" aria-label={`Remover ${p.nome || 'pessoa'}`} title="Remover" onClick={onRemover}><IconTrash /></button>
-        )}
+    <div className={`vh-custo${c.produz_projeto ? ' vh-custo-produz' : ''}`}>
+      <div className="vh-linha">
+        <span className="vh-cel">
+          <span className="vh-cel-rotulo">Nome</span>
+          <input className="vh-input" value={c.nome} maxLength={80} placeholder="Ex.: Aluguel" disabled={!podeEditar}
+            aria-label="Nome do custo" onChange={(e) => onChange({ nome: e.target.value })} />
+          {c.pro_labore && <span className="vh-tag-pro">Pró-labore</span>}
+        </span>
+        <span className="vh-cel"><span className="vh-cel-rotulo">Tipo</span>
+          <Select value={c.tipo} options={TIPOS_CUSTO} ariaLabel="Tipo" disabled={!podeEditar} onChange={onTipo} className="vh-select" /></span>
+        <span className="vh-cel"><span className="vh-cel-rotulo">Custo mensal</span>
+          <Numero valor={c.valor_mensal} prefixo="R$" disabled={!podeEditar} ariaLabel="Custo mensal (sem encargos)" onChange={(v) => onChange({ valor_mensal: v })} /></span>
+        <span className="vh-cel"><span className="vh-cel-rotulo">Encargos</span>
+          <Numero valor={c.encargos_pct} sufixo="%" max={1000} disabled={!podeEditar} ariaLabel="Encargos" onChange={(v) => onChange({ encargos_pct: v })} /></span>
+        <span className="vh-cel"><span className="vh-cel-rotulo">Produz projeto?</span>
+          <label className="vh-check" title={c.pro_labore ? 'Segue “Considerar as horas produtivas do dono?”' : undefined}>
+            <input type="checkbox" checked={c.produz_projeto} disabled={!podeEditar || c.pro_labore}
+              onChange={(e) => marcarProduz(e.target.checked)} />
+            <span>{c.pro_labore ? (donoSim ? 'Sim (dono)' : 'Não (dono)') : 'Produz projeto'}</span>
+          </label>
+        </span>
+        <span className="vh-cel-acao">{podeEditar && (
+          <button className="vh-icone-btn vh-icone-perigo" aria-label={`Remover ${c.nome || 'custo'}`} title="Remover" onClick={onRemover}><IconTrash /></button>
+        )}</span>
       </div>
 
-      {estimarAberto && (
-        <div className="vh-estimar">
-          <p className="vh-estimar-titulo">Estimar % produtivo <span className="vh-tag-estimativa">estimativa editável</span></p>
-          <p className="vh-hint">Quantas horas por semana {p.nome || 'esta pessoa'} passa fora de projeto? Os valores iniciais são sugestões pela função.</p>
-          {semana > 0 ? (
-            <>
-              <div className="vh-estimar-grade">
-                {CATEGORIAS_FORA.map(c => (
-                  <label className="vh-campo" key={c.key}><span className="vh-estimar-rotulo">{c.label}</span>
-                    <Numero valor={p.fora_projeto[c.key]} sufixo="h/sem" max={168} disabled={!podeEditar}
-                      onChange={(v) => onChange({ fora_projeto: { ...p.fora_projeto, [c.key]: v } })} /></label>
-                ))}
-              </div>
-              <p className="vh-estimar-conta">
-                1 − ({fmtNum(fora)} h fora de projeto ÷ {fmtNum(semana)} h na semana) = <strong>{fmtPct(estimado)}</strong> produtivo
-              </p>
-              {podeEditar && (
-                <div className="vh-estimar-acoes">
-                  <button className="btn-confirm" onClick={() => { onChange({ pct_modo: 'estimado' }); setEstimarAberto(false) }}>Usar esta estimativa</button>
-                  <button className="btn-cancel" onClick={() => onChange({ fora_projeto: foraProjetoSugerido(p) })}>Voltar às sugestões da função</button>
-                  {p.pct_modo === 'estimado' && (
-                    <button className="btn-cancel" onClick={() => onChange({ pct_modo: 'digitado', pct_produtivo: estimado == null ? null : Math.round(estimado * 1000) / 10 })}>Digitar o % direto</button>
+      {c.produz_projeto && (
+        <div className="vh-sublinha">
+          <label className="vh-campo vh-campo-curto"><span className="vh-sub-rotulo">Horas/dia</span>
+            <Numero valor={c.horas_dia} sufixo="h" max={24} disabled={!podeEditar} onChange={(v) => onChange({ horas_dia: v })} /></label>
+          <label className="vh-campo vh-campo-curto"><span className="vh-sub-rotulo">Dias/semana</span>
+            <Numero valor={c.dias_semana} max={7} disabled={!podeEditar} onChange={(v) => onChange({ dias_semana: v })} /></label>
+          <div className="vh-campo vh-campo-curto"><span className="vh-sub-rotulo">% produtivo <Ajuda rotulo="% produtivo" texto={AJUDA.pct} /></span>
+            <Numero valor={pctMostrado} sufixo="%" max={100} disabled={!podeEditar} ariaLabel="% produtivo"
+              onChange={(v) => onChange({ pct_produtivo: v, pct_modo: 'digitado' })} /></div>
+          <label className="vh-campo vh-campo-centro"><span className="vh-sub-rotulo">Centro de custo <Ajuda rotulo="centro de custo" texto={AJUDA.centro} /></span>
+            <input className="vh-input" value={c.centro_custo} maxLength={40} placeholder="Geral" disabled={!podeEditar}
+              onChange={(e) => onChange({ centro_custo: e.target.value })} /></label>
+          <div className="vh-sub-resumo">
+            <span><strong>{fmtNum(c.hp)}</strong> horas produtivas/mês</span>
+            <span>custo com encargos <strong>{fmtMoeda(c.total)}</strong></span>
+            <button className={`vh-estimar-btn${estimarAberto ? ' on' : ''}`} onClick={() => setEstimarAberto(v => !v)} aria-expanded={estimarAberto}>
+              {c.pct_modo === 'estimado' ? '% estimado · ver' : 'Estimar % produtivo'}
+            </button>
+          </div>
+          {c.pro_labore && (
+            <p className="vh-hint vh-sub-nota">Padrão do dono: {PADRAO_DONO.horas_dia} h/dia, {PADRAO_DONO.dias_semana} dias, {PADRAO_DONO.pct_produtivo}% produtivo (provisório).</p>
+          )}
+
+          {estimarAberto && (
+            <div className="vh-estimar">
+              <p className="vh-hint">Quantas horas por semana {c.nome || 'esta pessoa'} passa fora de projeto?</p>
+              {semana > 0 ? (
+                <>
+                  <div className="vh-estimar-grade">
+                    {CATEGORIAS_FORA.map(k => (
+                      <label className="vh-campo" key={k.key}><span className="vh-sub-rotulo">{k.label}</span>
+                        <Numero valor={c.fora_projeto[k.key]} sufixo="h/sem" max={168} disabled={!podeEditar}
+                          onChange={(v) => onChange({ fora_projeto: { ...c.fora_projeto, [k.key]: v } })} /></label>
+                    ))}
+                  </div>
+                  <p className="vh-estimar-conta">
+                    1 − ({fmtNum(fora)} h fora de projeto ÷ {fmtNum(semana)} h na semana) = <strong>{fmtPct(estimado)}</strong> produtivo
+                  </p>
+                  {podeEditar && (
+                    <div className="vh-estimar-acoes">
+                      <button className="btn-confirm" onClick={() => { onChange({ pct_modo: 'estimado' }); setEstimarAberto(false) }}>Usar esta estimativa</button>
+                      {c.pct_modo === 'estimado' && (
+                        <button className="btn-cancel" onClick={() => onChange({ pct_modo: 'digitado', pct_produtivo: estimado == null ? null : Math.round(estimado * 1000) / 10 })}>Digitar o % direto</button>
+                      )}
+                    </div>
                   )}
-                </div>
-              )}
-            </>
-          ) : <p className="vh-hint">Preencha horas por dia e dias por semana para estimar.</p>}
+                </>
+              ) : <p className="vh-hint">Preencha horas por dia e dias por semana para estimar.</p>}
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-// ════════════════════════ painel de ocupação (Resultado e Comparativo) ════════════════════════
-function PainelOcupacao({ dados, podeEditar, atualizar }) {
+// ════════════════════════ OP: um único componente para Resultado e Comparativo ════════════════════════
+function ControleOP({ dados, podeEditar, atualizar, compacto = false }) {
+  const setOp = (v) => atualizar(d => ({ ...d, op: v }))
   return (
-    <div className="vh-bloco vh-ocupacao">
-      <h2 className="vh-secao-titulo">Ocupação</h2>
-      <p className="vh-secao-sub">
-        Ocupação é quanto das horas você espera conseguir vender. Seus custos são os mesmos com a agenda cheia ou vazia: quanto menos horas você vende, mais cada hora vendida precisa valer. Contamos horas de dois jeitos. Horas de funcionamento são as horas em que o escritório está aberto, no relógio. Horas produtivas são as horas de trabalho em projeto, somando todas as pessoas. Cada método usa uma das duas.
-      </p>
-      <div className="vh-ocupacao-controles">
-        <ControleOcupacao id="vh-fo" rotulo="Ocupação produtiva (FO)" valor={dados.fo} disabled={!podeEditar}
-          afeta="Afeta o Método Prolu e o Centro de custo (base: horas produtivas)."
-          onChange={(v) => atualizar(d => ({ ...d, fo: v }))} />
-        <ControleOcupacao id="vh-of" rotulo="Ocupação do funcionamento" valor={dados.of} disabled={!podeEditar}
-          afeta="Afeta só o método Começando (base: horas de funcionamento)."
-          onChange={(v) => atualizar(d => ({ ...d, of: v }))} />
+    <div className={`vh-bloco vh-op${compacto ? ' vh-op-compacto' : ''}`}>
+      <div className="vh-op-linha">
+        <label className="vh-op-rotulo" htmlFor={`vh-op-${compacto ? 'c' : 'r'}`}>OP (ocupação produtiva)</label>
+        <input type="range" min={0} max={100} step={1} value={dados.op ?? 0} disabled={!podeEditar}
+          aria-label="OP (ocupação produtiva)" onChange={(e) => setOp(Number(e.target.value))} />
+        <Numero id={`vh-op-${compacto ? 'c' : 'r'}`} valor={dados.op} sufixo="%" max={100} disabled={!podeEditar} onChange={setOp} />
       </div>
-    </div>
-  )
-}
-
-function ControleOcupacao({ id, rotulo, valor, onChange, afeta, disabled }) {
-  return (
-    <div className="vh-campo vh-controle">
-      <label className="modal-label" htmlFor={id}>{rotulo}</label>
-      <div className="vh-controle-linha">
-        <input type="range" min={0} max={100} step={1} value={valor ?? 0} disabled={disabled} aria-label={rotulo}
-          onChange={(e) => onChange(Number(e.target.value))} />
-        <Numero id={id} valor={valor} sufixo="%" max={100} disabled={disabled} onChange={onChange} />
-      </div>
-      <span className="vh-hint">{afeta}</span>
+      {compacto ? (
+        <p className="vh-hint">Percentual das horas produtivas que você espera vender. Alterar aqui altera também o valor recomendado.</p>
+      ) : (
+        <p className="vh-op-texto">
+          É o percentual das horas produtivas que você espera conseguir vender. Em 100%, a hora fica mais barata, mas você precisa vender todas as horas produtivas do mês para a conta fechar. Referência de mercado (escritórios dos EUA): os profissionais técnicos faturam de 75% a 85% do tempo. Sugestão: entre 75% e 85%.
+        </p>
+      )}
     </div>
   )
 }
 
 // ════════════════════════ aba Resultado (Método Prolu) ════════════════════════
 function AbaResultado({ dados, calc, podeEditar, atualizar }) {
-  const m1 = calc.metodos.m1
-  const foPct = dados.fo
+  const p = calc.prolu
   return (
     <>
       <div className="vh-destaque">
         <span className="vh-selo-prolu">Recomendado pelo Método Prolu</span>
-        {m1.motivo ? (
-          <p className="vh-metodo-falta">{m1.motivo}</p>
+        {p.motivo ? (
+          <p className="vh-metodo-falta">{p.motivo}</p>
         ) : (
           <>
-            <p className="vh-destaque-valor">{fmtMoeda(m1.valor)}<small>/h</small></p>
+            <p className="vh-destaque-valor">{fmtMoeda(p.valor)}<small>/h</small></p>
             <p className="vh-destaque-composicao">
-              Estrutura rateada {fmtMoeda(calc.rateadaEf)} + equipe {fmtMoeda(calc.horaEquipe)} = {fmtMoeda(calc.semFO)} por hora produtiva, ÷ FO {fmtNum(foPct, 1)}%
+              {fmtMoeda(calc.custoTotal)} de custo total ÷ {fmtNum(calc.horasVendaveis)} horas vendáveis ({fmtNum(calc.H)} horas produtivas × {fmtNum(dados.op, 1)}%)
             </p>
           </>
         )}
       </div>
-      <Alertas itens={calc.pendencias} />
 
-      <PainelOcupacao dados={dados} podeEditar={podeEditar} atualizar={atualizar} />
+      <ControleOP dados={dados} podeEditar={podeEditar} atualizar={atualizar} />
 
       <div className="vh-bloco">
-        <h2 className="vh-secao-titulo">Por que este é o melhor cálculo</h2>
+        <h2 className="vh-secao-titulo">Por que recomendamos este cálculo</h2>
         <ul className="vh-porque">
-          <li><strong>Protege os custos fixos.</strong> A estrutura inteira entra, diluída pelas horas realmente produtivas, sem cobrar duas vezes.</li>
-          <li><strong>Protege os imprevistos.</strong> A ocupação produtiva (FO) assume que nem toda hora produtiva será vendida.</li>
-          <li><strong>Acompanha o crescimento.</strong> Parte da estrutura cresce junto com a equipe (FE), então o valor não despenca quando a equipe aumenta; o crescimento se justifica por mais capacidade de pegar projetos.</li>
-          <li><strong>Deixa o dono fora da conta produtiva.</strong> O escritório se paga mesmo quando ele não produz.</li>
-          <li><strong>Sem margem e sem impostos.</strong> Eles entram na Precificação, não aqui.</li>
+          <li><strong>Protege os custos fixos:</strong> toda a estrutura entra na conta, nenhum custo fica de fora.</li>
+          <li><strong>Protege imprevistos:</strong> a ocupação produtiva assume que nem toda hora será vendida.</li>
+          <li><strong>Funciona para qualquer porte</strong>, com ou sem o dono produzindo.</li>
         </ul>
+        <p className="vh-dica">Ao contratar, atualize a estrutura: se ela continuar a mesma, o valor cai porque se divide por mais horas. Para simular, duplique o cenário.</p>
       </div>
-
-      <div className="vh-chips">
-        <div className="vh-chip">
-          <span className="vh-chip-sigla">FD <Ajuda rotulo="FD" texto="Horas de funcionamento ÷ horas produtivas. A estrutura é dividida pelas horas produtivas da equipe, e não pelas horas do relógio." /></span>
-          <strong>{fmtNum(calc.FD, 4)}</strong>
-          <span className="vh-hint">{calc.pessoasEquivalentes == null ? '—' : `${fmtNum(calc.pessoasEquivalentes)} pessoas produtivas por hora aberta`}</span>
-        </div>
-        <div className="vh-chip">
-          <span className="vh-chip-sigla">FE <Ajuda rotulo="FE" texto="Parte da estrutura que cresce quando a equipe cresce (aluguel, equipamentos, softwares). Ao simular mais profissionais que a referência, essa parte cresce junto." /></span>
-          <strong>{fmtPct(calc.FE)}</strong>
-          <span className="vh-hint">da estrutura cresce com a equipe</span>
-        </div>
-        <div className="vh-chip">
-          <span className="vh-chip-sigla">FO <Ajuda rotulo="FO" texto="Ocupação produtiva: quanto das horas produtivas você espera vender. Nem toda hora produtiva vira projeto vendido." /></span>
-          <Numero valor={dados.fo} sufixo="%" max={100} disabled={!podeEditar} ariaLabel="Ocupação produtiva (FO)"
-            onChange={(v) => atualizar(d => ({ ...d, fo: v }))} />
-          <span className="vh-hint">das horas produtivas vendidas</span>
-        </div>
-      </div>
-
-      <div className="vh-bloco">
-        <p className="vh-utilizacao">Utilização efetiva: <strong>{calc.utilizacao == null ? '—' : fmtPct(calc.utilizacao, 0)}</strong> <span className="vh-hint">(% produtivo × FO)</span></p>
-        <p className="vh-hint">{NOTA_UTILIZACAO}</p>
-      </div>
-
-      <SimuladorProlu calc={calc} fo={dados.fo} valor={m1.valor} />
     </>
-  )
-}
-
-function SimuladorProlu({ calc, fo, valor }) {
-  const [ocupacao, setOcupacao] = useState(() => Math.min(100, Math.max(50, Math.round(fo || 80))))
-  const necessaria = horaNecessaria(calc, ocupacao)
-  const fecha = valor != null && necessaria != null && valor >= necessaria - 0.005
-  return (
-    <div className="vh-bloco vh-simulador">
-      <h2 className="vh-secao-titulo">Simulador</h2>
-      <label className="vh-campo" htmlFor="vh-sim-ocupacao">
-        <span className="vh-sim-pergunta">Quanto da sua agenda você espera vender? <strong>{ocupacao}%</strong></span>
-        <input id="vh-sim-ocupacao" type="range" min={50} max={100} step={1} value={ocupacao} onChange={(e) => setOcupacao(Number(e.target.value))} />
-      </label>
-      {necessaria == null || valor == null ? <p className="vh-hint">Preencha a equipe e a ocupação para simular.</p> : (
-        <p className={`vh-sim-frase ${fecha ? 'fecha' : 'nao-fecha'}`}>
-          Com {ocupacao}% da agenda vendida, a hora precisa valer <strong>{fmtMoeda(necessaria)}</strong> para cobrir seus custos.
-          O valor recomendado é <strong>{fmtMoeda(valor)}</strong>, então a conta {fecha ? <strong>fecha</strong> : <><strong>não fecha</strong>: faltam {fmtMoeda(necessaria - valor)} por hora</>}.
-        </p>
-      )}
-      <p className="vh-hint">Seus custos não diminuem quando a agenda tem horas vagas. Quanto menos horas você vende, mais cada hora vendida precisa valer.</p>
-      {valor != null && <p className="vh-sim-fixo">Seu valor recomendado fecha a conta se você vender pelo menos {fmtNum(fo, 1)}% das horas.</p>}
-    </div>
   )
 }
 
 // ════════════════════════ aba Comparativo ════════════════════════
 function AbaComparativo({ dados, calc, podeEditar, atualizar, irPara }) {
-  const { m1, m2, m3 } = calc.metodos
+  const { prolu, centro } = calc
   return (
     <>
-      <PainelOcupacao dados={dados} podeEditar={podeEditar} atualizar={atualizar} />
-      <Alertas itens={calc.pendencias} />
+      <ControleOP dados={dados} podeEditar={podeEditar} atualizar={atualizar} compacto />
       <div className="vh-metodos">
-        <CardMetodo metodo={m1} titulo="Método Prolu" selo="Recomendado" tom="ok" indicado="Para escritórios em crescimento."
-          ressalvas="Depende de uma boa estimativa do % produtivo e da ocupação: se a equipe produzir ou vender menos do que o informado, o valor fica curto. Revise os números a cada contratação ou mudança de custos.">
-          {!m1.motivo && <p className="vh-metodo-valor">{fmtMoeda(m1.valor)}<small>/h</small></p>}
+        <CardMetodo metodo={prolu} titulo="Método Prolu" selo="Recomendado" destaque
+          indicado="Custo total ÷ horas vendáveis."
+          ressalvas="Depende de uma boa estimativa do % produtivo e da OP (ocupação produtiva): se a equipe produzir ou vender menos do que o informado, o valor fica curto. Revise os números a cada contratação ou mudança de custos.">
+          {!prolu.motivo && <p className="vh-metodo-valor">{fmtMoeda(prolu.valor)}<small>/h</small></p>}
           <button className="vh-link-inline vh-metodo-link" onClick={() => irPara('resultado')}>Ver página do Método Prolu</button>
         </CardMetodo>
 
-        <CardMetodo metodo={m2} titulo="Centro de custo" indicado="Indicado para escritórios grandes com departamentos."
+        <CardMetodo metodo={centro} titulo="Centro de custo" indicado="Indicado para escritórios grandes com departamentos. Centro de custo é um setor ou função da equipe (ex.: criação, detalhamento, arquitetos, estagiários)."
           ressalvas="Se alguém falta e outro cobre a função, o valor por centro deixa de refletir o custo real. Estrutura rateada por horas (simplificação: em escritórios grandes também é comum ratear por área ou nº de pessoas). Com um só centro, o valor é igual ao do Método Prolu.">
-          {!m2.motivo && (
-            <>
-              <ul className="vh-metodo-centros">
-                {m2.centros.map(c => (
-                  <li key={c.nome}>
-                    <span>{c.nome}</span>
-                    <strong>{c.valor == null ? <span className="vh-hint">{c.motivo}</span> : <>{fmtMoeda(c.valor)}<small>/h</small></>}</strong>
-                  </li>
-                ))}
-              </ul>
-              <p className="vh-metodo-nota">FD {fmtNum(m2.FD, 4)} · estrutura rateada {fmtMoeda(m2.rateada)}/h</p>
-            </>
-          )}
-        </CardMetodo>
-
-        <CardMetodo metodo={m3} titulo="Começando" indicado="Indicado para quem trabalha sozinho ou está começando."
-          ressalvas="Divide todos os custos pelas horas de funcionamento. Com muitas pessoas o valor sobe mais que nos outros métodos; para quem está começando costuma ficar baixo, porque o custo é baixo.">
-          {!m3.motivo && <p className="vh-metodo-valor">{fmtMoeda(m3.valor)}<small>/h</small></p>}
-          {m3.alerta && (
-            <p className="vh-alerta vh-alerta-card"><IconAlert aria-hidden="true" /> Este valor pressupõe que todas as horas que você trabalha são vendidas e pode ficar abaixo do ponto de equilíbrio. Ajuste a ocupação do funcionamento.</p>
+          {!centro.motivo && (
+            <ul className="vh-metodo-centros">
+              {centro.centros.map(g => (
+                <li key={g.nome}>
+                  <div className="vh-centro-topo">
+                    <span>{g.nome}</span>
+                    <strong>{g.valor == null ? <span className="vh-hint">{g.motivo}</span> : <>{fmtMoeda(g.valor)}<small>/h</small></>}</strong>
+                  </div>
+                  {g.valor != null && (
+                    <span className="vh-centro-conta">estrutura por hora produtiva {fmtMoeda(g.estruturaHora)} + custo do centro por hora {fmtMoeda(g.centroHora)}, ÷ OP {fmtNum(dados.op, 1)}%</span>
+                  )}
+                </li>
+              ))}
+            </ul>
           )}
         </CardMetodo>
       </div>
@@ -853,14 +714,14 @@ function AbaComparativo({ dados, calc, podeEditar, atualizar, irPara }) {
   )
 }
 
-function CardMetodo({ metodo, titulo, selo, tom, indicado, ressalvas, children }) {
+function CardMetodo({ metodo, titulo, selo, destaque, indicado, ressalvas, children }) {
   const [aberto, setAberto] = useState(null) // 'ressalvas' | 'calculo'
   const alternar = (q) => setAberto(a => (a === q ? null : q))
   return (
-    <article className={`vh-metodo${tom === 'ok' ? ' vh-metodo-destaque' : ''}`}>
+    <article className={`vh-metodo${destaque ? ' vh-metodo-destaque' : ''}`}>
       <div className="vh-metodo-topo">
         <h3 className="vh-metodo-titulo">{titulo}</h3>
-        {selo && <span className={`vh-selo vh-selo-${tom}`}>{selo}</span>}
+        {selo && <span className="vh-selo vh-selo-ok">{selo}</span>}
       </div>
       <p className="vh-metodo-indicado">{indicado}</p>
       {metodo.motivo && <p className="vh-metodo-falta">{metodo.motivo}</p>}
