@@ -62,6 +62,7 @@
 /* gestor/comum não veem a tile "Gestão Comercial" — 2 tiles restantes
    dividem o espaço igualmente em vez de sobrar uma 3ª coluna vazia. */
 .modules-grid-2 { grid-template-columns: repeat(2, 1fr); }
+.modules-grid-1 { grid-template-columns: 1fr; }
 .module-tile {
   border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-rest);
   cursor: pointer; transition: box-shadow 0.2s, transform 0.15s;

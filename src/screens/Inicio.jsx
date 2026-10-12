@@ -1,12 +1,11 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
-import { useToast } from '../contexts/ToastContext.jsx'
 import { QUOTES, ANNOUNCEMENTS, FOLDERS, CRM_ROWS, PLANO_ACOES } from '../data/seed.js'
 import { supabase, supabaseReady, fetchAllRows } from '../services/supabaseClient.js'
 import { resumoFechamentos, fechamentosLocais, somarFechamentos } from '../services/fechamentos.js'
 import {
-  IconBolt, IconAgente, IconArrowRight, IconCRM, IconBase, IconMoney, IconLock, IconClose,
+  IconBolt, IconAgente, IconArrowRight, IconCRM, IconBase, IconMoney, IconClose,
 } from '../components/Icons.jsx'
 import './Inicio.css'
 
@@ -58,7 +57,6 @@ function saudacao() {
 
 export default function Inicio() {
   const { user, activeEmpresaId, isEmpresaMaster, acesso } = useAuth()
-  const toast = useToast()
   const navigate = useNavigate()
   const [avisos, setAvisos] = useState([])
 
@@ -110,7 +108,12 @@ export default function Inicio() {
     return () => { alive = false }
   }, [user?.id])
 
+  // Com o Supabase, começa vazio e vem SÓ do banco (aulas visíveis + progresso
+  // do próprio usuário). Os dados de demonstração (seed, com aulas já
+  // concluídas) valem só sem Supabase — antes eles ficavam na tela quando o
+  // escritório não enxergava nenhuma aula, e conta nova aparecia com progresso.
   const [kbStats, setKbStats] = useState(() => {
+    if (supabaseReady) return { total: 0, concluidas: 0 }
     const allLessons = FOLDERS.flatMap((f) => f.modules.flatMap((m) => m.lessons))
     return { total: allLessons.length, concluidas: allLessons.filter((l) => l.done).length }
   })
@@ -124,7 +127,8 @@ export default function Inicio() {
         .eq('usuario_id', user.id)
         .eq('concluida', true),
     ]).then(([{ count: total }, { count: concluidas }]) => {
-      if ((total ?? 0) > 0) setKbStats({ total: total ?? 0, concluidas: concluidas ?? 0 })
+      const t = total ?? 0
+      setKbStats({ total: t, concluidas: Math.min(concluidas ?? 0, t) })
     })
   }, [user?.id])
 
@@ -339,7 +343,7 @@ export default function Inicio() {
           acesso.crm/dashboard/indicadores (AuthContext); escondida aqui
           pelo mesmo motivo pros demais roles. */}
       <div className="section-title">Suas ferramentas</div>
-      <div className={`modules-grid${isEmpresaMaster ? '' : ' modules-grid-2'}`}>
+      <div className={`modules-grid${isEmpresaMaster ? '' : ' modules-grid-1'}`}>
         {isEmpresaMaster && (
           <button className="module-tile tile-comercial" onClick={() => navigate('/crm')}>
             <div className="tile-top">
@@ -375,17 +379,18 @@ export default function Inicio() {
           </div>
         </button>
 
-        <button className="module-tile tile-precificacao" onClick={() => toast('Precificação chega em breve')}>
-          <div className="tile-top">
-            <div className="tile-icon"><IconMoney /></div>
-            <span className="tile-badge badge-soon">Em breve</span>
-          </div>
-          <div className="tile-body">
-            <div className="tile-title">Precificação</div>
-            <div className="tile-sub">Calcule horas e valor de cada projeto direto no fluxo do CRM.</div>
-            <div className="tile-locked-note"><IconLock />Liberado em breve</div>
-          </div>
-        </button>
+        {/* Precificação: mesmo perfil da rota (acesso.precificacao = master) */}
+        {acesso.precificacao && (
+          <button className="module-tile tile-precificacao" onClick={() => navigate('/precificacao')}>
+            <div className="tile-top">
+              <div className="tile-icon"><IconMoney /></div>
+            </div>
+            <div className="tile-body">
+              <div className="tile-title">Precificação</div>
+              <div className="tile-sub">Valor da hora, modelos de etapas e etiquetas para precificar cada projeto.</div>
+            </div>
+          </button>
+        )}
       </div>
     </>
   )

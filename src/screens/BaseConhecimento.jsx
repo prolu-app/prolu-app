@@ -215,7 +215,10 @@ export default function BaseConhecimento() {
   const pasta = pastasVisiveis.find(p => p.id === currentPastaId)
 
   async function carregar() {
-    if (!supabaseReady || !user?.id) {
+    // Com Supabase e sem perfil carregado: nada (nunca os dados de demonstração,
+    // que têm aulas concluídas). O seed vale só sem Supabase.
+    if (supabaseReady && !user?.id) { setPastas([]); setCursos([]); setLoading(false); return }
+    if (!supabaseReady) {
       const seed = FOLDERS.map(f => ({
         id: f.id, title: f.title, sub: f.sub, cover: f.cover, ordem: 0,
         empresa_id: f.empresa_id ?? null,
