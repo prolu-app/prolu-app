@@ -57,18 +57,12 @@ export const COMO_FUNCIONA = {
   consultoria: {
     titulo: 'Como funciona a Consultoria',
     resumo: 'Acompanhamento mensal para escritórios que já entregam bons projetos e querem crescer com **mais constância, projetos melhores e posicionamento mais forte**.',
-    destaques: [
-      { valor: '1 encontro/mês', rotulo: 'individual, de 2 horas' },
-      { valor: 'WhatsApp', rotulo: 'dúvidas e decisões durante o mês' },
-      { valor: 'Mensal', rotulo: 'ajustes com base nos números' },
-    ],
     passos: {
-      titulo: 'Como funciona',
       itens: [
-        { titulo: 'Encontro individual', texto: 'uma vez por mês, de 2 horas, com direcionamento claro de ações.' },
-        { titulo: 'Organização estratégica e comercial', texto: 'do atendimento à proposta.' },
-        { titulo: 'Análise dos números', texto: 'do escritório.' },
-        { titulo: 'Ajustes mês a mês,', texto: 'com WhatsApp aberto para dúvidas e decisões.' },
+        { icone: 'calendario', titulo: 'Acompanhamento individual', texto: 'Um encontro por mês, de 2 horas, só com o seu escritório, com **direcionamento claro de ações** e WhatsApp aberto para dúvidas e decisões.' },
+        { icone: 'formulario', titulo: 'Organização comercial e estratégica', texto: 'Atendimento, reunião e proposta organizados, e conteúdo voltado ao **cliente ideal** para atrair os pedidos de orçamento certos.' },
+        { icone: 'indicadores', titulo: 'Análise dos números', texto: 'Pedidos, fechamentos, ticket médio e posicionamento percebido mostram **o que ajustar a cada mês**.' },
+        { icone: 'seta', titulo: 'Crescimento constante', texto: 'Para quem já entrega bons projetos crescer com **mais constância, projetos melhores** e posicionamento mais forte.' },
       ],
     },
     cartoes: {
