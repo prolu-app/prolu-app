@@ -129,25 +129,12 @@
 .vh-antigo-acoes .btn-cancel { display: inline-flex; align-items: center; gap: 6px; }
 .vh-antigo-acoes .btn-cancel svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
 
-/* ── aba Custos: dono ── */
-.vh-dono-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; }
-.vh-sim-nao { display: inline-flex; gap: 2px; background: var(--cream); border-radius: 99px; padding: 3px; }
-.vh-sim-nao button {
-  border: none; background: none; padding: 5px 16px; border-radius: 99px; cursor: pointer;
-  font-family: inherit; font-size: 13px; font-weight: 500; color: var(--ink-60);
+/* ── aba Custos: texto sobre sócios ── */
+.vh-socios {
+  margin: 0 0 20px; padding: 10px 14px; border-radius: var(--r-sm); background: var(--white);
+  box-shadow: var(--shadow-rest); font-size: 13px; line-height: 1.5; color: var(--ink-60); max-width: 900px;
 }
-.vh-sim-nao button.on { background: var(--white); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(18, 18, 16, 0.12); }
-.vh-sim-nao button:disabled { cursor: default; }
-.vh-sim-nao button:focus-visible { outline: 2px solid var(--green-deep); outline-offset: 1px; }
-.vh-dono-opcoes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
-.vh-dono-opcao {
-  display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border-radius: var(--r-sm);
-  border: 1px solid var(--ink-divider); color: var(--ink-40); transition: border-color 0.15s, background 0.15s, color 0.15s;
-}
-.vh-dono-opcao.on { border-color: var(--green-deep); background: var(--green-soft); color: var(--ink-80); }
-.vh-dono-opcao-titulo { font-size: 12.5px; font-weight: 600; }
-.vh-dono-opcao.on .vh-dono-opcao-titulo { color: var(--ink); }
-.vh-dono-opcao-texto { font-size: 12px; line-height: 1.45; }
+.vh-socios strong { color: var(--ink); }
 
 /* ── aba Custos: lista única ── */
 .vh-lista { background: var(--white); border-radius: var(--r-lg); box-shadow: var(--shadow-rest); padding: 8px 16px 16px; }
@@ -168,7 +155,6 @@
 .vh-tag-pro { align-self: flex-start; font-size: 10.5px; font-weight: 600; color: var(--violet-ink); background: var(--violet-soft); border-radius: 99px; padding: 1px 8px; }
 .vh-check { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink-60); cursor: pointer; }
 .vh-check input { accent-color: var(--ink); width: 15px; height: 15px; flex-shrink: 0; }
-.vh-check:has(input:disabled) { cursor: default; }
 
 /* sublinha de quem produz projeto */
 .vh-sublinha {
@@ -182,18 +168,6 @@
 .vh-sub-resumo { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--ink-60); padding-bottom: 2px; }
 .vh-sub-resumo strong { color: var(--ink); }
 .vh-sub-nota { grid-column: 1 / -1; margin: 0; }
-.vh-estimar-btn {
-  align-self: flex-start; border: none; background: none; padding: 2px 0 0; cursor: pointer;
-  font-family: inherit; font-size: 12px; font-weight: 600; color: var(--blue-ink); text-decoration: underline; text-underline-offset: 2px;
-}
-.vh-estimar-btn.on { color: var(--ink); }
-.vh-estimar { grid-column: 1 / -1; background: var(--white); border-radius: var(--r-md); padding: 12px 14px; box-shadow: inset 0 0 0 1px var(--ink-divider); }
-.vh-estimar .vh-hint { margin: 0; }
-.vh-estimar-grade { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 12px; margin-top: 10px; }
-.vh-estimar-conta { font-size: 13px; color: var(--ink-60); margin: 10px 0 0; }
-.vh-estimar-conta strong { color: var(--ink); }
-.vh-estimar-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-.vh-estimar-acoes button { padding: 8px 16px; font-size: 13px; }
 
 .vh-add {
   display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 7px 14px;
@@ -308,7 +282,6 @@
   .vh-cel-rotulo { display: block; font-size: 11.5px; color: var(--ink-60); }
   .vh-cel-acao { grid-column: 1 / -1; justify-content: flex-start; }
   .vh-resumo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .vh-dono-opcoes { grid-template-columns: 1fr; }
 }
 @media (max-width: 860px) {
   /* .main no celular: padding 16px nas laterais e navbar fixa no topo */
@@ -321,7 +294,6 @@
   .vh-metodos { grid-template-columns: 1fr; }
   .vh-sublinha { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-left: 10px; }
   .vh-campo-centro, .vh-sub-resumo { grid-column: 1 / -1; }
-  .vh-estimar-grade { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .vh-bloco, .vh-destaque { padding: 18px 16px; }
   .vh-destaque-valor { font-size: 32px; }
   .vh-modal { width: auto; }

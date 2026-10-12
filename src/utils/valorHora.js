@@ -17,28 +17,21 @@ export const VERSAO_DADOS = 3
 export const SEMANAS_MES = 4
 const MAX_ITENS = 150
 
+// O tipo só dá rótulo e padrões; o cálculo depende só de produz_projeto.
+export const TIPO_PRO_LABORE = 'Pró-labore / retirada'
 export const TIPOS_CUSTO = [
   { value: 'Pessoas', label: 'Pessoas' },
   { value: 'Serviço', label: 'Serviço' },
   { value: 'Estrutura', label: 'Estrutura' },
+  { value: TIPO_PRO_LABORE, label: TIPO_PRO_LABORE },
 ]
 export const OP_PADRAO = 80
 export const CENTRO_PADRAO = 'Geral'
 export const PADRAO_PRODUTIVO = { horas_dia: 8, dias_semana: 5, pct_produtivo: 85 }
-// linha do pró-labore quando o dono considera as horas dele.
+// linha de pró-labore/retirada que produz projeto (dono não produz o tempo todo).
 // VALORES PROVISÓRIOS, A CALIBRAR POR ANDRÉ.
 export const PADRAO_DONO = { horas_dia: 4, dias_semana: 5, pct_produtivo: 50 }
 export const NOME_PRO_LABORE = 'Pró-labore / retirada do dono'
-
-// Painel "Estimar % produtivo": horas por semana fora de projeto
-export const CATEGORIAS_FORA = [
-  { key: 'reunioes', label: 'Reuniões internas' },
-  { key: 'comercial', label: 'Comercial/atendimento' },
-  { key: 'administrativo', label: 'Administrativo' },
-  { key: 'deslocamento', label: 'Deslocamento' },
-  { key: 'capacitacao', label: 'Capacitação' },
-  { key: 'retrabalho', label: 'Retrabalho/imprevistos' },
-]
 
 // ── formatação (pt-BR) ──
 const fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -63,77 +56,60 @@ function num(v, max = 1e9) {
 const txt = (v, max = 80) => (typeof v === 'string' ? v.slice(0, max) : '')
 const padraoSe = (v, padrao, max) => (v === undefined ? padrao : num(v, max))
 
-export const encargosPadrao = (tipo, proLabore) => (tipo === 'Pessoas' && !proLabore ? 20 : 0)
+export const encargosPadrao = (tipo) => (tipo === 'Pessoas' ? 20 : 0)
+export const padraoHoras = (tipo) => (tipo === TIPO_PRO_LABORE ? PADRAO_DONO : PADRAO_PRODUTIVO)
 
 // Cenário salvo em outro formato (v1/v2): a tela avisa e não converte
 export const formatoAntigo = (bruto) => !bruto || typeof bruto !== 'object' || bruto.versao !== VERSAO_DADOS
 
+// Leitura tolerante do v3 anterior: campos desconhecidos são ignorados e
+// pro_labore: true vira o tipo "Pró-labore / retirada".
 export function normalizarCusto(b = {}) {
-  const tipo = TIPOS_CUSTO.some(t => t.value === b.tipo) ? b.tipo : 'Estrutura'
-  const proLabore = b.pro_labore === true
-  const base = proLabore ? PADRAO_DONO : PADRAO_PRODUTIVO
-  const fora = {}
-  for (const c of CATEGORIAS_FORA) fora[c.key] = num(b.fora_projeto?.[c.key], 168)
+  const tipo = b.pro_labore === true ? TIPO_PRO_LABORE
+    : TIPOS_CUSTO.some(t => t.value === b.tipo) ? b.tipo : 'Estrutura'
+  const base = padraoHoras(tipo)
   return {
     id: typeof b.id === 'string' && b.id ? b.id.slice(0, 64) : novoId(),
     nome: txt(b.nome),
     tipo,
     valor_mensal: num(b.valor_mensal),
-    encargos_pct: padraoSe(b.encargos_pct, encargosPadrao(tipo, proLabore), 1000),
-    pro_labore: proLabore,
+    encargos_pct: padraoSe(b.encargos_pct, encargosPadrao(tipo), 1000),
     produz_projeto: b.produz_projeto === true,
     horas_dia: padraoSe(b.horas_dia, base.horas_dia, 24),
     dias_semana: padraoSe(b.dias_semana, base.dias_semana, 7),
     pct_produtivo: padraoSe(b.pct_produtivo, base.pct_produtivo, 100),
-    // 'estimado': o % sai das horas fora de projeto (painel "Estimar % produtivo")
-    pct_modo: b.pct_modo === 'estimado' ? 'estimado' : 'digitado',
-    fora_projeto: fora,
     // vazio fica vazio enquanto se digita; no cálculo, centro vazio = "Geral"
     centro_custo: b.centro_custo === undefined ? CENTRO_PADRAO : txt(b.centro_custo, 40),
   }
 }
 
-// Linhas de pró-labore: "produz projeto" segue "Considerar as horas produtivas do dono?"
-export function sincronizarDono(d) {
-  return { ...d, custos: d.custos.map(c => (c.pro_labore ? { ...c, produz_projeto: d.dono_considera_horas } : c)) }
-}
-
 export function normalizarDados(bruto) {
   const b = bruto && typeof bruto === 'object' && !Array.isArray(bruto) ? bruto : {}
-  return sincronizarDono({
+  // v3 anterior: dono_considera_horas: true marcava o pró-labore como produtivo
+  const donoProduzia = b.dono_considera_horas === true
+  const custos = (Array.isArray(b.custos) ? b.custos : []).slice(0, MAX_ITENS)
+    .map(c => (donoProduzia && c?.pro_labore === true ? { ...c, produz_projeto: true } : c))
+  return {
     versao: VERSAO_DADOS,
     op: padraoSe(b.op, OP_PADRAO, 100),
-    dono_considera_horas: b.dono_considera_horas === true,
-    custos: (Array.isArray(b.custos) ? b.custos : []).slice(0, MAX_ITENS).map(normalizarCusto),
-  })
+    custos: custos.map(normalizarCusto),
+  }
 }
 
 // "Do zero": já vem com a linha do pró-labore (valor 0)
 export const dadosVazios = () => normalizarDados({
-  custos: [{ nome: NOME_PRO_LABORE, tipo: 'Pessoas', valor_mensal: 0, encargos_pct: 0, pro_labore: true }],
+  custos: [{ nome: NOME_PRO_LABORE, tipo: TIPO_PRO_LABORE, valor_mensal: 0, encargos_pct: 0 }],
 })
 export const dadosExemplo = () => normalizarDados(JSON.parse(JSON.stringify(EXEMPLO)))
 
-// ── % produtivo ──
+// ── horas produtivas ──
 export const horasSemanais = (c) => (c.horas_dia || 0) * (c.dias_semana || 0)
-export const totalForaProjeto = (c) => CATEGORIAS_FORA.reduce((s, k) => s + (c.fora_projeto?.[k.key] || 0), 0)
-
-// % produtivo estimado (fração 0–1) = 1 − horas fora ÷ horas da semana
-export function pctEstimado(c) {
-  const semana = horasSemanais(c)
-  if (!(semana > 0)) return null
-  return Math.min(Math.max(1 - totalForaProjeto(c) / semana, 0), 1)
-}
-
-// fração 0–1 em uso na linha (null = não informado)
-export function pctDaLinha(c) {
-  if (c.pct_modo === 'estimado') return pctEstimado(c)
-  return c.pct_produtivo == null ? null : Math.min(c.pct_produtivo, 100) / 100
-}
+// % produtivo em fração 0–1 (null = não informado)
+export const pctDaLinha = (c) => (c.pct_produtivo == null ? null : Math.min(c.pct_produtivo, 100) / 100)
 
 const comEncargos = (valor, pct) => (valor || 0) * (1 + (pct || 0) / 100)
 
-export const MSG_SEM_HORAS = 'Marque pelo menos uma pessoa que produz projeto. Se você trabalha sozinho, escolha Sim em “Considerar as horas produtivas do dono”.'
+export const MSG_SEM_HORAS = 'Marque “Produz projeto?” em pelo menos uma pessoa (inclusive você, se produz).'
 export const MSG_SEM_OP = 'Informe a OP (ocupação produtiva) para calcular o valor-hora.'
 
 // ── cálculo principal ──
@@ -158,11 +134,8 @@ export function calcular(entrada) {
 
   const avisos = []
   for (const c of linhas) {
-    if (c.pro_labore && c.produz_projeto && !(c.hp > 0)) {
-      avisos.push(`${c.nome || 'Pró-labore'}: com 0 hora produtiva, o custo do dono fica dividido pelas horas do restante da equipe.`)
-    }
-    if (c.produz_projeto && c.pct_modo === 'estimado' && horasSemanais(c) > 0 && totalForaProjeto(c) > horasSemanais(c)) {
-      avisos.push(`${c.nome || 'Uma linha'}: as horas fora de projeto passam das horas da semana; o % produtivo ficou em 0%.`)
+    if (c.produz_projeto && !(c.hp > 0)) {
+      avisos.push(`${c.nome || 'Uma linha'}: marcada como “Produz projeto?”, mas com 0 hora produtiva; o custo dela fica dividido pelas horas do restante da equipe.`)
     }
   }
 

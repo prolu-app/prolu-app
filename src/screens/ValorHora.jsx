@@ -8,9 +8,8 @@ import Select from '../components/Select.jsx'
 import { useSomenteLeitura } from '../components/BloqueioPlano.jsx'
 import { IconPlus, IconTrash, IconCopy, IconEdit, IconBack, IconAlert, IconChevronDown, IconCheck } from '../components/Icons.jsx'
 import {
-  calcular, normalizarDados, normalizarCusto, sincronizarDono, dadosVazios, dadosExemplo, formatoAntigo,
-  encargosPadrao, pctEstimado, horasSemanais, totalForaProjeto, TIPOS_CUSTO, CATEGORIAS_FORA,
-  PADRAO_PRODUTIVO, PADRAO_DONO, fmtMoeda, fmtNum, fmtPct,
+  calcular, normalizarDados, normalizarCusto, dadosVazios, dadosExemplo, formatoAntigo,
+  encargosPadrao, padraoHoras, TIPOS_CUSTO, TIPO_PRO_LABORE, PADRAO_PRODUTIVO, PADRAO_DONO, fmtMoeda, fmtNum,
 } from '../utils/valorHora.js'
 import './ValorHora.css'
 
@@ -285,11 +284,10 @@ function EditorCenario({ id }) {
     return () => window.removeEventListener('beforeunload', antesDeSair)
   }, [salvarAgora])
 
-  // toda edição passa por sincronizarDono: o pró-labore segue o toggle do dono
   const atualizar = useCallback((fn) => {
     if (!podeEditar) return
     setDados(atual => {
-      const novo = sincronizarDono(fn(atual))
+      const novo = fn(atual)
       pendenteRef.current = novo
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(salvarAgora, ATRASO_SALVAR)
@@ -455,44 +453,23 @@ const AJUDA = {
 }
 
 // ════════════════════════ aba Custos ════════════════════════
-const OPCOES_DONO = [
-  { valor: false, titulo: 'Não', texto: 'Você administra e suas horas não entram na produção. O pró-labore continua como custo de estrutura: o escritório precisa se pagar mesmo sem as suas horas. Se você produzir projetos, essas horas ficam como ganho extra.' },
-  { valor: true, titulo: 'Sim', texto: 'Você produz projetos e vende suas horas. O pró-labore deixa de ser custo de estrutura e vira uma linha da equipe produtiva. Coloque poucas horas produtivas para você: dono não produz o tempo todo.' },
-]
-
-function AbaCustos({ dados, calc, podeEditar, atualizar }) {
+function AbaCustos({ calc, podeEditar, atualizar }) {
   const setCusto = (cid, patch) => atualizar(d => ({ ...d, custos: d.custos.map(x => (x.id === cid ? { ...x, ...patch } : x)) }))
 
-  // o padrão novo só substitui o encargo que ainda era o padrão antigo
+  // troca de tipo: o padrão novo só substitui o encargo que ainda era o padrão
+  // antigo; numa linha que ainda não produz, as horas também seguem o novo tipo
   function trocarTipo(c, tipo) {
     const patch = { tipo }
-    if (c.encargos_pct === encargosPadrao(c.tipo, c.pro_labore)) patch.encargos_pct = encargosPadrao(tipo, c.pro_labore)
+    if (c.encargos_pct === encargosPadrao(c.tipo)) patch.encargos_pct = encargosPadrao(tipo)
+    if (!c.produz_projeto) Object.assign(patch, padraoHoras(tipo))
     setCusto(c.id, patch)
   }
 
   return (
     <>
-      <div className="vh-bloco">
-        <div className="vh-dono-topo">
-          <h2 className="vh-secao-titulo">Considerar as horas produtivas do dono?</h2>
-          <div className="vh-sim-nao" role="group" aria-label="Considerar as horas produtivas do dono?">
-            {OPCOES_DONO.map(o => (
-              <button key={o.titulo} type="button" className={dados.dono_considera_horas === o.valor ? 'on' : ''}
-                aria-pressed={dados.dono_considera_horas === o.valor} disabled={!podeEditar}
-                onClick={() => atualizar(d => ({ ...d, dono_considera_horas: o.valor }))}>{o.titulo}</button>
-            ))}
-          </div>
-        </div>
-        {/* as duas legendas ficam visíveis; a escolhida fica destacada */}
-        <div className="vh-dono-opcoes">
-          {OPCOES_DONO.map(o => (
-            <div key={o.titulo} className={`vh-dono-opcao${dados.dono_considera_horas === o.valor ? ' on' : ''}`}>
-              <span className="vh-dono-opcao-titulo">{o.titulo}</span>
-              <span className="vh-dono-opcao-texto">{o.texto}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <p className="vh-socios">
+        <strong>Sócios:</strong> lance o pró-labore/retirada como custo (tipo Pró-labore / retirada). Se o sócio produz projetos, marque “Produz projeto?” e informe as horas: o custo dele passa para a equipe produtiva. Se não produz, fica como custo de estrutura.
+      </p>
 
       <div className="vh-secao-head">
         <h2 className="vh-secao-titulo">Custos mensais</h2>
@@ -507,7 +484,7 @@ function AbaCustos({ dados, calc, podeEditar, atualizar }) {
           <span />
         </div>
         {calc.linhas.map(c => (
-          <LinhaCusto key={c.id} c={c} podeEditar={podeEditar} donoSim={dados.dono_considera_horas}
+          <LinhaCusto key={c.id} c={c} podeEditar={podeEditar}
             onChange={(patch) => setCusto(c.id, patch)} onTipo={(t) => trocarTipo(c, t)}
             onRemover={() => atualizar(d => ({ ...d, custos: d.custos.filter(x => x.id !== c.id) }))} />
         ))}
@@ -529,17 +506,14 @@ function AbaCustos({ dados, calc, podeEditar, atualizar }) {
   )
 }
 
-function LinhaCusto({ c, podeEditar, donoSim, onChange, onTipo, onRemover }) {
-  const [estimarAberto, setEstimarAberto] = useState(false)
-  const estimado = pctEstimado(c)
-  const semana = horasSemanais(c)
-  const fora = totalForaProjeto(c)
-  const pctMostrado = c.pct_modo === 'estimado' ? (estimado == null ? null : Math.round(estimado * 1000) / 10) : c.pct_produtivo
+function LinhaCusto({ c, podeEditar, onChange, onTipo, onRemover }) {
+  const proLabore = c.tipo === TIPO_PRO_LABORE
 
   function marcarProduz(produz) {
     const patch = { produz_projeto: produz }
-    // linha que nunca foi preenchida recebe os padrões de quem produz
-    if (produz && c.horas_dia == null && c.dias_semana == null) Object.assign(patch, PADRAO_PRODUTIVO)
+    // pró-labore/retirada: padrão do dono (provisório); demais: só se estiver vazio
+    if (produz && proLabore) Object.assign(patch, PADRAO_DONO)
+    else if (produz && c.horas_dia == null && c.dias_semana == null) Object.assign(patch, PADRAO_PRODUTIVO)
     onChange(patch)
   }
 
@@ -550,7 +524,7 @@ function LinhaCusto({ c, podeEditar, donoSim, onChange, onTipo, onRemover }) {
           <span className="vh-cel-rotulo">Nome</span>
           <input className="vh-input" value={c.nome} maxLength={80} placeholder="Ex.: Aluguel" disabled={!podeEditar}
             aria-label="Nome do custo" onChange={(e) => onChange({ nome: e.target.value })} />
-          {c.pro_labore && <span className="vh-tag-pro">Pró-labore</span>}
+          {proLabore && <span className="vh-tag-pro">Pró-labore</span>}
         </span>
         <span className="vh-cel"><span className="vh-cel-rotulo">Tipo</span>
           <Select value={c.tipo} options={TIPOS_CUSTO} ariaLabel="Tipo" disabled={!podeEditar} onChange={onTipo} className="vh-select" /></span>
@@ -559,10 +533,9 @@ function LinhaCusto({ c, podeEditar, donoSim, onChange, onTipo, onRemover }) {
         <span className="vh-cel"><span className="vh-cel-rotulo">Encargos</span>
           <Numero valor={c.encargos_pct} sufixo="%" max={1000} disabled={!podeEditar} ariaLabel="Encargos" onChange={(v) => onChange({ encargos_pct: v })} /></span>
         <span className="vh-cel"><span className="vh-cel-rotulo">Produz projeto?</span>
-          <label className="vh-check" title={c.pro_labore ? 'Segue “Considerar as horas produtivas do dono?”' : undefined}>
-            <input type="checkbox" checked={c.produz_projeto} disabled={!podeEditar || c.pro_labore}
-              onChange={(e) => marcarProduz(e.target.checked)} />
-            <span>{c.pro_labore ? (donoSim ? 'Sim (dono)' : 'Não (dono)') : 'Produz projeto'}</span>
+          <label className="vh-check">
+            <input type="checkbox" checked={c.produz_projeto} disabled={!podeEditar} onChange={(e) => marcarProduz(e.target.checked)} />
+            <span>Produz projeto</span>
           </label>
         </span>
         <span className="vh-cel-acao">{podeEditar && (
@@ -572,54 +545,21 @@ function LinhaCusto({ c, podeEditar, donoSim, onChange, onTipo, onRemover }) {
 
       {c.produz_projeto && (
         <div className="vh-sublinha">
-          <label className="vh-campo vh-campo-curto"><span className="vh-sub-rotulo">Horas/dia</span>
+          <label className="vh-campo"><span className="vh-sub-rotulo">Horas/dia</span>
             <Numero valor={c.horas_dia} sufixo="h" max={24} disabled={!podeEditar} onChange={(v) => onChange({ horas_dia: v })} /></label>
-          <label className="vh-campo vh-campo-curto"><span className="vh-sub-rotulo">Dias/semana</span>
+          <label className="vh-campo"><span className="vh-sub-rotulo">Dias/semana</span>
             <Numero valor={c.dias_semana} max={7} disabled={!podeEditar} onChange={(v) => onChange({ dias_semana: v })} /></label>
-          <div className="vh-campo vh-campo-curto"><span className="vh-sub-rotulo">% produtivo <Ajuda rotulo="% produtivo" texto={AJUDA.pct} /></span>
-            <Numero valor={pctMostrado} sufixo="%" max={100} disabled={!podeEditar} ariaLabel="% produtivo"
-              onChange={(v) => onChange({ pct_produtivo: v, pct_modo: 'digitado' })} /></div>
+          <div className="vh-campo"><span className="vh-sub-rotulo">% produtivo <Ajuda rotulo="% produtivo" texto={AJUDA.pct} /></span>
+            <Numero valor={c.pct_produtivo} sufixo="%" max={100} disabled={!podeEditar} ariaLabel="% produtivo"
+              onChange={(v) => onChange({ pct_produtivo: v })} /></div>
           <label className="vh-campo vh-campo-centro"><span className="vh-sub-rotulo">Centro de custo <Ajuda rotulo="centro de custo" texto={AJUDA.centro} /></span>
             <input className="vh-input" value={c.centro_custo} maxLength={40} placeholder="Geral" disabled={!podeEditar}
               onChange={(e) => onChange({ centro_custo: e.target.value })} /></label>
           <div className="vh-sub-resumo">
             <span><strong>{fmtNum(c.hp)}</strong> horas produtivas/mês</span>
             <span>custo com encargos <strong>{fmtMoeda(c.total)}</strong></span>
-            <button className={`vh-estimar-btn${estimarAberto ? ' on' : ''}`} onClick={() => setEstimarAberto(v => !v)} aria-expanded={estimarAberto}>
-              {c.pct_modo === 'estimado' ? '% estimado · ver' : 'Estimar % produtivo'}
-            </button>
           </div>
-          {c.pro_labore && (
-            <p className="vh-hint vh-sub-nota">Padrão do dono: {PADRAO_DONO.horas_dia} h/dia, {PADRAO_DONO.dias_semana} dias, {PADRAO_DONO.pct_produtivo}% produtivo (provisório).</p>
-          )}
-
-          {estimarAberto && (
-            <div className="vh-estimar">
-              <p className="vh-hint">Quantas horas por semana {c.nome || 'esta pessoa'} passa fora de projeto?</p>
-              {semana > 0 ? (
-                <>
-                  <div className="vh-estimar-grade">
-                    {CATEGORIAS_FORA.map(k => (
-                      <label className="vh-campo" key={k.key}><span className="vh-sub-rotulo">{k.label}</span>
-                        <Numero valor={c.fora_projeto[k.key]} sufixo="h/sem" max={168} disabled={!podeEditar}
-                          onChange={(v) => onChange({ fora_projeto: { ...c.fora_projeto, [k.key]: v } })} /></label>
-                    ))}
-                  </div>
-                  <p className="vh-estimar-conta">
-                    1 − ({fmtNum(fora)} h fora de projeto ÷ {fmtNum(semana)} h na semana) = <strong>{fmtPct(estimado)}</strong> produtivo
-                  </p>
-                  {podeEditar && (
-                    <div className="vh-estimar-acoes">
-                      <button className="btn-confirm" onClick={() => { onChange({ pct_modo: 'estimado' }); setEstimarAberto(false) }}>Usar esta estimativa</button>
-                      {c.pct_modo === 'estimado' && (
-                        <button className="btn-cancel" onClick={() => onChange({ pct_modo: 'digitado', pct_produtivo: estimado == null ? null : Math.round(estimado * 1000) / 10 })}>Digitar o % direto</button>
-                      )}
-                    </div>
-                  )}
-                </>
-              ) : <p className="vh-hint">Preencha horas por dia e dias por semana para estimar.</p>}
-            </div>
-          )}
+          {proLabore && <p className="vh-hint vh-sub-nota">Dono não produz o tempo todo: coloque poucas horas produtivas.</p>}
         </div>
       )}
     </div>
@@ -697,7 +637,7 @@ function AbaComparativo({ dados, calc, podeEditar, atualizar, irPara }) {
         </CardMetodo>
 
         <CardMetodo metodo={centro} titulo="Centro de custo" indicado="Indicado para escritórios grandes com departamentos. Centro de custo é um setor ou função da equipe (ex.: criação, detalhamento, arquitetos, estagiários)."
-          ressalvas="Se alguém falta e outro cobre a função, o valor por centro deixa de refletir o custo real. Estrutura rateada por horas (simplificação: em escritórios grandes também é comum ratear por área ou nº de pessoas). Com um só centro, o valor é igual ao do Método Prolu.">
+          ressalvas="Se alguém falta e outro cobre a função, o valor por centro deixa de refletir o custo real. Estrutura rateada por horas (simplificação: em escritórios grandes também é comum ratear por área ou nº de pessoas). Com um só centro, o valor é igual ao do Método Prolu. Evite deixar o dono sozinho em um centro: com poucas horas produtivas, o valor do centro dele fica muito alto.">
           {!centro.motivo && (
             <ul className="vh-metodo-centros">
               {centro.centros.map(g => (
