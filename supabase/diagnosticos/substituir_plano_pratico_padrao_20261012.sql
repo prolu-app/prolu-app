@@ -68,13 +68,12 @@ select (select count(*) from _bkp_plano_modelo_tags_20261012) as tags_backup,
 
 -- ── 3. Substituição (ROLLBACK; troque por COMMIT depois de conferir) ──
 -- Idempotente: apaga o modelo inteiro e grava sempre o mesmo conteúdo.
--- Cor: a da tag de mesmo nome no modelo atual (sem diferenciar maiúsculas),
--- se existir; senão a cor padrão da linha abaixo.
+-- Cor: a da tag de mesmo nome no modelo ORIGINAL (backup do bloco 2, sem
+-- diferenciar maiúsculas), se existir; senão a cor padrão da linha abaixo.
+-- Precisa do bloco 2 antes (sem ele: erro "_bkp_plano_modelo_tags_20261012
+-- does not exist", e nada muda). Sem tabela temporária: o SQL Editor do
+-- Supabase não a mantém entre os comandos.
 begin;
-
-create temp table _cores_modelo on commit drop as
-  select distinct on (lower(trim(nome))) lower(trim(nome)) as chave, cor
-    from plano_modelo_tags order by lower(trim(nome)), ordem, created_at;
 
 delete from plano_modelo_acoes;
 delete from plano_modelo_tags;
@@ -88,7 +87,11 @@ with novas_tags as (
       ('Estrutura Comercial', '#3a6ea5', 2),
       ('Resultados e metas',  '#4CAF82', 3)
     ) as v(nome, cor_padrao, ordem)
-    left join _cores_modelo c on c.chave = lower(trim(v.nome))
+    left join lateral (
+      select b.cor from _bkp_plano_modelo_tags_20261012 b
+       where lower(trim(b.nome)) = lower(trim(v.nome))
+       order by b.ordem, b.created_at limit 1
+    ) c on true
   returning id, nome
 )
 insert into plano_modelo_acoes (tag_id, texto, status, ordem)
