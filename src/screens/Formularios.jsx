@@ -289,7 +289,7 @@ export default function Formularios() {
           <p className="fm-empty-title">Nenhum formulário ainda</p>
           <p className="fm-empty-sub">Crie um formulário para cada origem de contato — por exemplo, "Instagram" ou "Google Ads".</p>
           {podeEditar && (
-            <button className="btn-primary" onClick={() => setModalNovo(true)}>
+            <button className="btn-primary" onClick={abrirNovo}>
               <IconPlus /> Novo formulário
             </button>
           )}
