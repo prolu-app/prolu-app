@@ -16,6 +16,7 @@
     "@tiptap/starter-kit": "^3.31.3",
     "date-fns": "^3.6.0",
     "dompurify": "^3.4.15",
+    "qrcode-generator": "^2.0.4",
     "react": "^18.3.1",
     "react-colorful": "^5.8.1",
     "react-dom": "^18.3.1",

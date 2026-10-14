@@ -1,4 +1,4 @@
-/* Editor da Minha Página (MinhaPagina.jsx) — configuração à esquerda, prévia à direita */
+/* Editor da Minha Página (MinhaPagina.jsx) — áreas à esquerda, prévia do rascunho à direita */
 .mp-editor {
   display: grid;
   /* prévia 9:16: largura limitada para o celular inteiro caber na altura da tela */
@@ -8,15 +8,11 @@
 }
 .mp-editor-config { min-width: 0; }
 .mp-editor-config > .fm-abas { margin-bottom: 24px; }
-.mp-editor-config > section { margin-top: 0; }
-/* .fm-publico (display: flex) anularia o atributo hidden: só a aba ativa aparece */
-.mp-editor-config > section[hidden] { display: none !important; }
-.mp-topo-acoes { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .mp-abrir { text-decoration: none; display: inline-flex; align-items: center; }
 .mp-salvar:disabled { background: var(--ink-divider, #e4e3dc); color: var(--ink-60, #8a8a84); cursor: default; box-shadow: none; }
 
 /* indicador abaixo da prévia */
-.mp-status { margin-top: 10px; font-size: 12px; font-weight: 500; text-align: center; }
+.mp-status { margin-top: 10px; font-size: 12px; font-weight: 500; text-align: center; display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; }
 .mp-status.pendente { color: #c77700; }
 .mp-status.salvo { color: #2e7d32; }
 
@@ -39,7 +35,7 @@
 /* tela de 390px reduzida por transform: scale (PreviaCelular); rola por dentro */
 .mp-previa-tela { position: absolute; top: 0; left: 0; overflow: hidden auto; scrollbar-width: none; }
 .mp-previa-tela::-webkit-scrollbar { display: none; }
-.mp-previa-tela .mp-pagina { min-height: 100%; }
+.mp-previa-tela .mp-pagina, .mp-previa-tela .pg-pagina { min-height: 100%; }
 
 /* links */
 .mp-links-lista { display: flex; flex-direction: column; gap: 10px; }
@@ -96,6 +92,83 @@
 .mp-mini.on .mp-mini-img { box-shadow: 0 0 0 2px var(--ink, #121210); }
 .mp-mini:focus-visible .mp-mini-img { outline: 2px solid var(--ink, #121210); outline-offset: 2px; }
 .mp-mini-nome { font-size: 11px; line-height: 1.2; text-align: center; color: var(--ink-80, #3a3a36); }
+
+/* ── editor v2: áreas, blocos e avisos ── */
+.mpe-painel { display: flex; flex-direction: column; gap: 32px; }
+.mpe-bloco { margin: 0; }
+.mpe-titulo {
+  display: flex; align-items: center; gap: 8px; margin: 0 0 14px;
+  font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-80, #3a3a36);
+}
+.mpe-faixa {
+  margin: 0 0 18px; padding: 10px 14px; border-radius: 10px;
+  background: #fff6e0; color: #7a4d00; font-size: 13px; font-weight: 500;
+}
+.mpe-aviso { margin: 0; padding: 8px 12px; border-radius: 8px; background: #fff6e0; color: #7a4d00; font-size: 13px; }
+.mpe-nota { margin: 10px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-60, #6b6b66); }
+.mpe-nota a { color: inherit; font-weight: 600; text-decoration: underline; }
+.mpe-abrir { text-decoration: none; display: inline-flex; align-items: center; flex-shrink: 0; }
+.mpe-upload-larga { width: 120px; }
+.mpe-upload-larga img { object-fit: cover; }
+
+/* itens */
+.mpe-rotulo { font-size: 12px; font-weight: 600; color: var(--ink-60, #6b6b66); }
+.mpe-visual { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.mpe-icones { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 6px; }
+.mpe-icone {
+  display: flex; align-items: center; justify-content: center; height: 38px; padding: 0;
+  border: 1px solid var(--line, #e4e3dc); border-radius: 8px; background: var(--white, #fff);
+  color: var(--ink, #121210); cursor: pointer;
+}
+.mpe-icone:disabled { cursor: default; }
+.mpe-icone.sugerido { border-style: dashed; border-color: var(--ink-60, #6b6b66); }
+.mpe-icone.on { border: 2px solid var(--ink, #121210); background: var(--cream, #f3f2ed); }
+.mpe-icone:focus-visible { outline: 2px solid var(--ink, #121210); outline-offset: 2px; }
+.mpe-icone-svg { width: 20px; height: 20px; }
+.mpe-item-extras { display: flex; flex-wrap: wrap; gap: 14px; }
+.mpe-destacar { display: inline-flex; align-items: center; gap: 4px; }
+.mpe-destacar svg { width: 14px; height: 14px; }
+.mpe-destacar.on { font-weight: 700; }
+.mpe-estilo-proprio { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--cream, #f3f2ed); }
+.mp-link-card.mpe-destaque { border: 2px solid var(--green, #cbe921); }
+.mpe-selo-destaque { background: var(--green, #cbe921) !important; color: var(--ink, #121210) !important; }
+.mp-link-card.mpe-secao { background: var(--cream, #f3f2ed); }
+
+/* layout */
+.mpe-layouts { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 12px; }
+.mpe-layout {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px;
+  border: 1px solid var(--line, #e4e3dc); border-radius: 12px; background: var(--white, #fff); cursor: pointer; font: inherit;
+}
+.mpe-layout.on { border: 2px solid var(--ink, #121210); }
+.mpe-layout:disabled { cursor: default; }
+.mpe-layout.em-breve { opacity: 0.55; }
+.mpe-layout-mini { position: relative; width: 117px; height: 208px; overflow: hidden; border-radius: 8px; background: var(--cream, #f3f2ed); }
+.mpe-layout-tela { position: absolute; top: 0; left: 0; width: 390px; height: 693px; transform: scale(0.3); transform-origin: top left; pointer-events: none; }
+.mpe-layout-breve { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 12px; font-weight: 600; color: var(--ink-60, #6b6b66); }
+.mpe-layout-nome { font-size: 13px; font-weight: 600; }
+
+.mpe-avancado { display: flex; flex-direction: column; gap: 12px; }
+.mpe-avancado summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ink-80, #3a3a36); margin-bottom: 4px; }
+.mpe-avancado[open] summary { margin-bottom: 12px; }
+.mpe-avancado .fm-publico-row + .fm-publico-row { margin-top: 12px; }
+
+/* QR code e prévia do WhatsApp */
+.mpe-qr-bloco { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.mpe-qr { width: 168px; height: 168px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); background: #fff; }
+.mpe-qr--carregando { background: var(--cream, #f3f2ed); }
+.mpe-qr-acoes { display: flex; flex-direction: column; gap: 8px; }
+.mpe-wa {
+  display: flex; max-width: 380px; overflow: hidden; border-radius: 10px;
+  background: #e7f3e2; border-left: 4px solid #25a244; font-family: system-ui, sans-serif;
+}
+.mpe-wa.grande { flex-direction: column; }
+.mpe-wa-img { width: 84px; min-height: 84px; object-fit: cover; flex-shrink: 0; }
+.mpe-wa.grande .mpe-wa-img { width: 100%; height: auto; aspect-ratio: 1.91 / 1; }
+.mpe-wa-texto { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; font-size: 13px; line-height: 1.35; color: #1b1b1b; min-width: 0; }
+.mpe-wa-texto span { color: #444; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.mpe-wa-texto small { color: #777; }
 
 @media (max-width: 1100px) {
   .mp-editor { grid-template-columns: minmax(0, 1fr); }

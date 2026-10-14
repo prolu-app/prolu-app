@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { useAuth, roleValido } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { IconPlus, IconTrash, IconClose } from '../components/Icons.jsx'
-import { slugValido, slugReservado } from '../utils/slug.js'
+import { basePublica, slugValido, slugReservado } from '../utils/slug.js'
 import ConfirmarSlugModal from '../components/ConfirmarSlugModal.jsx'
 import { AvisoPlano } from '../components/BloqueioPlano.jsx'
 import { useConta } from '../contexts/ContaContext.jsx'
@@ -527,11 +527,16 @@ function AbaEscritorio({ user, isEmpresaMaster, activeEmpresaId, refreshUser, to
 }
 
 // Endereço do escritório (empresas.slug, migrations 036/037): primeira parte
-// do link público dos formulários, /e/<endereço>/<formulário>. Trocar derruba
+// do link público (prolu.link/<endereço> e prolu.link/<endereço>/<formulário>). Trocar derruba
 // todos os links e embeds do escritório, então: campo travado, "Alterar" para
 // destravar, botão próprio (nada de salvar junto com o resto da página) e
 // confirmação digitada. Grava pela função empresa_atualizar_slug (só master).
+// /configuracoes?tab=escritorio#endereco (link da Minha Página) rola até aqui
+// e põe o foco em "Alterar" (o campo fica travado até clicar).
 function EnderecoEscritorio({ activeEmpresaId, podeEditar, toast }) {
+  const { hash } = useLocation()
+  const alterarRef = useRef(null)
+  const blocoRef = useRef(null)
   const [salvo, setSalvo] = useState('')
   const [valor, setValor] = useState('')
   const [editando, setEditando] = useState(false)
@@ -549,6 +554,12 @@ function EnderecoEscritorio({ activeEmpresaId, podeEditar, toast }) {
     })
     return () => { vivo = false }
   }, [activeEmpresaId])
+
+  useEffect(() => {
+    if (hash !== '#endereco' || !salvo) return
+    blocoRef.current?.scrollIntoView({ block: 'center' })
+    alterarRef.current?.focus({ preventScroll: true })
+  }, [hash, salvo])
 
   const limpo = valor.trim().toLowerCase()
   const reservado = slugReservado(limpo)
@@ -590,11 +601,11 @@ function EnderecoEscritorio({ activeEmpresaId, podeEditar, toast }) {
   }
 
   return (
-    <div className="cfg-field cfg-endereco">
+    <div className="cfg-field cfg-endereco" id="endereco" ref={blocoRef}>
       <label className="modal-label" htmlFor="cfg-slug">Endereço do escritório (slug)</label>
       <div className="cfg-endereco-linha">
         <div className={`cfg-endereco-campo${editando ? '' : ' travado'}${erro || invalido ? ' invalido' : ''}`}>
-          <span className="cfg-endereco-prefixo">{window.location.host}/e/</span>
+          <span className="cfg-endereco-prefixo">{basePublica().replace(/^https?:\/\//, '')}/</span>
           <input
             id="cfg-slug"
             value={valor}
@@ -609,7 +620,7 @@ function EnderecoEscritorio({ activeEmpresaId, podeEditar, toast }) {
           />
         </div>
         {podeEditar && !editando && (
-          <button className="btn-cancel cfg-endereco-alterar" onClick={() => setEditando(true)}>Alterar</button>
+          <button ref={alterarRef} className="btn-cancel cfg-endereco-alterar" onClick={() => setEditando(true)}>Alterar</button>
         )}
         {editando && (
           <>

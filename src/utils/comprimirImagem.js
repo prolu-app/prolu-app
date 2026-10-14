@@ -47,14 +47,17 @@ export async function comprimirFoto(file) {
   return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.' + ext, { type: tipo })
 }
 
-export async function comprimirCapa(file) {
+// ladoMax (opcional): limita também o maior lado — capa e hero da Minha Página
+// (até 1440 px: a coluna tem no máximo 480 px, cobre tela 3x)
+export async function comprimirCapa(file, { ladoMax } = {}) {
   if (file.type === 'image/gif') return file
-  // já leve e em JPEG: não recomprime (cada passada perde qualidade)
-  if (file.type === 'image/jpeg' && file.size <= ALVO_BYTES) return file
   const img = await carregar(file)
   const larguraOriginal = img.width
   const alturaOriginal = img.height
-  let largura = Math.min(LARGURA_MAX, larguraOriginal)
+  const limiteLado = ladoMax ? Math.min(1, ladoMax / Math.max(larguraOriginal, alturaOriginal)) * larguraOriginal : Infinity
+  // já leve, em JPEG e no tamanho: não recomprime (cada passada perde qualidade)
+  if (file.type === 'image/jpeg' && file.size <= ALVO_BYTES && limiteLado >= larguraOriginal) { img.close?.(); return file }
+  let largura = Math.min(LARGURA_MAX, larguraOriginal, limiteLado)
   let melhor = null
   // reduz a qualidade e, se ainda passar do alvo, a largura (até 4 rodadas)
   rodadas: for (let rodada = 0; rodada < 4; rodada++, largura *= 0.8) {
