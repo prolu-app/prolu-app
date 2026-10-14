@@ -1,7 +1,7 @@
 // Render único da Minha Página v2 — o mesmo na página pública (documento
 // publicado, via pagina_publica) e na prévia do editor (rascunho).
 // O núcleo cuida do que vale para todos os layouts: variáveis de design,
-// fundo, fontes, itens visíveis, destaque separado e o selo "Feito com Prolu"
+// fundo, fontes, itens visíveis e o selo "Feito com Prolu"
 // (anexado aqui, então aparece em qualquer layout). O layout só decide a
 // estrutura (layouts/index.js).
 //
@@ -52,9 +52,7 @@ export default function PaginaRender({ doc, selo, escritorio = '', slug = '', mo
   const usadas = [...new Set([doc.aparencia.fonte, ...Object.values(fontesDoDoc(doc))])].join('|')
   useEffect(() => { usadas.split('|').forEach(carregarFonteV2) }, [usadas])
 
-  const visiveis = doc.itens.filter(itemVisivel)
-  const destaque = visiveis.find(it => it.tipo !== 'secao' && it.estilo?.destaque) || null
-  const itens = visiveis.filter(it => it !== destaque)
+  const itens = doc.itens.filter(itemVisivel)
   const Layout = layoutDe(doc.layout).Componente
   const comImagem = doc.aparencia.fundo.tipo === 'textura' || doc.aparencia.fundo.tipo === 'sombra'
 
@@ -69,7 +67,6 @@ export default function PaginaRender({ doc, selo, escritorio = '', slug = '', mo
       <Layout
         doc={doc}
         nome={doc.perfil.nome.trim() || escritorio}
-        destaque={destaque}
         itens={itens}
         hrefDe={it => hrefDoItem(it, slug)}
         previa={previa}

@@ -50,8 +50,8 @@
   text-align: center;
 }
 .pg-coluna--capa-capa .pg-conteudo { padding-top: 0; }
-/* hero: os itens começam logo abaixo da imagem */
-.pg-coluna--capa-hero .pg-conteudo { padding-top: 20px; }
+/* hero: os itens começam abaixo da imagem (20 → 28px) */
+.pg-coluna--capa-hero .pg-conteudo { padding-top: 28px; }
 .pg-coluna--capa-hero .pg-itens { margin-top: 0; }
 
 /* ── capa ── */
@@ -97,6 +97,8 @@
 .pg-hero-texto .pg-nome { color: #ffffff; }
 .pg-hero-texto .pg-subtitulo,
 .pg-hero-texto .pg-bio { color: rgba(255, 255, 255, 0.88); }
+/* no hero, subtítulo → bio continua 6px */
+.pg-hero-texto .pg-subtitulo + .pg-bio { margin-top: 6px; }
 
 /* ── perfil ── */
 .pg-foto {
@@ -143,10 +145,14 @@
   overflow-wrap: anywhere;
 }
 
-/* ── itens ── (títulos de seção seguem o estilo do subtítulo) */
-.pg-itens { width: 100%; display: flex; flex-direction: column; gap: 10px; margin-top: 28px; }
+/* subtítulo → bio: 6 → 10px (sem capa, banner e capa) */
+.pg-subtitulo + .pg-bio { margin-top: 10px; }
+
+/* ── itens ── (títulos de seção seguem o estilo do subtítulo)
+   entre botões: 10 → 14px; perfil → primeiro botão: 28 → 36px */
+.pg-itens { width: 100%; display: flex; flex-direction: column; gap: 14px; margin-top: 36px; }
 .pg-secao {
-  margin: 14px 0 2px;
+  margin: 10px 0 0; /* + 14px do espaço entre itens */
   font-family: var(--pg-fonte-subtitulo);
   font-size: calc(var(--pg-tam-subtitulo) * 0.93);
   font-weight: var(--pg-peso-subtitulo);
@@ -199,18 +205,6 @@
 .pg-item--imagem-grande { padding: 0; overflow: hidden; border-radius: var(--pg-raio-card); }
 .pg-item-banner { display: block; width: 100%; aspect-ratio: 2 / 1; object-fit: cover; }
 .pg-item--imagem-grande .pg-item-texto { padding: 12px 16px; }
-
-/* destaque: sempre no topo, cheio na cor de destaque (ou no estilo próprio) */
-.pg-item--destaque {
-  background: var(--pg-destaque-fundo);
-  color: var(--pg-destaque-texto);
-  border: var(--pg-destaque-borda);
-  min-height: calc(var(--pg-botao-altura) + 8px);
-  padding-top: calc(var(--pg-botao-py) + 4px);
-  padding-bottom: calc(var(--pg-botao-py) + 4px);
-  font-size: calc(var(--pg-tam-botoes) + 1px);
-}
-.pg-item--destaque.pg-item--imagem-grande { padding: 0; }
 
 /* selo "Feito com Prolu": cores fixas, não seguem o estilo da página */
 .pg-selo-wrap { margin-top: auto; padding-top: 36px; display: flex; justify-content: center; }

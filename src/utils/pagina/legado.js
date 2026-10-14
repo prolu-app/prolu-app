@@ -26,7 +26,6 @@ function estiloDoLink(estilo) {
   }
   return def({
     v: 1,
-    destaque: false,
     botao: Object.keys(botao).length ? botao : undefined,
     legado: Object.keys(legado).length ? legado : undefined,
   })

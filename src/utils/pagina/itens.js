@@ -15,7 +15,7 @@ export function novoId() {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
 }
 
-const estiloNovo = () => ({ v: 1, destaque: false, icone: null })
+const estiloNovo = () => ({ v: 1, icone: null })
 
 export const TIPOS_ITEM = {
   link: {

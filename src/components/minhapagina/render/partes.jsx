@@ -38,13 +38,13 @@ export function IconeSvg({ id, className }) {
 }
 
 // item da lista: título de seção, ou link/formulário com o visual escolhido
-export function ItemPagina({ doc, item, href, previa, destaque = false }) {
+export function ItemPagina({ doc, item, href, previa }) {
   if (item.tipo === 'secao') return <h2 className="pg-secao">{item.titulo}</h2>
   const visual = visualDoItem(item)
   const externo = item.tipo === 'link' && /^https?:/i.test(item.url)
   return (
     <a
-      className={`pg-item pg-item--${visual.replace('_', '-')}${destaque ? ' pg-item--destaque' : ''}`}
+      className={`pg-item pg-item--${visual.replace('_', '-')}`}
       href={href}
       style={varsDoItem(doc, item)}
       {...(externo ? { target: '_blank', rel: 'noopener noreferrer' } : {})}

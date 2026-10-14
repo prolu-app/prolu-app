@@ -1,5 +1,5 @@
-// Layout Clássico: coluna central de até 480px — capa, perfil, destaque no
-// topo da lista, itens e selo.
+// Layout Clássico: coluna central de até 480px — capa, perfil, itens (na
+// ordem da lista) e selo.
 // Capa:
 // • Banner: contida, com margem; foto parcialmente sobre ela; perfil centralizado.
 // • Capa: largura toda da coluna; foto parcialmente sobre ela; perfil centralizado.
@@ -23,7 +23,7 @@ function Perfil({ perfil, nome, classeFoto }) {
   )
 }
 
-export default function Classico({ doc, nome, destaque, itens, hrefDe, previa, selo }) {
+export default function Classico({ doc, nome, itens, hrefDe, previa, selo }) {
   const { perfil, capa } = doc
   const estiloCapa = capa.estilo !== 'nenhuma' && capa.imagem ? capa.estilo : 'nenhuma'
   const hero = estiloCapa === 'hero'
@@ -47,9 +47,8 @@ export default function Classico({ doc, nome, destaque, itens, hrefDe, previa, s
             classeFoto={`pg-foto pg-foto--${perfil.foto_formato}${sobreCapa ? ' pg-foto--sobre-capa' : ''}`} />
         )}
 
-        {(destaque || itens.length > 0) && (
+        {itens.length > 0 && (
           <nav className="pg-itens" aria-label="Links">
-            {destaque && <ItemPagina doc={doc} item={destaque} href={hrefDe(destaque)} previa={previa} destaque />}
             {itens.map(it => <ItemPagina key={it.id} doc={doc} item={it} href={hrefDe(it)} previa={previa} />)}
           </nav>
         )}

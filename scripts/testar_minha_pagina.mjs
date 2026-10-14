@@ -4,7 +4,7 @@
 //
 //   node scripts/testar_minha_pagina.mjs
 //
-// Confere: normalização tolerante, capas, subtítulo, destaque, visual dos
+// Confere: normalização tolerante, capas, subtítulo, ordem manual (sem destaque), espaçamentos, visual dos
 // itens, itens ocultos, selo em todos os layouts, nada de plano/limite no
 // HTML, só https nas imagens, conversão da página antiga, sugestão de ícone,
 // edição que preserva chaves, fontes/tamanhos por elemento, botão com
@@ -99,14 +99,33 @@ try {
   ]
   const hItens = html({ itens })
   const ordem = [...hItens.matchAll(/class="pg-item[^"]*"[^>]*>(?:(?!<\/a>).)*?pg-item-titulo">([^<]+)/g)].map(m => m[1])
-  confere('destaque sempre no topo', ordem[0] === 'Link 3', ordem.join(' | '))
+  confere('ordem é a da lista (destaque antigo ignorado, nada fixado no topo)', ordem[0] === 'Link 1' && ordem[1] === 'Link 3', ordem.join(' | '))
   confere('itens ocultos não aparecem (desativado, sem título, sem URL, formulário sem slug)',
-    JSON.stringify(ordem) === JSON.stringify(['Link 3', 'Link 1', 'Orçamento']), ordem.join(' | '))
+    JSON.stringify(ordem) === JSON.stringify(['Link 1', 'Link 3', 'Orçamento']), ordem.join(' | '))
   confere('título de seção aparece', hItens.includes('<h2 class="pg-secao">Projetos</h2>'))
   confere('seção desativada some', !html({ itens: [{ id: id(2), tipo: 'secao', ativo: false, titulo: 'Oculta' }] }).includes('Oculta'))
   confere('formulário aponta para o slug', hItens.includes('href="/e/exemplo/orcamento"') || hItens.includes('href="/exemplo/orcamento"'))
   const dois = html({ itens: [link(1, { estilo: { destaque: true } }), link(2, { estilo: { destaque: true } })] })
-  confere('dois destaques: só um é desenhado como destaque', (dois.match(/pg-item--destaque/g) || []).length === 1)
+  confere('documento antigo com destaque continua desenhando, sem destaque', !dois.includes('destaque') && (dois.match(/class="pg-item /g) || []).length === 2)
+  confere('normalização descarta a chave destaque', normalizarDoc({ itens: [link(1, { estilo: { destaque: true } })] }).itens[0].estilo.destaque === undefined)
+  const comDest = { v: 2, futura: 1, itens: [link(1, { estilo: { v: 1, destaque: true, icone: 'link', legado: { a: 1 } } }), { id: id(2), tipo: 'secao', titulo: 'S' }] }
+  const limpo = modelo.semDestaque(comDest)
+  confere('ao salvar, destaque sai e o resto fica', !('destaque' in limpo.itens[0].estilo) && limpo.itens[0].estilo.icone === 'link' && limpo.itens[0].estilo.legado.a === 1 && limpo.futura === 1 && limpo.itens[1].titulo === 'S')
+  confere('ao salvar sem destaque, o documento não muda', modelo.semDestaque(limpo) === limpo)
+  confere('itens novos e conversão sem destaque', !JSON.stringify(TIPOS_ITEM.link.criar()).includes('destaque') && !JSON.stringify(converterLegado({}, [{ id: id(1), tipo: 'link', titulo: 'a', url: 'https://a.co', estilo: {} }])).includes('destaque'))
+
+  // ── espaçamentos (PaginaRender.css) ──
+  const cssRender = fs.readFileSync(path.join(raiz, 'src/components/minhapagina/render/PaginaRender.css'), 'utf8')
+  // corpo da regra CSS cujo seletor é exatamente `sel`
+  const regra = sel => {
+    const i = cssRender.indexOf(`\n${sel} {`)
+    return i < 0 ? '' : cssRender.slice(cssRender.indexOf('{', i) + 1, cssRender.indexOf('}', i))
+  }
+  confere('entre botões 14px e perfil → 1º botão 36px', /gap:\s*14px/.test(regra('.pg-itens')) && /margin-top:\s*36px/.test(regra('.pg-itens')))
+  confere('subtítulo → bio 10px (sem capa, banner, capa)', /margin-top:\s*10px/.test(regra('.pg-subtitulo + .pg-bio')))
+  confere('hero: subtítulo → bio continua 6px', /margin-top:\s*6px/.test(regra('.pg-hero-texto .pg-subtitulo + .pg-bio')))
+  confere('hero: imagem → 1º botão 28px', /padding-top:\s*28px/.test(regra('.pg-coluna--capa-hero .pg-conteudo')))
+  confere('CSS sem regras de destaque', !/destaque/.test(cssRender))
 
   // ── visual do item ──
   confere('visual nada', html({ itens: [link(1)] }).includes('pg-item pg-item--nada'))
@@ -256,10 +275,9 @@ try {
   const ambos = bVars({ aparencia: { botao: { estilo: 'solido', preenchimento: '#ffffff', contorno: 2, cor_contorno: '#ff0000', texto: '#000000' } } })
   confere('preenchimento E contorno de cor diferente', ambos['--pg-botao-fundo'] === '#ffffff' && ambos['--pg-botao-borda'] === '2px solid #ff0000' && ambos['--pg-botao-texto'] === '#000000')
   confere('sem preenchimento e sem contorno', bVars({ aparencia: { botao: { preenchimento: 'nenhum', contorno: 0, texto: '#000000' } } })['--pg-botao-fundo'] === 'transparent')
-  confere('destaque automático herda o preenchimento dos botões', ambos['--pg-destaque-fundo'] === '#ffffff')
-  confere('destaque automático sem preenchimento herda o contorno', bVars({ aparencia: { botao: { preenchimento: 'nenhum', contorno: 1, cor_contorno: '#00aa00' } } })['--pg-destaque-fundo'] === '#00aa00')
-  const hDest = html({ itens: [link(1, { estilo: { destaque: true, botao: { preenchimento: 'nenhum', contorno: 3, cor_contorno: '#123456', texto: '#123456' } } })] })
-  confere('destaque com preenchimento/contorno/texto próprios', hDest.includes('--pg-destaque-fundo:transparent') && hDest.includes('--pg-destaque-borda:3px solid #123456'))
+  confere('sem variáveis de destaque', !Object.keys(ambos).some(k => k.includes('destaque')))
+  const hProprio = html({ itens: [link(1, { estilo: { botao: { preenchimento: 'nenhum', contorno: 3, cor_contorno: '#123456', texto: '#123456', cantos: 'full' } } }), link(2)] })
+  confere('estilo próprio: preenchimento/contorno/texto/cantos só no item', hProprio.includes('--pg-botao-fundo:transparent') && hProprio.includes('--pg-botao-borda:3px solid #123456') && hProprio.includes('--pg-raio:9999px') && (hProprio.match(/style="--pg-botao/g) || []).length === 1)
   const hLegItem = html({ itens: [link(1, { estilo: { botao: { estilo: 'contorno', cor_contorno: '#abcdef' } } })] })
   confere('estilo próprio antigo (Contorno) deriva o modelo novo', hLegItem.includes('--pg-botao-fundo:transparent') && hLegItem.includes('solid #abcdef'))
   confere('item com só cantos próprios mantém o botão da página', html({ aparencia: { botao: { estilo: 'solido', cor: '#112233' } }, itens: [link(1, { estilo: { botao: { cantos: 'full' } } })] }).includes('--pg-botao-fundo:#112233;'))
@@ -283,7 +301,7 @@ try {
   const comum = { doc: docEditor, docNormal: normalizarDoc(docEditor), alterar: () => {}, alterarDoc: () => {}, empresa: { nome: 'Esc', slug: 'esc' }, empresaId: id(99), off: false, toast: () => {} }
   const servidorFicticio = { existe: true, revisao: 3, noAr: false, temPublicado: true, pendente: true, publicado: normalizarDoc(docEditor), legado: { noAr: false, config: {} } }
   for (const [nome, el] of [
-    ['Conteúdo', React.createElement(AreaConteudo, { ...comum, formularios: [{ id: id(50), nome: 'Form', slug: 'form', ativo: true }], irParaCapa: () => {} })],
+    ['Conteúdo', React.createElement(AreaConteudo, { ...comum, formularios: [{ id: id(50), nome: 'Form', slug: 'form', ativo: true }] })],
     ['Aparência', React.createElement(AreaAparencia, comum)],
     ['Publicação', React.createElement(AreaPublicacao, { ...comum, servidor: servidorFicticio, seloFixo: true, onDefinirNoAr: () => {} })],
   ]) {
@@ -292,12 +310,18 @@ try {
     try { saida = renderToStaticMarkup(React.createElement(MemoryRouter, null, React.createElement(ToastProvider, null, el))) } catch (e) { erro = e }
     confere(`editor: área ${nome} desenha`, !erro && saida.length > 0, erro?.stack)
     if (nome === 'Conteúdo') {
-      confere('editor: destaque primeiro na lista, com selo', /Destaque<\/span>[^]*?value="Link 1"/.test(saida) && saida.indexOf('value="Link 1"') < saida.indexOf('value="Link 2"'))
+      confere('editor: sem destaque (sem "Destacar", sem selo), ordem da lista', !/Destaque|Destacar/.test(saida) && saida.indexOf('value="Link 1"') < saida.indexOf('value="Link 2"'))
+      confere('editor: Perfil sem foto e sem capa (só nome, subtítulo, bio)', !saida.includes('Foto de perfil') && !saida.includes('Ajustar em Aparência') && !saida.includes('Formato da foto'))
+      confere('editor: ícone compacto (botão Trocar, grade fechada)', saida.includes('mpe-icone-seletor') && saida.includes('>Trocar<') && !saida.includes('mpe-icone-pop'))
+      confere('editor: estilo próprio continua no item', saida.includes('Estilo próprio'))
       confere('editor: subtítulo com limite de 40', saida.includes('maxLength="40"') || saida.includes('maxlength="40"'))
     }
     if (nome === 'Aparência') {
       confere('editor: capa hero sem imagem avisa', saida.includes('precisa de uma imagem'))
       confere('editor: dica do Hero', saida.includes('Imagem alta com o nome sobre ela. Ex.: 1440×1440 px. JPG, PNG ou WEBP.'))
+      confere('editor: Cabeçalho com foto de perfil e capa', /id="mpe-cabecalho">Cabeçalho[^]*Foto de perfil[^]*Formato da foto de perfil[^]*id="mpe-capa">Capa[^]*Estilo da capa/.test(saida))
+      confere('editor: ordem Layout, Cabeçalho, Botões, Fundo, Texto', ['id="mpe-layout"', 'id="mpe-cabecalho"', 'id="mpe-botoes"', 'id="mpe-fundo"', 'id="mpe-texto"'].map(x => saida.indexOf(x)).every((v, i, a) => v >= 0 && (i === 0 || v > a[i - 1])))
+      confere('editor: Botões sem "Avançado" e sem cor do destaque', (() => { const b = saida.slice(saida.indexOf('id="mpe-botoes"'), saida.indexOf('id="mpe-fundo"')); return !b.includes('Avançado') && !/destaque/i.test(b) && b.includes('Cantos dos botões') && b.includes('Sombra dos botões') })())
       confere('editor: atalhos Sólido e Contorno + controles independentes', ['>Sólido<', '>Contorno<', 'Preenchimento', 'Sem preenchimento', '>Nenhum<'].every(t => saida.includes(t)))
       confere('editor: fonte principal e "Por elemento" recolhido', saida.includes('Fonte principal') && /<details class="mpe-avancado"><summary>Por elemento/.test(saida) && saida.includes('Igual à principal'))
       confere('editor: 12 fontes na lista', (saida.match(/<option value="Space Grotesk">/g) || []).length >= 1 && !saida.includes('<option value="Rubik">'))

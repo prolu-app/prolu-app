@@ -1,6 +1,6 @@
 // Layouts da Minha Página v2 — só estrutura; o visual vem das variáveis de
 // design. Livres em todos os planos (não entram na matriz de planos).
-// Layout novo: um componente que recebe { doc, nome, destaque, itens, hrefDe,
+// Layout novo: um componente que recebe { doc, nome, itens, hrefDe,
 // previa, selo } + uma entrada aqui + o id na lista do SQL (migration_056)
 // e em LISTAS.layout (utils/pagina/modelo.js).
 

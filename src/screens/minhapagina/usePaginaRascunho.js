@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase, supabaseReady } from '../../services/supabaseClient.js'
 import { converterLegado } from '../../utils/pagina/legado.js'
-import { comCaminho, docGravavel, normalizarDoc } from '../../utils/pagina/modelo.js'
+import { comCaminho, docGravavel, normalizarDoc, semDestaque } from '../../utils/pagina/modelo.js'
 
 const ESPERA = 800
 const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b)
@@ -60,11 +60,15 @@ export default function usePaginaRascunho({ empresaId, podeEditar, toast }) {
     const linha = pg.data
     const cfg = emp.data.pagina_config || {}
     const inicial = linha?.rascunho || docGravavel(converterLegado(cfg, lks.data || []))
+    // rascunho antigo com estilo.destaque: sai ao salvar
+    const comDestaque = semDestaque(inicial) !== inicial
     docRef.current = inicial
     revisaoRef.current = linha?.revisao || 0
     sujoRef.current = false
     conflitoRef.current = false
     setDoc(inicial)
+    // (vai no próximo salvamento ou na publicação; o desenho já ignora a chave)
+    if (comDestaque) sujoRef.current = true
     setEmpresa({ nome: emp.data.nome, slug: emp.data.slug })
     setFormularios(frm.data || [])
     setServidor({
@@ -96,7 +100,7 @@ export default function usePaginaRascunho({ empresaId, podeEditar, toast }) {
     if (emVooRef.current) await emVooRef.current
     if (conflitoRef.current) return false
     if (!sujoRef.current) return true
-    const enviado = docRef.current
+    const enviado = semDestaque(docRef.current) // destaque antigo sai ao salvar
     sujoRef.current = false
     setSalvamento('salvando')
     const tarefa = supabase.rpc('pagina_salvar_rascunho', { p_doc: enviado, p_revisao: revisaoRef.current })

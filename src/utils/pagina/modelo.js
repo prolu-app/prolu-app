@@ -70,7 +70,7 @@ export const PADRAO_V2 = {
     fonte: FONTE_PADRAO,
     fontes: { titulo: null, subtitulo: null, descricao: null, botoes: null }, // null = igual à principal
     tamanhos: { titulo: 'm', subtitulo: 'm', descricao: 'm', botoes: 'm' },
-    cor_texto: '#1a1a1a', cor_texto_suave: '#555555', cor_destaque: null,
+    cor_texto: '#1a1a1a', cor_texto_suave: '#555555',
     fundo: { tipo: 'cor', cor: '#f8f7f5', pattern: null, pattern_cor: '#000000', pattern_opacidade: 0.1, imagem: null, imagem_opacidade: 0.15 },
     botao: BOTAO_PADRAO,
   },
@@ -199,7 +199,6 @@ function normalizarItem(bruto) {
     imagem_url: url,
     imagem_modo: url ? opcao(it.imagem_modo, LISTAS.imagem_modo, 'icone') : null, // modo ausente com imagem = pequena
     estilo: {
-      destaque: e.destaque === true,
       icone: url ? null : opcao(e.icone, LISTAS.icone, null), // imagem vence o ícone
       botao: botaoParcial(e.botao), // só as chaves válidas; o resto vem de aparencia.botao
     },
@@ -216,15 +215,10 @@ export function normalizarDoc(bruto) {
   const a = obj(d.aparencia)
   const P = PADRAO_V2
   const itens = (Array.isArray(d.itens) ? d.itens : []).slice(0, LIMITES.itens).map(normalizarItem).filter(Boolean)
-  // ids únicos e no máximo 1 destaque (vale o primeiro)
+  // ids únicos. estilo.destaque (o "botão de destaque", removido na 058) é
+  // ignorado: a ordem dos itens é só a da lista.
   const vistos = new Set()
-  let temDestaque = false
-  const unicos = itens.filter(it => !vistos.has(it.id) && vistos.add(it.id)).map(it => {
-    if (!it.estilo?.destaque) return it
-    if (temDestaque) return { ...it, estilo: { ...it.estilo, destaque: false } }
-    temDestaque = true
-    return it
-  })
+  const unicos = itens.filter(it => !vistos.has(it.id) && vistos.add(it.id))
   return {
     v: VERSAO,
     layout: opcao(d.layout, LISTAS.layout, P.layout),
@@ -246,7 +240,6 @@ export function normalizarDoc(bruto) {
       ...normalizarTipografia(a),
       cor_texto: cor(a.cor_texto, P.aparencia.cor_texto),
       cor_texto_suave: cor(a.cor_texto_suave, P.aparencia.cor_texto_suave),
-      cor_destaque: cor(a.cor_destaque, null),
       fundo: normalizarFundo(a.fundo),
       botao: normalizarBotao(a.botao),
     },
@@ -272,12 +265,26 @@ export function docGravavel(bruto) {
         ...resto,
         estilo: {
           v: 1,
-          destaque: it.estilo.destaque,
           icone: it.estilo.icone,
           ...(it.estilo.botao ? { botao: it.estilo.botao } : {}),
           ...(legado && typeof legado === 'object' && !Array.isArray(legado) ? { legado } : {}),
         },
       }
+    }),
+  }
+}
+
+// Documento cru pronto para gravar: tira estilo.destaque (o "botão de
+// destaque" saiu na 058; o banco ainda aceita a chave, o editor a remove ao
+// salvar). Todo o resto, inclusive chaves desconhecidas, é preservado.
+export function semDestaque(doc) {
+  if (!doc || !Array.isArray(doc.itens) || !doc.itens.some(it => it?.estilo && 'destaque' in it.estilo)) return doc
+  return {
+    ...doc,
+    itens: doc.itens.map(it => {
+      if (!it?.estilo || !('destaque' in it.estilo)) return it
+      const { destaque: _fora, ...estilo } = it.estilo // eslint-disable-line no-unused-vars
+      return { ...it, estilo }
     }),
   }
 }

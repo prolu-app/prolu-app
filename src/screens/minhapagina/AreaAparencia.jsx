@@ -1,5 +1,6 @@
-// Área "Aparência" do editor da Minha Página v2: layout, capa, botões,
-// fundo e texto. Tema e fontes por pacote entram na Fase 2.
+// Área "Aparência" do editor da Minha Página v2: layout, cabeçalho (foto de
+// perfil e capa), botões (todos, de uma vez), fundo e texto. Temas prontos
+// entram na Fase 2.
 // Capa e Hero exigem imagem (sem ela: aviso + envio, sem trocar de estilo em
 // silêncio; a publicação fica bloqueada) e não aceitam GIF.
 
@@ -10,7 +11,7 @@ import ColorPicker from '../../components/minhapagina/ColorPicker.jsx'
 import FundoSelector from '../../components/minhapagina/FundoSelector.jsx'
 import PaginaRender from '../../components/minhapagina/render/PaginaRender.jsx'
 import { LAYOUTS } from '../../components/minhapagina/render/layouts/index.js'
-import { comprimirCapa } from '../../utils/comprimirImagem.js'
+import { comprimirCapa, comprimirFoto } from '../../utils/comprimirImagem.js'
 import { FONTES_V2 } from '../../utils/pagina/fontes.js'
 import { ESCALA } from '../../utils/pagina/tema.js'
 import { comCaminho } from '../../utils/pagina/modelo.js'
@@ -23,6 +24,7 @@ const DICA_CAPA = {
   capa: 'Largura toda da coluna, sem margens. Proporção 3:2 (ex.: 1440×960 px). JPG, PNG ou WEBP.',
   hero: 'Imagem alta com o nome sobre ela. Ex.: 1440×1440 px. JPG, PNG ou WEBP.',
 }
+const FORMATO_FOTO = [{ value: 'quadrado', label: 'Quadrado' }, { value: 'arredondado', label: 'Arredondado' }, { value: 'redondo', label: 'Redondo' }]
 const FOCO = [{ value: 'topo', label: 'Topo' }, { value: 'centro', label: 'Centro' }, { value: 'base', label: 'Base' }]
 const CANTOS = [{ value: 'none', label: 'Reto' }, { value: 'sm', label: 'P' }, { value: 'md', label: 'M' }, { value: 'lg', label: 'G' }, { value: 'full', label: 'Pílula' }]
 const SOMBRA = [{ value: 'none', label: 'Nenhuma' }, { value: 'soft', label: 'Suave' }, { value: 'strong', label: 'Forte' }, { value: 'hard', label: 'Marcada' }]
@@ -86,7 +88,6 @@ export default function AreaAparencia({ doc, docNormal, alterar, alterarDoc, emp
   const mudarBotao = (chave, v) => alterar(['aparencia', 'botao', chave], v)
   // preenchimento/contorno/texto: grava o modelo novo inteiro (nada mais é derivado de Sólido/Contorno)
   const mudarBotaoNovo = patch => alterarDoc(d => comCaminho(d, ['aparencia', 'botao'], botaoGravavel(d.aparencia?.botao, b, patch)))
-  const corDestaqueAuto = !doc.aparencia?.cor_destaque
 
   return (
     <>
@@ -100,8 +101,27 @@ export default function AreaAparencia({ doc, docNormal, alterar, alterarDoc, emp
         </div>
       </section>
 
-      <section className="fm-publico mpe-bloco" aria-labelledby="mpe-capa" id="mpe-capa-bloco">
-        <h2 className="mpe-titulo" id="mpe-capa">Capa</h2>
+      <section className="fm-publico mpe-bloco" aria-labelledby="mpe-cabecalho" id="mpe-capa-bloco">
+        <h2 className="mpe-titulo" id="mpe-cabecalho">Cabeçalho</h2>
+
+        <h3 className="mpe-subtitulo-bloco">Foto de perfil</h3>
+        <Linha rotulo="Foto" dica="Logo ou foto. Até 10 MB — reduzida no envio.">
+          <UploadImagem
+            url={docNormal.perfil.foto} rotulo="Foto de perfil" empresaId={empresaId} prefixo="foto" comprimir={comprimirFoto}
+            redonda={docNormal.perfil.foto_formato === 'redondo'} off={off} onMudar={v => alterar(['perfil', 'foto'], v)}
+          />
+        </Linha>
+        <Linha rotulo="Formato">
+          <Segmentos rotulo="Formato da foto de perfil" valor={docNormal.perfil.foto_formato} opcoes={FORMATO_FOTO} disabled={off} onChange={v => alterar(['perfil', 'foto_formato'], v)} />
+        </Linha>
+        {capa.estilo === 'hero' && (
+          <Linha rotulo="Mostrar foto" dica="No Hero: pequena, sobre a imagem, acima do nome.">
+            <FmSwitch ligado={!docNormal.perfil.foto_oculta} disabled={off} rotulo="Mostrar a foto de perfil sobre a capa" onChange={v => alterar(['perfil', 'foto_oculta'], !v)} />
+            <span className="fm-status-texto">{docNormal.perfil.foto_oculta ? 'Oculta' : 'Visível'}</span>
+          </Linha>
+        )}
+
+        <h3 className="mpe-subtitulo-bloco" id="mpe-capa">Capa</h3>
         <Linha rotulo="Estilo" dica={DICA_CAPA[capa.estilo]}>
           <Segmentos rotulo="Estilo da capa" valor={capa.estilo} opcoes={ESTILOS_CAPA} disabled={off} onChange={escolherCapa} />
         </Linha>
@@ -119,34 +139,20 @@ export default function AreaAparencia({ doc, docNormal, alterar, alterarDoc, emp
             <Linha rotulo="Ponto de foco" dica="Que parte da imagem fica visível quando ela é cortada.">
               <Segmentos rotulo="Ponto de foco da capa" valor={capa.foco} opcoes={FOCO} disabled={off} onChange={v => alterar(['capa', 'foco'], v)} />
             </Linha>
-            {capa.estilo === 'hero' && (
-              <Linha rotulo="Foto de perfil" dica="Pequena, sobre a imagem, acima do nome.">
-                <FmSwitch ligado={!docNormal.perfil.foto_oculta} disabled={off} rotulo="Mostrar a foto de perfil sobre a capa" onChange={v => alterar(['perfil', 'foto_oculta'], !v)} />
-                <span className="fm-status-texto">Mostrar</span>
-              </Linha>
-            )}
           </>
         )}
       </section>
 
       <section className="fm-publico mpe-bloco" aria-labelledby="mpe-botoes">
         <h2 className="mpe-titulo" id="mpe-botoes">Botões</h2>
+        <p className="mpe-nota mpe-nota-topo">Valem para todos os botões. Um item com "Estilo próprio" (em Conteúdo) usa o dele.</p>
         <BotaoControles botao={b} mudar={mudarBotaoNovo} off={off} />
-        <Linha rotulo="Cor do destaque" dica={corDestaqueAuto ? 'Automática: a cor dos botões.' : undefined}>
-          <FmSwitch ligado={corDestaqueAuto} disabled={off} rotulo="Cor do destaque automática"
-            onChange={v => alterar(['aparencia', 'cor_destaque'], v ? null : (b.preenchimento !== 'nenhum' ? b.preenchimento : b.cor_contorno))} />
-          <span className="fm-status-texto">Automática</span>
-          {!corDestaqueAuto && <ColorPicker rotulo="Cor do botão em destaque" valor={a.cor_destaque || (b.preenchimento !== 'nenhum' ? b.preenchimento : b.cor_contorno)} disabled={off} onChange={v => alterar(['aparencia', 'cor_destaque'], v)} />}
+        <Linha rotulo="Cantos">
+          <Segmentos rotulo="Cantos dos botões" valor={b.cantos} opcoes={CANTOS} disabled={off} onChange={v => mudarBotao('cantos', v)} />
         </Linha>
-        <details className="mpe-avancado">
-          <summary>Avançado</summary>
-          <Linha rotulo="Cantos">
-            <Segmentos rotulo="Cantos dos botões" valor={b.cantos} opcoes={CANTOS} disabled={off} onChange={v => mudarBotao('cantos', v)} />
-          </Linha>
-          <Linha rotulo="Sombra">
-            <Segmentos rotulo="Sombra dos botões" valor={b.sombra} opcoes={SOMBRA} disabled={off} onChange={v => mudarBotao('sombra', v)} />
-          </Linha>
-        </details>
+        <Linha rotulo="Sombra">
+          <Segmentos rotulo="Sombra dos botões" valor={b.sombra} opcoes={SOMBRA} disabled={off} onChange={v => mudarBotao('sombra', v)} />
+        </Linha>
       </section>
 
       <section className="fm-publico mpe-bloco" aria-labelledby="mpe-fundo">

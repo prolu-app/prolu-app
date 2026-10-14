@@ -71,20 +71,13 @@ export function fontesDoDoc(doc) {
   return Object.fromEntries(['titulo', 'subtitulo', 'descricao', 'botoes'].map(e => [e, a.fontes[e] || a.fonte]))
 }
 
-// cor do destaque "automática": a do botão (preenchimento; sem ele, o contorno; sem os dois, o texto)
-function corDestaqueAuto(b) {
-  if (b.preenchimento !== 'nenhum') return b.preenchimento
-  return b.contorno > 0 ? b.cor_contorno : b.texto
-}
-
-// raiz da página: fundo, textos, fontes, tamanhos, botões e o destaque padrão
+// raiz da página: fundo, textos, fontes, tamanhos e botões
 export function variaveisDeDesign(doc) {
   const a = doc.aparencia
   const f = a.fundo
   const fontes = fontesDoDoc(doc)
   const t = a.tamanhos
   const bt = ESCALA.botoes[t.botoes]
-  const destaque = a.cor_destaque || corDestaqueAuto(a.botao)
   const s = {
     backgroundColor: f.cor,
     '--pg-fundo': f.cor,
@@ -105,10 +98,6 @@ export function variaveisDeDesign(doc) {
     '--pg-botao-py': `${bt.py}px`,
     '--pg-botao-px': `${bt.px}px`,
     '--pg-botao-altura': `${bt.altura}px`,
-    '--pg-destaque': destaque,
-    '--pg-destaque-fundo': destaque,
-    '--pg-destaque-texto': contraste(destaque),
-    '--pg-destaque-borda': '2px solid transparent',
     ...varsDoBotao(a.botao),
   }
   if (f.tipo === 'pattern') s.backgroundImage = PATTERNS[f.pattern].fn(f.pattern_cor, f.pattern_opacidade)
@@ -119,11 +108,9 @@ export function variaveisDeDesign(doc) {
   return s
 }
 
-// estilo próprio de um item: redefine as variáveis só nele (o destaque também
-// passa a usar preenchimento, contorno e texto próprios). Sem estilo próprio: nada.
+// estilo próprio de um item: redefine as variáveis só nele. Sem estilo próprio:
+// nada (o item usa os botões da página).
 export function varsDoItem(doc, item) {
   if (!item.estilo?.botao) return undefined
-  const v = varsDoBotao(botaoDoItem(doc.aparencia.botao, item.estilo.botao))
-  if (!item.estilo.destaque) return v
-  return { ...v, '--pg-destaque-fundo': v['--pg-botao-fundo'], '--pg-destaque-texto': v['--pg-botao-texto'], '--pg-destaque-borda': v['--pg-botao-borda'] }
+  return varsDoBotao(botaoDoItem(doc.aparencia.botao, item.estilo.botao))
 }

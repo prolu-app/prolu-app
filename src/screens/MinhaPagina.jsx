@@ -126,7 +126,7 @@ export default function MinhaPagina() {
   const trocarArea = id => setParams(id === 'conteudo' ? {} : { area: id }, { replace: true })
   function irParaCapa() {
     trocarArea('aparencia')
-    setTimeout(() => document.getElementById('mpe-capa-bloco')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+    setTimeout(() => document.getElementById('mpe-capa')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
 
   async function publicar() {
@@ -202,7 +202,7 @@ export default function MinhaPagina() {
           <div role="tabpanel" id={`mpe-painel-${area}`} aria-labelledby={`mpe-aba-${area}`} className="mpe-painel">
             {area === 'conteudo' && (
               <AreaConteudo doc={doc} docNormal={docNormal} alterar={r.alterar} alterarDoc={r.alterarDoc} empresa={empresa}
-                empresaId={activeEmpresaId} formularios={formularios} off={off} toast={toast} irParaCapa={irParaCapa} />
+                empresaId={activeEmpresaId} formularios={formularios} off={off} toast={toast} />
             )}
             {area === 'aparencia' && (
               <AreaAparencia doc={doc} docNormal={docNormal} alterar={r.alterar} alterarDoc={r.alterarDoc} empresa={empresa}

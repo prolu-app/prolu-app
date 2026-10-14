@@ -3,6 +3,9 @@
 // é preservada — inclusive estilo.legado e qualquer chave futura.
 // Visual (link/formulário): Nada | Ícone (biblioteca, sugerido pelo endereço)
 // | Imagem pequena (imagem_modo 'icone') | Imagem grande (imagem_modo 'banner').
+// Ícone: botão compacto com o ícone atual + "Trocar", que abre um popover
+// com a grade (marcas e genéricos). Estilo próprio: preenchimento, contorno,
+// texto e cantos só deste item; desligado, o item segue os botões da página.
 
 import { useEffect, useRef, useState } from 'react'
 import { FmSwitch } from '../Formularios.jsx'
@@ -10,7 +13,7 @@ import { Linha, Segmentos } from '../FormularioAparencia.jsx'
 import { IconeSvg } from '../../components/minhapagina/render/partes.jsx'
 import { ICONES, ICONE_IDS } from '../../components/minhapagina/icones/icones.js'
 import { sugerirIcone } from '../../components/minhapagina/icones/sugerir.js'
-import { IconChevronDown, IconGrip, IconStar, IconTrash } from '../../components/Icons.jsx'
+import { IconChevronDown, IconGrip, IconTrash } from '../../components/Icons.jsx'
 import { comprimirCapa, comprimirFoto } from '../../utils/comprimirImagem.js'
 import { completarUrlLink } from '../../utils/paginaConfig.js'
 import { LIMITES, botaoDoItem } from '../../utils/pagina/modelo.js'
@@ -33,26 +36,73 @@ function visualNoEditor(it) {
 
 const iconePadrao = it => sugerirIcone(it.url) || (it.tipo === 'formulario' ? 'documento' : 'link')
 
+const GRUPOS_ICONE = [
+  { id: 'marca', rotulo: 'Marcas' },
+  { id: 'generico', rotulo: 'Genéricos' },
+]
+
+// botão com o ícone atual (ou o sugerido) + popover com a grade, que fecha ao
+// escolher, ao clicar fora ou com Esc
 function SeletorIcone({ valor, sugerido, onChange, off, rotulo }) {
+  const [aberto, setAberto] = useState(false)
+  const caixaRef = useRef(null)
+  const botaoRef = useRef(null)
+  const atual = valor || sugerido
+
+  useEffect(() => {
+    if (!aberto) return
+    const fora = e => { if (caixaRef.current && !caixaRef.current.contains(e.target)) setAberto(false) }
+    const esc = e => { if (e.key === 'Escape') { setAberto(false); botaoRef.current?.focus() } }
+    document.addEventListener('mousedown', fora)
+    document.addEventListener('touchstart', fora)
+    document.addEventListener('keydown', esc)
+    return () => {
+      document.removeEventListener('mousedown', fora)
+      document.removeEventListener('touchstart', fora)
+      document.removeEventListener('keydown', esc)
+    }
+  }, [aberto])
+
   return (
-    <div className="mpe-icones" role="radiogroup" aria-label={rotulo}>
-      {ICONE_IDS.map(id => (
-        <button
-          key={id} type="button" role="radio" aria-checked={valor === id} disabled={off}
-          className={`mpe-icone${valor === id ? ' on' : ''}${sugerido === id ? ' sugerido' : ''}`}
-          title={`${ICONES[id].rotulo}${sugerido === id ? ' (sugerido)' : ''}`} aria-label={ICONES[id].rotulo}
-          onClick={() => onChange(id)}
-        >
-          <IconeSvg id={id} className="mpe-icone-svg" />
-        </button>
-      ))}
+    <div className="mpe-icone-seletor" ref={caixaRef}>
+      <span className="mpe-icone-atual" title={ICONES[atual]?.rotulo}>
+        <IconeSvg id={atual} className="mpe-icone-svg" />
+        <span>{ICONES[atual]?.rotulo}</span>
+      </span>
+      <button
+        ref={botaoRef} type="button" className="fm-link-btn" disabled={off}
+        aria-haspopup="dialog" aria-expanded={aberto} onClick={() => setAberto(a => !a)}
+      >
+        Trocar
+      </button>
+      {aberto && (
+        <div className="mpe-icone-pop" role="dialog" aria-label={rotulo}>
+          {GRUPOS_ICONE.map(g => (
+            <div key={g.id} className="mpe-icone-grupo">
+              <div className="mpe-icone-grupo-nome">{g.rotulo}</div>
+              <div className="mpe-icones" role="radiogroup" aria-label={`${rotulo}: ${g.rotulo}`}>
+                {ICONE_IDS.filter(id => ICONES[id].grupo === g.id).map(id => (
+                  <button
+                    key={id} type="button" role="radio" aria-checked={valor === id}
+                    className={`mpe-icone${valor === id ? ' on' : ''}${sugerido === id ? ' sugerido' : ''}`}
+                    title={`${ICONES[id].rotulo}${sugerido === id ? ' (sugerido)' : ''}`} aria-label={ICONES[id].rotulo}
+                    onClick={() => { onChange(id); setAberto(false); botaoRef.current?.focus() }}
+                  >
+                    <IconeSvg id={id} className="mpe-icone-svg" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
 export default function ItemEditor({
-  item, indice, total, formularios, off, empresaId, ehDestaque, botaoPagina, focar, onFocado,
-  onMudar, onRemover, onMover, onDestacar, arrastando, sobre, onDragStart, onDragOver, onDrop, onDragEnd,
+  item, indice, total, formularios, off, empresaId, botaoPagina, focar, onFocado,
+  onMudar, onRemover, onMover, arrastando, sobre, onDragStart, onDragOver, onDrop, onDragEnd,
 }) {
   const tituloRef = useRef(null)
   const [armado, setArmado] = useState(false) // só arrasta pelo puxador
@@ -113,10 +163,10 @@ export default function ItemEditor({
     : !secao && visual !== 'nada' && visual !== 'icone' && !item.imagem_url ? 'Envie a imagem — sem ela, o link aparece sem imagem.'
     : null
 
-  const podeMover = !off && !ehDestaque
+  const podeMover = !off
   return (
     <div
-      className={['mp-link-card', ehDestaque ? 'mpe-destaque' : '', secao ? 'mpe-secao' : '', arrastando ? 'dragging' : '',
+      className={['mp-link-card', secao ? 'mpe-secao' : '', arrastando ? 'dragging' : '',
         item.ativo === false ? 'inativo' : '', sobre === 'before' ? 'drag-over-before' : '', sobre === 'after' ? 'drag-over-after' : ''].filter(Boolean).join(' ')}
       draggable={podeMover && armado}
       {...(podeMover ? { onDragStart, onDragOver, onDrop, onDragEnd: e => { setArmado(false); onDragEnd(e) } } : {})}
@@ -134,9 +184,7 @@ export default function ItemEditor({
       )}
       <div className="mp-link-corpo">
         <div className="mp-link-linha">
-          {ehDestaque
-            ? <span className="mp-link-tipo mpe-selo-destaque">Destaque</span>
-            : <span className="mp-link-tipo">{secao ? 'Seção' : item.tipo === 'formulario' ? 'Formulário' : 'Link'}</span>}
+          <span className="mp-link-tipo">{secao ? 'Seção' : item.tipo === 'formulario' ? 'Formulário' : 'Link'}</span>
           <input
             ref={tituloRef}
             className="fm-label-input mp-link-titulo" value={titulo} disabled={off} maxLength={LIMITES.titulo}
@@ -191,19 +239,13 @@ export default function ItemEditor({
             )}
 
             <div className="mpe-item-extras">
-              <button
-                type="button" className={`fm-link-btn mpe-destacar${ehDestaque ? ' on' : ''}`} disabled={off}
-                aria-pressed={ehDestaque} onClick={() => onDestacar(!ehDestaque)}
-              >
-                <IconStar /> {ehDestaque ? 'Tirar destaque' : 'Destacar'}
-              </button>
               <button type="button" className="fm-link-btn" onClick={() => setEstiloAberto(a => !a)} aria-expanded={estiloAberto}>
                 Estilo próprio{botaoProprio ? ' (ligado)' : ''}
               </button>
             </div>
             {estiloAberto && (
               <div className="mpe-estilo-proprio">
-                <Linha rotulo="Estilo próprio" dica={ehDestaque ? 'Desligado = destaque na cor de destaque da página.' : 'Desligado = segue os botões da página.'}>
+                <Linha rotulo="Estilo próprio" dica="Desligado = segue os botões da página.">
                   <FmSwitch ligado={!!botaoProprio} disabled={off} rotulo={`Estilo próprio do item ${n}`} onChange={usarEstiloProprio} />
                 </Linha>
                 {botaoProprio && (
