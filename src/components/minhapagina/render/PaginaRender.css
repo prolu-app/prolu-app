@@ -1,0 +1,186 @@
+/* Minha Página v2 (PaginaRender.jsx) — mobile-first, coluna de até 480px.
+   Prefixo .pg-: não colide com o render antigo (.mp-, PaginaView.css), que
+   continua desenhando as páginas ainda não publicadas pelo editor novo.
+   Visual só por variáveis de design (utils/pagina/tema.js). */
+.pg-pagina {
+  --pg-altura-tela: 100vh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-repeat: repeat;
+  isolation: isolate;
+  color: var(--pg-texto);
+  font-family: var(--pg-fonte-corpo);
+}
+@supports (height: 100svh) { .pg-pagina { --pg-altura-tela: 100svh; } }
+/* textura / luz natural: imagem por cima da cor, com opacidade própria */
+.pg-pagina--imagem::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: var(--pg-fundo-img);
+  background-size: cover;
+  background-position: center;
+  opacity: var(--pg-fundo-op, 0.15);
+  pointer-events: none;
+}
+.pg-pagina--previa { min-height: 100%; }
+
+/* coluna: o selo (margin-top: auto) fica na base quando há pouco conteúdo */
+.pg-coluna {
+  flex: 1;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+.pg-conteudo {
+  flex: 1;
+  padding: 48px 24px 24px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.pg-coluna--capa-capa .pg-conteudo,
+.pg-coluna--capa-hero .pg-conteudo { padding-top: 0; }
+
+/* ── capa ── */
+.pg-capa { width: 100%; overflow: hidden; }
+.pg-capa-img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.pg-capa--banner { aspect-ratio: 3 / 1; border-radius: 16px; margin-bottom: 16px; }
+.pg-capa--capa { aspect-ratio: 3 / 2; }
+.pg-capa--hero { height: clamp(280px, calc(var(--pg-altura-tela) * 0.55), 420px); }
+
+/* ── perfil ── */
+.pg-foto {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  margin-bottom: 12px;
+  background: #fff;
+}
+.pg-foto--quadrado { border-radius: 0; }
+.pg-foto--arredondado { border-radius: 18px; }
+.pg-foto--redondo { border-radius: 50%; }
+/* banner e capa: a foto sobe e fica parcialmente sobre a imagem */
+.pg-foto--sobre-capa { margin-top: -60px; box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.9); position: relative; }
+.pg-coluna--capa-capa .pg-foto--sobre-capa { margin-top: -44px; }
+/* hero: foto pequena logo abaixo da capa, sem sobrepor nada */
+.pg-foto--hero { width: 72px; height: 72px; margin-top: 16px; }
+.pg-coluna--capa-capa .pg-conteudo > .pg-nome:first-child,
+.pg-coluna--capa-hero .pg-conteudo > .pg-nome:first-child { margin-top: 20px; }
+
+.pg-nome {
+  margin: 0;
+  font-family: var(--pg-fonte-titulo);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--pg-texto);
+  overflow-wrap: anywhere;
+}
+.pg-subtitulo {
+  margin: 4px 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--pg-texto-suave);
+  overflow-wrap: anywhere;
+}
+.pg-bio {
+  margin: 6px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--pg-texto-suave);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* ── itens ── */
+.pg-itens { width: 100%; display: flex; flex-direction: column; gap: 10px; margin-top: 28px; }
+.pg-secao {
+  margin: 14px 0 2px;
+  font-family: var(--pg-fonte-titulo);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pg-texto-suave);
+  overflow-wrap: anywhere;
+}
+.pg-itens > .pg-secao:first-child { margin-top: 0; }
+.pg-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 12px 20px;
+  background: var(--pg-botao-fundo);
+  color: var(--pg-botao-texto);
+  border: var(--pg-botao-borda);
+  border-radius: var(--pg-raio);
+  box-shadow: var(--pg-sombra);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-decoration: none;
+  text-align: center;
+  overflow-wrap: anywhere;
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+.pg-item:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.pg-item:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+.pg-item-texto { display: flex; flex-direction: column; gap: 2px; }
+.pg-item-desc { font-size: 0.8125rem; font-weight: 400; opacity: 0.8; }
+
+/* ícone da biblioteca e imagem pequena: à esquerda, texto segue no centro */
+.pg-item--icone, .pg-item--imagem-pequena { padding-left: 56px; padding-right: 56px; min-height: 52px; }
+.pg-item-icone {
+  position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+  width: 22px; height: 22px;
+}
+.pg-item-mini {
+  position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+  width: 36px; height: 36px; object-fit: cover; border-radius: var(--pg-raio-icone);
+}
+/* imagem grande: o item vira card — imagem no topo, texto embaixo */
+.pg-item--imagem-grande { padding: 0; overflow: hidden; border-radius: var(--pg-raio-card); }
+.pg-item-banner { display: block; width: 100%; aspect-ratio: 2 / 1; object-fit: cover; }
+.pg-item--imagem-grande .pg-item-texto { padding: 12px 16px; }
+
+/* destaque: sempre no topo, cheio na cor de destaque (ou no estilo próprio) */
+.pg-item--destaque {
+  background: var(--pg-destaque-fundo);
+  color: var(--pg-destaque-texto);
+  border: var(--pg-destaque-borda);
+  min-height: 56px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.pg-item--destaque.pg-item--imagem-grande { padding: 0; }
+
+/* selo "Feito com Prolu": cores fixas, não seguem o estilo da página */
+.pg-selo-wrap { margin-top: auto; padding-top: 36px; display: flex; justify-content: center; }
+.pg-selo {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 18px 8px 10px;
+  border-radius: 999px; background: #121210; color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 2px 10px rgba(18, 18, 16, 0.25);
+  font-family: 'Rubik', system-ui, sans-serif; font-size: 14px; font-weight: 600; line-height: 1;
+  text-decoration: none; transition: transform 0.15s, box-shadow 0.15s;
+}
+.pg-selo:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(18, 18, 16, 0.24); }
+.pg-selo:focus-visible { outline: 2px solid #CBE921; outline-offset: 3px; }
+.pg-selo img { width: 20px; height: 20px; border-radius: 6px; display: block; }
