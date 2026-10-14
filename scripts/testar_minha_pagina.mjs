@@ -41,7 +41,7 @@ try {
   const { LAYOUTS } = await carregar('/src/components/minhapagina/render/layouts/index.js')
   const PaginaRender = (await carregar('/src/components/minhapagina/render/PaginaRender.jsx')).default
   const { normalizarDoc, docGravavel, comCaminho, LISTAS, LIMITES } = modelo
-  const { FONTES_V2, FONTE_PADRAO } = await carregar('/src/utils/pagina/fontes.js')
+  const { FONTES_V2, FONTE_PADRAO, cssDasFontes, urlDaFonte } = await carregar('/src/utils/pagina/fontes.js')
   const { ESCALA, variaveisDeDesign } = await carregar('/src/utils/pagina/tema.js')
 
   const html = (bruto, props = {}) => renderToStaticMarkup(React.createElement(PaginaRender, {
@@ -145,8 +145,10 @@ try {
      { id: id(2), tipo: 'formulario', titulo: 'Orçamento', formulario_id: id(9), ativo: false, estilo: {} }],
   )
   confere('legado: nome, bio e capa banner', antigo.perfil.nome === 'Isa' && antigo.capa.estilo === 'banner' && antigo.capa.imagem === IMG)
-  confere('legado: cantos e fonte', antigo.aparencia.botao.cantos === 'full' && antigo.aparencia.fonte === 'Lato')
-  confere('legado: Lato (fora da lista nova) vira a principal padrão', docGravavel(antigo).aparencia.fonte === 'Montserrat')
+  confere('legado: cantos e fonte (Lato → Inter)', antigo.aparencia.botao.cantos === 'full' && antigo.aparencia.fonte === 'Inter' && docGravavel(antigo).aparencia.fonte === 'Inter')
+  for (const [antiga, nova] of [['Rubik', 'Work Sans'], ['Lato', 'Inter'], ['Raleway', 'Josefin Sans'], ['Libre Baskerville', 'Lora'], ['Abhaya Libre', 'Lora'], ['Playfair Display', 'Playfair Display']]) {
+    confere(`legado: ${antiga} → ${nova}`, docGravavel(converterLegado({ fonte: antiga }, [])).aparencia.fonte === nova)
+  }
   confere('legado: página antiga sem fonte = Inter (o padrão de lá)', converterLegado({}, []).aparencia.fonte === 'Inter' && docGravavel(converterLegado({}, [])).aparencia.fonte === 'Inter')
   confere('legado: gravável sem fonte_titulo/fonte_corpo', !('fonte_titulo' in docGravavel(antigo).aparencia) && !('fonte_corpo' in docGravavel(antigo).aparencia))
   confere('legado: selo e cor da bio', antigo.selo === false && antigo.aparencia.cor_texto_suave === '#333333')
@@ -204,7 +206,7 @@ try {
   // ── fontes e tamanhos ──
   const vars = d => variaveisDeDesign(normalizarDoc(d))
   const vPadrao = vars({})
-  confere('ausente = Montserrat em tudo', FONTE_PADRAO === 'Montserrat' && ['--pg-fonte', '--pg-fonte-titulo', '--pg-fonte-subtitulo', '--pg-fonte-descricao', '--pg-fonte-botoes'].every(k => vPadrao[k].startsWith("'Montserrat'")))
+  confere('ausente = Montserrat em tudo', FONTE_PADRAO === 'Montserrat' && ['--pg-fonte', '--pg-fonte-titulo', '--pg-fonte-subtitulo', '--pg-fonte-descricao', '--pg-fonte-botoes'].every(k => vPadrao[k].startsWith("'PG Montserrat'")))
   confere('ausente = tamanho M (o de antes)', vPadrao['--pg-tam-titulo'] === '20px' && vPadrao['--pg-tam-subtitulo'] === '14px' && vPadrao['--pg-tam-descricao'] === '14px' && vPadrao['--pg-tam-botoes'] === '15px' && vPadrao['--pg-botao-altura'] === '48px' && vPadrao['--pg-botao-py'] === '12px' && vPadrao['--pg-botao-px'] === '20px')
   for (const f of FONTES_V2) {
     const v = vars({ aparencia: { fonte: f.id } })
@@ -212,13 +214,27 @@ try {
   }
   confere('DM Serif Display: negrito usa 400 (sem peso falso)', vars({ aparencia: { fonte: 'DM Serif Display' } })['--pg-peso-botoes'] === 400)
   const vEl = vars({ aparencia: { fonte: 'Inter', fontes: { titulo: 'Oswald', subtitulo: null, descricao: 'Lora', botoes: 'Poppins' } } })
-  confere('fonte por elemento', vEl['--pg-fonte-titulo'].startsWith("'Oswald'") && vEl['--pg-fonte-descricao'].startsWith("'Lora'") && vEl['--pg-fonte-botoes'].startsWith("'Poppins'"))
-  confere('"Igual à principal" (null) usa a principal', vEl['--pg-fonte-subtitulo'].startsWith("'Inter'"))
+  confere('fonte por elemento', vEl['--pg-fonte-titulo'].startsWith("'PG Oswald'") && vEl['--pg-fonte-descricao'].startsWith("'PG Lora'") && vEl['--pg-fonte-botoes'].startsWith("'PG Poppins'"))
+  confere('"Igual à principal" (null) usa a principal', vEl['--pg-fonte-subtitulo'].startsWith("'PG Inter'"))
   const vDesc = vars({ aparencia: { fonte: 'Comic Sans', fontes: { titulo: 'Papyrus' }, tamanhos: { titulo: 'xg' } } })
-  confere('fonte desconhecida ignorada', vDesc['--pg-fonte'].startsWith("'Montserrat'") && vDesc['--pg-fonte-titulo'].startsWith("'Montserrat'") && vDesc['--pg-tam-titulo'] === '20px')
+  confere('fonte desconhecida ignorada', vDesc['--pg-fonte'].startsWith("'PG Montserrat'") && vDesc['--pg-fonte-titulo'].startsWith("'PG Montserrat'") && vDesc['--pg-tam-titulo'] === '20px')
   const vLeg = vars({ aparencia: { fonte_titulo: 'Playfair Display', fonte_corpo: 'Inter' } })
-  confere('rascunho antigo: fonte_corpo = principal, fonte_titulo = título', vLeg['--pg-fonte'].startsWith("'Inter'") && vLeg['--pg-fonte-titulo'].startsWith("'Playfair Display'"))
-  confere('rascunho antigo com fonte fora da lista nova = padrão', vars({ aparencia: { fonte_titulo: 'Lato', fonte_corpo: 'Rubik' } })['--pg-fonte'].startsWith("'Montserrat'"))
+  confere('rascunho antigo: fonte_corpo = principal, fonte_titulo = título', vLeg['--pg-fonte'].startsWith("'PG Inter'") && vLeg['--pg-fonte-titulo'].startsWith("'PG Playfair Display'"))
+  const vLeg2 = vars({ aparencia: { fonte_titulo: 'Libre Baskerville', fonte_corpo: 'Rubik' } })
+  confere('rascunho antigo com fonte que saiu da lista vira a mais próxima', vLeg2['--pg-fonte'].startsWith("'PG Work Sans'") && vLeg2['--pg-fonte-titulo'].startsWith("'PG Lora'"))
+
+  // ── self-host: @font-face só das fontes usadas, arquivos no app, nada de terceiros ──
+  const css1 = cssDasFontes(['Oswald', 'Oswald', 'Comic Sans'])
+  confere('@font-face só das fontes pedidas (e sem repetir)', (css1.match(/@font-face/g) || []).length === 2 && css1.includes("'PG Oswald'") && !css1.includes('Comic'))
+  confere('@font-face com font-display: swap e woff2 do próprio app', css1.includes('font-display:swap') && css1.includes("src:url(/fonts/oswald-400.woff2) format('woff2')"))
+  confere('DM Serif Display: só o 400', (cssDasFontes(['DM Serif Display']).match(/@font-face/g) || []).length === 1)
+  for (const f of FONTES_V2) for (const peso of f.pesos) {
+    const arq = path.join(raiz, 'public', urlDaFonte(f.id, peso))
+    confere(`arquivo ${urlDaFonte(f.id, peso)} existe`, fs.existsSync(arq) && fs.statSync(arq).size > 4000)
+  }
+  confere('public/fonts/LICENCAS.txt com as 12 fontes', (() => { const t = fs.readFileSync(path.join(raiz, 'public/fonts/LICENCAS.txt'), 'utf8'); return FONTES_V2.every(f => t.includes(`${f.id} (@fontsource/`)) && t.includes('SIL OPEN FONT LICENSE Version 1.1') })())
+  const fontesDoRender = ['src/utils/pagina/fontes.js', 'src/utils/pagina/tema.js', 'src/components/minhapagina/render/PaginaRender.jsx', 'src/components/minhapagina/render/PaginaRender.css', 'src/components/minhapagina/render/partes.jsx', 'src/components/minhapagina/render/layouts/Classico.jsx']
+  confere('render e fontes sem serviço de fontes de terceiros', fontesDoRender.every(f => !/fonts.googleapis|fonts.gstatic|use.typekit|fonts.bunny/.test(fs.readFileSync(path.join(raiz, f), 'utf8'))))
   for (const el of LISTAS.elemento) for (const t of LISTAS.tamanho) {
     const v = vars({ aparencia: { tamanhos: { [el]: t } } })
     const esperado = el === 'botoes' ? `${ESCALA.botoes[t].fonte}px` : `${ESCALA[el][t]}px`

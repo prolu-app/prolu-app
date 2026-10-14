@@ -11,7 +11,7 @@
 //   listas fechadas daqui — mudar nos dois lugares.
 
 import { FONTES, TEXTURAS, SOMBRAS } from '../paginaConfig.js'
-import { FONTE_IDS, FONTE_PADRAO } from './fontes.js'
+import { FONTE_IDS, FONTE_PADRAO, fonteDaLista } from './fontes.js'
 import { PATTERNS } from '../pagePatterns.js'
 import { ICONE_IDS } from '../../components/minhapagina/icones/icones.js'
 
@@ -25,7 +25,7 @@ export const LISTAS = {
   foto_formato: ['quadrado', 'arredondado', 'redondo'],
   fonte: FONTE_IDS,
   // fonte_titulo/fonte_corpo de rascunhos anteriores à 057: aceitas no banco
-  // (lista antiga + nova), lidas só se estiverem na lista nova
+  // (lista antiga + nova); as que saíram da lista viram a mais próxima (fontes.js)
   fonte_legada: [...new Set([...FONTES.map(f => f.id), ...FONTE_IDS])],
   tamanho: ['p', 'm', 'g', 'gg'],
   elemento: ['titulo', 'subtitulo', 'descricao', 'botoes'],
@@ -146,12 +146,13 @@ export function botaoDoItem(paginaBotao, proprio) {
 
 // fonte principal + por elemento (null = igual à principal) e tamanhos P/M/G/GG.
 // Rascunho anterior à 057: fonte_corpo vira a principal e fonte_titulo, se
-// diferente, a do título — só se estiverem na lista nova.
+// diferente, a do título — fontes que saíram da lista viram a mais próxima.
 function normalizarTipografia(a) {
-  const fonte = opcao(a.fonte, LISTAS.fonte, null) ?? opcao(a.fonte_corpo, LISTAS.fonte, null) ?? FONTE_PADRAO
+  const fonte = opcao(a.fonte, LISTAS.fonte, null) ?? fonteDaLista(a.fonte_corpo) ?? FONTE_PADRAO
   const f = obj(a.fontes)
   const t = obj(a.tamanhos)
-  const tituloLegado = !a.fontes && LISTAS.fonte.includes(a.fonte_titulo) && a.fonte_titulo !== fonte ? a.fonte_titulo : null
+  const titulo = fonteDaLista(a.fonte_titulo)
+  const tituloLegado = !a.fontes && titulo && titulo !== fonte ? titulo : null
   return {
     fonte,
     fontes: {
