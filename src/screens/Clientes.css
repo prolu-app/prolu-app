@@ -106,19 +106,6 @@
 }
 
 /* Botão perigo */
-.btn-danger {
-  padding: 9px 20px;
-  border-radius: var(--r-sm);
-  border: none;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  background: var(--red);
-  color: #fff;
-  transition: opacity 0.15s;
-}
-.btn-danger:hover { opacity: 0.85; }
 
 /* Responsivo */
 @media (max-width: 600px) {

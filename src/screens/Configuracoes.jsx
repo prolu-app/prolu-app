@@ -11,6 +11,7 @@ import { AvisoPlano } from '../components/BloqueioPlano.jsx'
 import { useConta } from '../contexts/ContaContext.jsx'
 import { rotuloPlano, planoMinimo } from '../utils/planos.js'
 import { formatarTelefone, mascaraTelefone, telefoneParaSalvar } from '../utils/telefone.js'
+import '../components/estilosCompartilhados.css'
 import './Configuracoes.css'
 
 const ROLE_LABEL = { prolu_admin: 'Prolu', master: 'Master', gestor: 'Gestor', comum: 'Colaborador' }

@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useRef, useState } from 'react'
+import { Fragment, Suspense, useCallback, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import {
@@ -322,7 +322,8 @@ export default function AppLayout() {
               </div>
             )}
           </div>
-          <Outlet />
+          {/* telas carregadas sob demanda (App.jsx): só a área da tela espera */}
+          <Suspense fallback={<div className="app-tela-carregando" aria-busy="true" />}><Outlet /></Suspense>
         </main>
       </div>
     </>

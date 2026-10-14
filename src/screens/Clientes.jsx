@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import { useToast } from '../contexts/ToastContext.jsx'
 import { supabase, supabaseReady } from '../services/supabaseClient.js'
 import { IconPlus, IconEdit, IconTrash, IconSearch, IconClose } from '../components/Icons.jsx'
+import '../components/estilosCompartilhados.css'
 import './Clientes.css'
 
 const FORM_VAZIO = { nome: '', telefone: '', email: '' }

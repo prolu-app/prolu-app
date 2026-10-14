@@ -8,6 +8,7 @@ import { useSomenteLeitura } from '../components/BloqueioPlano.jsx'
 import {
   IconPlus, IconMoney, IconCRM, IconPercent, IconEdit,
 } from '../components/Icons.jsx'
+import '../components/estilosCompartilhados.css'
 import './Indicadores.css'
 
 const YEAR_MIN = 2020

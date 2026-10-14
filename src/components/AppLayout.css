@@ -6,11 +6,6 @@
   --context-banner-h: 0px;
 }
 
-/* Fundo geral — tom levemente mais escuro que o conteúdo, dá profundidade
-   sem precisar de sombras pesadas. */
-body, #root, .app {
-  background: #e8e7e1;
-}
 .app {
   display: flex;
   height: 100vh;
@@ -370,7 +365,6 @@ body, #root, .app {
 /* Responsivo */
 @media (max-width: 860px) {
   .topbar { display: flex; }
-  body, #root, .app { background: var(--cream); }
   /* Sem contexto de empilhamento próprio no mobile: o drawer (fixed, z-index 100)
      precisa vencer o navbar (90) e o scrim (95), que ficam fora de .app */
   .app {

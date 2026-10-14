@@ -1,44 +1,58 @@
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { ehDominioCurto } from './utils/slug.js'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext.jsx'
 import { useToast } from './contexts/ToastContext.jsx'
-import AppLayout from './components/AppLayout.jsx'
-import Login from './screens/Login.jsx'
-import Onboarding from './screens/Onboarding.jsx'
-import AceitarConvite from './screens/AceitarConvite.jsx'
 import FormularioPublico from './screens/FormularioPublico.jsx'
 import MinhaPaginaPublica from './screens/MinhaPaginaPublica.jsx'
-
-import Inicio from './screens/Inicio.jsx'
-import BaseConhecimento from './screens/BaseConhecimento.jsx'
-import CRM from './screens/CRM.jsx'
-import Precificacao from './screens/Precificacao.jsx'
-import PrecificacaoDetalhe from './screens/PrecificacaoDetalhe.jsx'
-import ModelosEtapas from './screens/ModelosEtapas.jsx'
-import PrecificacaoEtiquetas from './screens/PrecificacaoEtiquetas.jsx'
-import ValorHora from './screens/ValorHora.jsx'
-import Clientes from './screens/Clientes.jsx'
-import Formularios from './screens/Formularios.jsx'
-import FormularioEditor from './screens/FormularioEditor.jsx'
-import MinhaPagina from './screens/MinhaPagina.jsx'
-import Dashboard from './screens/Dashboard.jsx'
-import PlanoPratico from './screens/PlanoPratico.jsx'
-import ClienteIdeal from './screens/ClienteIdeal.jsx'
-import Indicadores from './screens/Indicadores.jsx'
-import AgentePrl from './screens/AgentePrl.jsx'
-import Configuracoes from './screens/Configuracoes.jsx'
-import Avisos from './screens/Avisos.jsx'
-import AdminInicio from './screens/admin/AdminInicio.jsx'
-import AdminEscritorios from './screens/admin/AdminEscritorios.jsx'
-import AdminModelosPrecificacao from './screens/admin/AdminModelosPrecificacao.jsx'
-import AdminModelosFormulario from './screens/admin/AdminModelosFormulario.jsx'
-import AdminPlanoPraticoPadrao from './screens/admin/AdminPlanoPraticoPadrao.jsx'
-import AdminCursos from './screens/admin/AdminCursos.jsx'
-import Planos from './screens/Planos.jsx'
-import ContaSuspensa from './screens/ContaSuspensa.jsx'
 import BloqueioPlano from './components/BloqueioPlano.jsx'
 import { useConta } from './contexts/ContaContext.jsx'
+
+// Divisão de código (B0): as telas do app só baixam quando abertas, cada uma
+// no seu pedaço (JS + CSS). As páginas públicas (Minha Página e formulário)
+// ficam no pacote inicial — quem abre prolu.link/<slug> não baixa o app.
+const AppLayout = lazy(() => import('./components/AppLayout.jsx'))
+const Login = lazy(() => import('./screens/Login.jsx'))
+const Onboarding = lazy(() => import('./screens/Onboarding.jsx'))
+const AceitarConvite = lazy(() => import('./screens/AceitarConvite.jsx'))
+const Inicio = lazy(() => import('./screens/Inicio.jsx'))
+const BaseConhecimento = lazy(() => import('./screens/BaseConhecimento.jsx'))
+const CRM = lazy(() => import('./screens/CRM.jsx'))
+const Precificacao = lazy(() => import('./screens/Precificacao.jsx'))
+const PrecificacaoDetalhe = lazy(() => import('./screens/PrecificacaoDetalhe.jsx'))
+const ModelosEtapas = lazy(() => import('./screens/ModelosEtapas.jsx'))
+const PrecificacaoEtiquetas = lazy(() => import('./screens/PrecificacaoEtiquetas.jsx'))
+const ValorHora = lazy(() => import('./screens/ValorHora.jsx'))
+const Clientes = lazy(() => import('./screens/Clientes.jsx'))
+const Formularios = lazy(() => import('./screens/Formularios.jsx'))
+const FormularioEditor = lazy(() => import('./screens/FormularioEditor.jsx'))
+const MinhaPagina = lazy(() => import('./screens/MinhaPagina.jsx'))
+const Dashboard = lazy(() => import('./screens/Dashboard.jsx'))
+const PlanoPratico = lazy(() => import('./screens/PlanoPratico.jsx'))
+const ClienteIdeal = lazy(() => import('./screens/ClienteIdeal.jsx'))
+const Indicadores = lazy(() => import('./screens/Indicadores.jsx'))
+const AgentePrl = lazy(() => import('./screens/AgentePrl.jsx'))
+const Configuracoes = lazy(() => import('./screens/Configuracoes.jsx'))
+const Avisos = lazy(() => import('./screens/Avisos.jsx'))
+const AdminInicio = lazy(() => import('./screens/admin/AdminInicio.jsx'))
+const AdminEscritorios = lazy(() => import('./screens/admin/AdminEscritorios.jsx'))
+const AdminModelosPrecificacao = lazy(() => import('./screens/admin/AdminModelosPrecificacao.jsx'))
+const AdminModelosFormulario = lazy(() => import('./screens/admin/AdminModelosFormulario.jsx'))
+const AdminPlanoPraticoPadrao = lazy(() => import('./screens/admin/AdminPlanoPraticoPadrao.jsx'))
+const AdminCursos = lazy(() => import('./screens/admin/AdminCursos.jsx'))
+const Planos = lazy(() => import('./screens/Planos.jsx'))
+const ContaSuspensa = lazy(() => import('./screens/ContaSuspensa.jsx'))
+
+// enquanto o pedaço de uma tela baixa (fora do AppLayout)
+function Carregando() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+      <div className="logo-mark" style={{ fontFamily: 'Abhaya Libre, serif', fontWeight: 700, fontSize: 32, position: 'relative', zIndex: 1 }}>
+        <span style={{ position: 'relative' }}>prolu</span>
+      </div>
+    </div>
+  )
+}
 
 // Bloqueia o acesso direto a uma rota por URL quando o usuário não tem
 // permissão (acesso.<tela> === false): redireciona para / com um toast
@@ -83,7 +97,7 @@ export default function App() {
     )
   }
 
-  if (location.pathname === '/aceitar-convite') return <AceitarConvite />
+  if (location.pathname === '/aceitar-convite') return <Suspense fallback={<Carregando />}><AceitarConvite /></Suspense>
   // Páginas públicas, sem login e fora do AppLayout:
   //   /e/:slugEscritorio                 → Minha Página (migration_041)
   //   /e/:slugEscritorio/:slugFormulario → formulário (Edge Function formulario-publico)
@@ -98,33 +112,30 @@ export default function App() {
     )
   }
 
-  if (loading || carregandoConta) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-        <div className="logo-mark" style={{ fontFamily: 'Abhaya Libre, serif', fontWeight: 700, fontSize: 32, position: 'relative', zIndex: 1 }}>
-          <span style={{ position: 'relative' }}>prolu</span>
-        </div>
-      </div>
-    )
-  }
+  if (loading || carregandoConta) return <Carregando />
 
   // Usuário autenticado no Supabase Auth, mas ainda sem registro em `usuarios`
   // (acabou de criar conta ou está confirmando e-mail).
-  if (user?.needsOnboarding) return <Onboarding initialUser={user} />
+  if (user?.needsOnboarding) return <Suspense fallback={<Carregando />}><Onboarding initialUser={user} /></Suspense>
 
   if (!user) {
-    return showOnboarding
-      ? <Onboarding />
-      : <Login onCreateAccount={() => setShowOnboarding(true)} />
+    return (
+      <Suspense fallback={<Carregando />}>
+        {showOnboarding ? <Onboarding /> : <Login onCreateAccount={() => setShowOnboarding(true)} />}
+      </Suspense>
+    )
   }
 
   // Conta suspensa/encerrando: tela cheia, nenhuma rota do app. O prolu_admin
   // nunca cai aqui (nem dentro de um escritório suspenso).
-  if (!contaAtiva && !isProluAdmin) return <ContaSuspensa />
+  if (!contaAtiva && !isProluAdmin) return <Suspense fallback={<Carregando />}><ContaSuspensa /></Suspense>
 
   const isAdminMode = isProluAdmin && !impersonatedEmpresaId && !viewAsUser
 
+  // a tela em si suspende dentro do AppLayout (Suspense em volta do Outlet):
+  // o menu não pisca ao navegar; este fallback só cobre o primeiro carregamento
   return (
+    <Suspense fallback={<Carregando />}>
     <Routes>
       <Route element={<AppLayout />}>
         <Route index element={isAdminMode ? <Navigate to="/admin" replace /> : <Inicio />} />
@@ -158,5 +169,6 @@ export default function App() {
         <Route path="/admin/cursos" element={<AdminCursos />} />
       </Route>
     </Routes>
+    </Suspense>
   )
 }

@@ -15,6 +15,7 @@ import {
   IconChevronLeft, IconChevronRight, IconEdit, IconTrash, IconBase, IconPdf, IconVideo, IconTexto, IconSparkle, IconEye,
 } from '../components/Icons.jsx'
 import RichEditor from '../components/RichEditor.jsx'
+import '../components/estilosCompartilhados.css'
 import './BaseConhecimento.css'
 
 // Ícone de tipo ao lado do nome da aula (lista do curso e lateral do player)

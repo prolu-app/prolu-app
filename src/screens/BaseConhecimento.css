@@ -201,9 +201,6 @@
 .module-chevron { width: 18px; height: 18px; stroke: var(--ink-40); stroke-width: 2; fill: none; transition: transform 0.25s; flex-shrink: 0; }
 .module-card.expanded .module-chevron { transform: rotate(180deg); }
 .module-actions { display: flex; gap: 6px; flex-shrink: 0; }
-.icon-btn { width: 30px; height: 30px; border-radius: 8px; border: none; background: var(--gray-soft); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
-.icon-btn:hover { background: #e0e0dc; }
-.icon-btn svg { width: 13px; height: 13px; stroke: var(--ink-60); stroke-width: 2; fill: none; }
 .lessons-list { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
 .module-card.expanded .lessons-list { max-height: 800px; }
 .lesson-row { display: flex; align-items: center; gap: 14px; padding: 13px 22px 13px 60px; border-top: 1px solid var(--ink-divider); cursor: pointer; transition: background 0.15s; }
@@ -344,9 +341,6 @@
 .lesson-sidebar-title { font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lesson-mobile-toggle { display: none; align-items: center; gap: 6px; background: var(--ink); color: var(--white); border: none; border-radius: 99px; padding: 8px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
 
-.icon-color-pills { display: flex; gap: 8px; flex-wrap: wrap; }
-.icon-color-pill { padding: 7px 14px; border-radius: 99px; font-size: 13px; cursor: pointer; background: var(--gray-soft); color: var(--ink-60); border: none; transition: all 0.15s; }
-.icon-color-pill.selected { background: var(--ink); color: var(--white); }
 
 /* ── upload de PDF no modal de aula ── */
 .kb-file-btn { display: inline-flex; align-items: center; gap: 8px; background: var(--gray-soft); color: var(--ink); border-radius: 99px; padding: 9px 16px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s; }

@@ -236,7 +236,6 @@ body.crm-col-resizing { cursor: col-resize; user-select: none; }
 .row-del-btn { width: 28px; height: 28px; border-radius: 8px; border: none; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--ink-40); transition: background 0.15s, color 0.15s; }
 .row-del-btn:hover { background: var(--red-soft); color: var(--red); }
 .row-del-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.8; fill: none; }
-.crm-empty { padding: 40px; text-align: center; color: var(--ink-40); font-size: 14px; }
 
 /* ── linha de resumo abaixo da tabela ── */
 .crm-summary-card {
@@ -332,7 +331,10 @@ body.crm-col-resizing { cursor: col-resize; user-select: none; }
 /* ── célula de tags ── */
 .td-tags { padding: 0; }
 .tags-cell { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 8px 12px; min-height: 44px; cursor: default; }
-.tag-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--gray-soft); color: var(--ink-60); border-radius: 99px; padding: 3px 8px 3px 10px; font-size: 12px; font-weight: 500; }
+/* aparência de hoje: as regras do CRM + as do .tag-chip do Plano Prático (que
+   vinham depois no CSS único e venciam) — explícito para não depender da ordem
+   de carregamento das telas */
+.tag-chip { display: inline-flex; align-items: center; gap: 7px; background: var(--gray-soft); color: var(--ink-60); border-radius: 99px; padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: box-shadow 0.15s, background 0.15s; flex-shrink: 0; border: none; }
 .tag-remove { background: none; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; color: inherit; opacity: 0.5; transition: opacity 0.15s; }
 .tag-remove:hover { opacity: 1; }
 .tag-remove svg { width: 10px; height: 10px; stroke: currentColor; stroke-width: 2.5; fill: none; }

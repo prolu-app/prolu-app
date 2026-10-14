@@ -65,6 +65,18 @@ body {
   min-height: 100vh;
 }
 
+/* Fundo geral — tom levemente mais escuro que o conteúdo, dá profundidade
+   sem precisar de sombras pesadas. Aqui (e não no AppLayout.css) porque vale
+   em todas as rotas, inclusive nas páginas públicas (fundo do formulário), e
+   o CSS das telas agora só carrega com a tela (divisão de código). */
+#root, .app {
+  background: #e8e7e1;
+}
+/* celular: fundo creme em tudo (antes no @media do AppLayout.css) */
+@media (max-width: 860px) {
+  body, #root, .app { background: var(--cream); }
+}
+
 /* Atmosfera de fundo — brilho verde no topo, calor laranja embaixo */
 body::before {
   content: '';

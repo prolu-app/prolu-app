@@ -11,6 +11,7 @@ import {
   ESTILO_PADRAO, RAIO_MAX, LIMITES, BOTAO_TEXTO_MAX, BOTAO_TEXTO_PADRAO, normalizarEstilo, estiloParaPagina, textoDoBotao,
   SUCESSO_TITULO_PADRAO, URL_REDIRECT_RE, idDoYoutube,
 } from '../utils/formularioEstilo.js'
+import '../components/estilosCompartilhados.css'
 import './FormularioPublico.css'
 
 // Editor do formulário — "Apresentação" (aba Geral, migration_029), "Depois do

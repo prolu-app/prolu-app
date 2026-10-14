@@ -11,6 +11,7 @@ import { formatarTelefone, mascaraTelefone, telefoneParaSalvar } from '../utils/
 import { SelectDropdown } from '../components/SelectDropdown.jsx'
 import { DatePicker } from '../components/DatePicker.jsx'
 import CRMDrawer from './CRMDrawer.jsx'
+import '../components/estilosCompartilhados.css'
 import './CRM.css'
 
 const COLOR_OPTS = ['gray', 'blue', 'green', 'orange', 'violet', 'red']
