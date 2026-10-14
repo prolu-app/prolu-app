@@ -4,7 +4,6 @@
 // Capa e Hero exigem imagem (sem ela: aviso + envio, sem trocar de estilo em
 // silêncio; a publicação fica bloqueada) e não aceitam GIF.
 
-import { useState } from 'react'
 import { FmSwitch } from '../Formularios.jsx'
 import { Linha, Segmentos } from '../FormularioAparencia.jsx'
 import ColorPicker from '../../components/minhapagina/ColorPicker.jsx'
@@ -68,19 +67,12 @@ export default function AreaAparencia({ doc, docNormal, alterar, alterarDoc, emp
   const { capa } = docNormal
   const a = docNormal.aparencia
   const b = a.botao
-  const [confirmarSemCapa, setConfirmarSemCapa] = useState(false)
   const precisaImagem = capa.estilo !== 'nenhuma' && !capa.imagem
   const grande = capa.estilo === 'capa' || capa.estilo === 'hero'
 
-  function escolherCapa(estilo) {
-    if (estilo === 'nenhuma') {
-      if (capa.imagem) setConfirmarSemCapa(true)
-      else alterar(['capa', 'estilo'], 'nenhuma')
-      return
-    }
-    alterar(['capa', 'estilo'], estilo)
-  }
-  const removerCapa = () => alterarDoc(d => comCaminho(comCaminho(d, ['capa', 'estilo'], 'nenhuma'), ['capa', 'imagem'], null))
+  // "Sem capa" só desliga a capa: a imagem fica guardada e volta ao escolher
+  // outro estilo. Para apagar a imagem, "Remover" no envio da imagem.
+  const escolherCapa = estilo => alterar(['capa', 'estilo'], estilo)
 
   const cfgFundo = Object.fromEntries(Object.entries(FUNDO_CHAVES).map(([antiga, nova]) => [antiga, a.fundo[nova]]))
   const mudarFundo = patch => alterarDoc(d => Object.entries(patch).reduce(
@@ -125,6 +117,9 @@ export default function AreaAparencia({ doc, docNormal, alterar, alterarDoc, emp
         <Linha rotulo="Estilo" dica={DICA_CAPA[capa.estilo]}>
           <Segmentos rotulo="Estilo da capa" valor={capa.estilo} opcoes={ESTILOS_CAPA} disabled={off} onChange={escolherCapa} />
         </Linha>
+        {capa.estilo === 'nenhuma' && capa.imagem && (
+          <p className="mpe-nota mpe-nota-topo">A imagem da capa continua guardada. Escolha Banner, Capa ou Hero para usá-la de novo.</p>
+        )}
         {capa.estilo !== 'nenhuma' && (
           <>
             {precisaImagem && <p className="mpe-aviso" role="status">Este estilo precisa de uma imagem. Envie abaixo — sem ela, a página não pode ser publicada.</p>}
@@ -190,18 +185,6 @@ export default function AreaAparencia({ doc, docNormal, alterar, alterarDoc, emp
         </Linha>
       </section>
 
-      {confirmarSemCapa && (
-        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setConfirmarSemCapa(false) }}>
-          <div className="modal" role="alertdialog" aria-modal="true" aria-labelledby="mpe-semcapa-titulo">
-            <div className="modal-title" id="mpe-semcapa-titulo">Remover a capa?</div>
-            <p className="fm-confirmar-texto">A imagem da capa sai do rascunho. A página publicada só muda quando você publicar.</p>
-            <div className="modal-actions">
-              <button className="btn-cancel" onClick={() => setConfirmarSemCapa(false)} autoFocus>Cancelar</button>
-              <button className="btn-danger" onClick={() => { removerCapa(); setConfirmarSemCapa(false) }}>Remover capa</button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   )
 }

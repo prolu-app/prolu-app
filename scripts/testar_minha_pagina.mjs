@@ -64,6 +64,10 @@ try {
 
   // ── capas ──
   confere('sem capa: nenhuma imagem de capa', !html({}).includes('pg-capa'))
+  const semCapaGuardada = { perfil: { nome: 'Ana', foto: IMG }, capa: { estilo: 'nenhuma', imagem: IMG } }
+  confere('"Sem capa" com imagem guardada: não desenha capa', !html(semCapaGuardada).includes('pg-capa') && !html(semCapaGuardada).includes('pg-foto--sobre-capa'))
+  confere('"Sem capa" mantém a imagem no documento', normalizarDoc(semCapaGuardada).capa.imagem === IMG)
+  confere('"Sem capa" com imagem guardada não bloqueia a publicação', !modelo.capaSemImagem(normalizarDoc(semCapaGuardada)))
   confere('banner', html({ capa: { estilo: 'banner', imagem: IMG } }).includes('pg-capa--banner'))
   confere('capa', html({ capa: { estilo: 'capa', imagem: IMG } }).includes('pg-capa--capa'))
   confere('hero', html({ capa: { estilo: 'hero', imagem: IMG } }).includes('pg-capa--hero'))
@@ -303,6 +307,7 @@ try {
   for (const [nome, el] of [
     ['Conteúdo', React.createElement(AreaConteudo, { ...comum, formularios: [{ id: id(50), nome: 'Form', slug: 'form', ativo: true }] })],
     ['Aparência', React.createElement(AreaAparencia, comum)],
+    ['Aparência (Sem capa com imagem guardada)', React.createElement(AreaAparencia, { ...comum, docNormal: normalizarDoc({ ...docEditor, capa: { estilo: 'nenhuma', imagem: IMG } }) })],
     ['Publicação', React.createElement(AreaPublicacao, { ...comum, servidor: servidorFicticio, seloFixo: true, onDefinirNoAr: () => {} })],
   ]) {
     let saida = ''
@@ -326,6 +331,10 @@ try {
       confere('editor: fonte principal e "Por elemento" recolhido', saida.includes('Fonte principal') && /<details class="mpe-avancado"><summary>Por elemento/.test(saida) && saida.includes('Igual à principal'))
       confere('editor: 12 fontes na lista', (saida.match(/<option value="Space Grotesk">/g) || []).length >= 1 && !saida.includes('<option value="Rubik">'))
       confere('editor: layouts não implementados "Em breve" e desabilitados', (saida.match(/Em breve/g) || []).length === 3 && [...saida.matchAll(/<button[^>]*>/g)].filter(m => m[0].includes('em-breve') && m[0].includes('disabled')).length === 3)
+    }
+    if (nome.startsWith('Aparência (Sem capa')) {
+      confere('editor: "Sem capa" avisa que a imagem continua guardada', saida.includes('A imagem da capa continua guardada'))
+      confere('editor: "Sem capa" sem pedido de remoção', !saida.includes('Remover a capa?') && !saida.includes('precisa de uma imagem'))
     }
     if (nome === 'Publicação') {
       confere('editor: hiperlink para Configurações → Escritório', saida.includes('href="/configuracoes?tab=escritorio#endereco"'))
