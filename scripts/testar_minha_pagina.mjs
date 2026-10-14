@@ -7,7 +7,8 @@
 // Confere: normalização tolerante, capas, subtítulo, destaque, visual dos
 // itens, itens ocultos, selo em todos os layouts, nada de plano/limite no
 // HTML, só https nas imagens, conversão da página antiga, sugestão de ícone,
-// edição que preserva chaves e a paridade das listas com a migration_056.
+// edição que preserva chaves, fontes/tamanhos por elemento, botão com
+// preenchimento/contorno/texto e a paridade das listas com as migrations 056/057.
 // Com um backup em scripts/_backup_minha_pagina/*.json (pasta fora do git),
 // também converte e desenha cada página real do backup.
 
@@ -40,6 +41,8 @@ try {
   const { LAYOUTS } = await carregar('/src/components/minhapagina/render/layouts/index.js')
   const PaginaRender = (await carregar('/src/components/minhapagina/render/PaginaRender.jsx')).default
   const { normalizarDoc, docGravavel, comCaminho, LISTAS, LIMITES } = modelo
+  const { FONTES_V2, FONTE_PADRAO } = await carregar('/src/utils/pagina/fontes.js')
+  const { ESCALA, variaveisDeDesign } = await carregar('/src/utils/pagina/tema.js')
 
   const html = (bruto, props = {}) => renderToStaticMarkup(React.createElement(PaginaRender, {
     doc: normalizarDoc(bruto), selo: true, escritorio: 'Escritório Exemplo', slug: 'exemplo', ...props,
@@ -67,9 +70,18 @@ try {
   confere('foco topo vira object-position', html({ capa: { estilo: 'capa', imagem: IMG, foco: 'topo' } }).includes('object-position:center top'))
   confere('capa sem imagem não desenha capa', !html({ capa: { estilo: 'hero', imagem: null } }).includes('pg-capa'))
   confere('imagem http é descartada', !html({ capa: { estilo: 'capa', imagem: 'http://x.co/a.jpg' } }).includes('pg-capa'))
-  const comFoto = { perfil: { foto: IMG }, capa: { estilo: 'hero', imagem: IMG } }
-  confere('hero: foto pequena abaixo', html(comFoto).includes('pg-foto--hero'))
-  confere('hero: foto ocultável', !html(comFoto ? { ...comFoto, perfil: { foto: IMG, foto_oculta: true } } : {}).includes('pg-foto'))
+  // hero: foto, nome, subtítulo e bio DENTRO do bloco da imagem; itens fora, logo abaixo
+  const heroDoc = { perfil: { nome: 'Ana', subtitulo: 'Arquitetura', bio: 'Bio', foto: IMG }, capa: { estilo: 'hero', imagem: IMG }, itens: [link(1)] }
+  const hHero = html(heroDoc)
+  const blocoHero = hHero.slice(hHero.indexOf('pg-capa--hero'), hHero.indexOf('pg-conteudo'))
+  confere('hero: foto, nome, subtítulo e bio dentro da imagem',
+    ['pg-hero-foto', 'pg-nome', 'pg-subtitulo', 'pg-bio', 'pg-hero-texto'].every(c => blocoHero.includes(c)), blocoHero.slice(0, 300))
+  confere('hero: foto antes do nome (nunca sobre ele)', blocoHero.indexOf('pg-hero-foto') < blocoHero.indexOf('pg-nome'))
+  confere('hero: itens fora do bloco da imagem', !blocoHero.includes('pg-item') && hHero.indexOf('pg-itens') > hHero.indexOf('pg-conteudo'))
+  confere('hero: perfil não se repete fora da imagem', (hHero.match(/class="pg-nome"/g) || []).length === 1)
+  const hOculta = html({ ...heroDoc, perfil: { ...heroDoc.perfil, foto_oculta: true } })
+  confere('hero: foto ocultável, texto continua na imagem', !hOculta.includes('pg-hero-foto') && hOculta.slice(hOculta.indexOf('pg-capa--hero'), hOculta.indexOf('pg-conteudo')).includes('pg-nome'))
+  confere('capa (não hero): perfil fora da imagem', !html({ ...heroDoc, capa: { estilo: 'capa', imagem: IMG } }).includes('pg-hero-texto'))
   confere('banner: foto sobre a capa', html({ perfil: { foto: IMG }, capa: { estilo: 'banner', imagem: IMG } }).includes('pg-foto--sobre-capa'))
 
   // ── perfil ──
@@ -133,7 +145,10 @@ try {
      { id: id(2), tipo: 'formulario', titulo: 'Orçamento', formulario_id: id(9), ativo: false, estilo: {} }],
   )
   confere('legado: nome, bio e capa banner', antigo.perfil.nome === 'Isa' && antigo.capa.estilo === 'banner' && antigo.capa.imagem === IMG)
-  confere('legado: cantos e fonte', antigo.aparencia.botao.cantos === 'full' && antigo.aparencia.fonte_titulo === 'Lato')
+  confere('legado: cantos e fonte', antigo.aparencia.botao.cantos === 'full' && antigo.aparencia.fonte === 'Lato')
+  confere('legado: Lato (fora da lista nova) vira a principal padrão', docGravavel(antigo).aparencia.fonte === 'Montserrat')
+  confere('legado: página antiga sem fonte = Inter (o padrão de lá)', converterLegado({}, []).aparencia.fonte === 'Inter' && docGravavel(converterLegado({}, [])).aparencia.fonte === 'Inter')
+  confere('legado: gravável sem fonte_titulo/fonte_corpo', !('fonte_titulo' in docGravavel(antigo).aparencia) && !('fonte_corpo' in docGravavel(antigo).aparencia))
   confere('legado: selo e cor da bio', antigo.selo === false && antigo.aparencia.cor_texto_suave === '#333333')
   confere('legado: ids e ordem mantidos', antigo.itens.map(i => i.id).join() === [id(1), id(2)].join())
   confere('legado: imagem sem modo = pequena', antigo.itens[0].imagem_modo === 'icone')
@@ -163,10 +178,11 @@ try {
   for (const [url, esperado] of Object.entries(sugestoes)) confere(`ícone sugerido para ${url}`, sugerirIcone(url) === esperado, sugerirIcone(url))
   confere('29 ícones', ICONE_IDS.length === 29, ICONE_IDS.length)
 
-  // ── paridade das listas com a migration_056 ──
-  const sql = fs.readFileSync(path.join(raiz, 'supabase/migration_056_minha_pagina_v2.sql'), 'utf8')
+  // ── paridade das listas com as migrations 056 + 057 (vale a definição mais recente) ──
+  const sql = ['supabase/migration_056_minha_pagina_v2.sql', 'supabase/migration_057_minha_pagina_fontes_botoes.sql']
+    .map(f => fs.readFileSync(path.join(raiz, f), 'utf8')).join('\n')
   const lista = nome => {
-    const m = sql.match(new RegExp(`${nome} constant text\\[\\] := array\\[([^\\]]+)\\]`))
+    const m = [...sql.matchAll(new RegExp(`${nome} constant text\\[\\] := array\\[([^\\]]+)\\]`, 'g'))].pop()
     return m ? [...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]) : null
   }
   const igual = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sort())
@@ -174,11 +190,63 @@ try {
   confere('SQL x JS: padrões', igual(lista('PADROES') || [], LISTAS.fundo_pattern))
   confere('SQL x JS: texturas e luz', igual(lista('IMAGENS_FUNDO') || [], LISTAS.fundo_imagem))
   confere('SQL x JS: ícones', igual(lista('ICONES') || [], LISTAS.icone))
+  confere('SQL x JS: fontes legadas (fonte_titulo/fonte_corpo)', igual(lista('FONTES_LEGADAS') || [], LISTAS.fonte_legada), lista('FONTES_LEGADAS'))
+  confere('SQL x JS: elementos', igual(lista('ELEMENTOS') || [], LISTAS.elemento))
+  confere('SQL x JS: tamanhos', igual(lista('TAMANHOS') || [], LISTAS.tamanho))
+  confere('SQL x JS: contorno 0-3', sql.includes("b->'contorno' in ('0'::jsonb, '1'::jsonb, '2'::jsonb, '3'::jsonb)") && igual(LISTAS.botao_contorno.map(String), ['0', '1', '2', '3']))
+  confere('fontes.js x LISTAS', igual(FONTES_V2.map(f => f.id), LISTAS.fonte) && FONTES_V2.length === 12)
   for (const [chave, trecho] of [['layout', "_pv2_opc(d, 'layout', array["], ['capa_estilo', "_pv2_opc(c, 'estilo', array["], ['capa_foco', "_pv2_opc(c, 'foco', array["], ['item_tipo', "_pv2_opc(it, 'tipo', array["]]) {
     const i = sql.indexOf(trecho)
     const valores = i >= 0 ? [...sql.slice(i, sql.indexOf(']', i)).matchAll(/'([^']+)'/g)].map(x => x[1]).slice(1) : []
     confere(`SQL x JS: ${chave}`, igual(valores, LISTAS[chave]), valores)
   }
+
+  // ── fontes e tamanhos ──
+  const vars = d => variaveisDeDesign(normalizarDoc(d))
+  const vPadrao = vars({})
+  confere('ausente = Montserrat em tudo', FONTE_PADRAO === 'Montserrat' && ['--pg-fonte', '--pg-fonte-titulo', '--pg-fonte-subtitulo', '--pg-fonte-descricao', '--pg-fonte-botoes'].every(k => vPadrao[k].startsWith("'Montserrat'")))
+  confere('ausente = tamanho M (o de antes)', vPadrao['--pg-tam-titulo'] === '20px' && vPadrao['--pg-tam-subtitulo'] === '14px' && vPadrao['--pg-tam-descricao'] === '14px' && vPadrao['--pg-tam-botoes'] === '15px' && vPadrao['--pg-botao-altura'] === '48px' && vPadrao['--pg-botao-py'] === '12px' && vPadrao['--pg-botao-px'] === '20px')
+  for (const f of FONTES_V2) {
+    const v = vars({ aparencia: { fonte: f.id } })
+    confere(`fonte ${f.id} vira família e peso real`, v['--pg-fonte'] === f.familia && v['--pg-peso-titulo'] === (f.pesos.includes(700) ? 700 : 400))
+  }
+  confere('DM Serif Display: negrito usa 400 (sem peso falso)', vars({ aparencia: { fonte: 'DM Serif Display' } })['--pg-peso-botoes'] === 400)
+  const vEl = vars({ aparencia: { fonte: 'Inter', fontes: { titulo: 'Oswald', subtitulo: null, descricao: 'Lora', botoes: 'Poppins' } } })
+  confere('fonte por elemento', vEl['--pg-fonte-titulo'].startsWith("'Oswald'") && vEl['--pg-fonte-descricao'].startsWith("'Lora'") && vEl['--pg-fonte-botoes'].startsWith("'Poppins'"))
+  confere('"Igual à principal" (null) usa a principal', vEl['--pg-fonte-subtitulo'].startsWith("'Inter'"))
+  const vDesc = vars({ aparencia: { fonte: 'Comic Sans', fontes: { titulo: 'Papyrus' }, tamanhos: { titulo: 'xg' } } })
+  confere('fonte desconhecida ignorada', vDesc['--pg-fonte'].startsWith("'Montserrat'") && vDesc['--pg-fonte-titulo'].startsWith("'Montserrat'") && vDesc['--pg-tam-titulo'] === '20px')
+  const vLeg = vars({ aparencia: { fonte_titulo: 'Playfair Display', fonte_corpo: 'Inter' } })
+  confere('rascunho antigo: fonte_corpo = principal, fonte_titulo = título', vLeg['--pg-fonte'].startsWith("'Inter'") && vLeg['--pg-fonte-titulo'].startsWith("'Playfair Display'"))
+  confere('rascunho antigo com fonte fora da lista nova = padrão', vars({ aparencia: { fonte_titulo: 'Lato', fonte_corpo: 'Rubik' } })['--pg-fonte'].startsWith("'Montserrat'"))
+  for (const el of LISTAS.elemento) for (const t of LISTAS.tamanho) {
+    const v = vars({ aparencia: { tamanhos: { [el]: t } } })
+    const esperado = el === 'botoes' ? `${ESCALA.botoes[t].fonte}px` : `${ESCALA[el][t]}px`
+    confere(`tamanho ${el} ${t.toUpperCase()}`, v[`--pg-tam-${el}`] === esperado, v[`--pg-tam-${el}`])
+  }
+  confere('escala crescente e com teto para 360px', LISTAS.elemento.every(el => {
+    const xs = LISTAS.tamanho.map(t => (el === 'botoes' ? ESCALA.botoes[t].fonte : ESCALA[el][t]))
+    return xs.every((x, i) => i === 0 || x > xs[i - 1]) && Math.max(...xs) <= 28
+  }) && ESCALA.botoes.p.altura >= 44)
+  confere('botão G/GG ajusta altura e padding', ESCALA.botoes.gg.altura > ESCALA.botoes.g.altura && ESCALA.botoes.g.py > ESCALA.botoes.m.py)
+  confere('render usa as variáveis de fonte/tamanho', html({ aparencia: { tamanhos: { titulo: 'gg' } } }).includes('--pg-tam-titulo:28px'))
+
+  // ── botões: preenchimento, contorno e texto independentes ──
+  const bVars = d => vars(d)
+  const solidoAntigo = bVars({ aparencia: { botao: { estilo: 'solido', cor: '#112233', cor_texto: '#ffffff' } } })
+  confere('Sólido de antes: mesmo visual (preenchimento + borda de 2px que não aparece)', solidoAntigo['--pg-botao-fundo'] === '#112233' && solidoAntigo['--pg-botao-borda'] === '2px solid transparent' && solidoAntigo['--pg-botao-texto'] === '#ffffff')
+  const contornoAntigo = bVars({ aparencia: { botao: { estilo: 'contorno', cor_contorno: '#445566', espessura_contorno: 3, cor_texto_contorno: '' } } })
+  confere('Contorno de antes: mesmo visual', contornoAntigo['--pg-botao-fundo'] === 'transparent' && contornoAntigo['--pg-botao-borda'] === '3px solid #445566' && contornoAntigo['--pg-botao-texto'] === '#445566')
+  const ambos = bVars({ aparencia: { botao: { estilo: 'solido', preenchimento: '#ffffff', contorno: 2, cor_contorno: '#ff0000', texto: '#000000' } } })
+  confere('preenchimento E contorno de cor diferente', ambos['--pg-botao-fundo'] === '#ffffff' && ambos['--pg-botao-borda'] === '2px solid #ff0000' && ambos['--pg-botao-texto'] === '#000000')
+  confere('sem preenchimento e sem contorno', bVars({ aparencia: { botao: { preenchimento: 'nenhum', contorno: 0, texto: '#000000' } } })['--pg-botao-fundo'] === 'transparent')
+  confere('destaque automático herda o preenchimento dos botões', ambos['--pg-destaque-fundo'] === '#ffffff')
+  confere('destaque automático sem preenchimento herda o contorno', bVars({ aparencia: { botao: { preenchimento: 'nenhum', contorno: 1, cor_contorno: '#00aa00' } } })['--pg-destaque-fundo'] === '#00aa00')
+  const hDest = html({ itens: [link(1, { estilo: { destaque: true, botao: { preenchimento: 'nenhum', contorno: 3, cor_contorno: '#123456', texto: '#123456' } } })] })
+  confere('destaque com preenchimento/contorno/texto próprios', hDest.includes('--pg-destaque-fundo:transparent') && hDest.includes('--pg-destaque-borda:3px solid #123456'))
+  const hLegItem = html({ itens: [link(1, { estilo: { botao: { estilo: 'contorno', cor_contorno: '#abcdef' } } })] })
+  confere('estilo próprio antigo (Contorno) deriva o modelo novo', hLegItem.includes('--pg-botao-fundo:transparent') && hLegItem.includes('solid #abcdef'))
+  confere('item com só cantos próprios mantém o botão da página', html({ aparencia: { botao: { estilo: 'solido', cor: '#112233' } }, itens: [link(1, { estilo: { botao: { cantos: 'full' } } })] }).includes('--pg-botao-fundo:#112233;'))
 
   // ── editor: as 3 áreas desenham sem erro (dados fictícios, sem banco) ──
   // ambiente mínimo de navegador para os componentes do editor (prolu.link, tela larga)
@@ -213,6 +281,10 @@ try {
     }
     if (nome === 'Aparência') {
       confere('editor: capa hero sem imagem avisa', saida.includes('precisa de uma imagem'))
+      confere('editor: dica do Hero', saida.includes('Imagem alta com o nome sobre ela. Ex.: 1440×1440 px. JPG, PNG ou WEBP.'))
+      confere('editor: atalhos Sólido e Contorno + controles independentes', ['>Sólido<', '>Contorno<', 'Preenchimento', 'Sem preenchimento', '>Nenhum<'].every(t => saida.includes(t)))
+      confere('editor: fonte principal e "Por elemento" recolhido', saida.includes('Fonte principal') && /<details class="mpe-avancado"><summary>Por elemento/.test(saida) && saida.includes('Igual à principal'))
+      confere('editor: 12 fontes na lista', (saida.match(/<option value="Space Grotesk">/g) || []).length >= 1 && !saida.includes('<option value="Rubik">'))
       confere('editor: layouts não implementados "Em breve" e desabilitados', (saida.match(/Em breve/g) || []).length === 3 && [...saida.matchAll(/<button[^>]*>/g)].filter(m => m[0].includes('em-breve') && m[0].includes('disabled')).length === 3)
     }
     if (nome === 'Publicação') {

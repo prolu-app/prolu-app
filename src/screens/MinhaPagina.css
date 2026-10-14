@@ -149,6 +149,7 @@
 .mpe-layout-breve { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 12px; font-weight: 600; color: var(--ink-60, #6b6b66); }
 .mpe-layout-nome { font-size: 13px; font-weight: 600; }
 
+.mpe-atalhos { display: flex; gap: 8px; flex-wrap: wrap; }
 .mpe-avancado { display: flex; flex-direction: column; gap: 12px; }
 .mpe-avancado summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ink-80, #3a3a36); margin-bottom: 4px; }
 .mpe-avancado[open] summary { margin-bottom: 12px; }

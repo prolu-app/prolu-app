@@ -7,15 +7,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { FmSwitch } from '../Formularios.jsx'
 import { Linha, Segmentos } from '../FormularioAparencia.jsx'
-import ColorPicker from '../../components/minhapagina/ColorPicker.jsx'
 import { IconeSvg } from '../../components/minhapagina/render/partes.jsx'
 import { ICONES, ICONE_IDS } from '../../components/minhapagina/icones/icones.js'
 import { sugerirIcone } from '../../components/minhapagina/icones/sugerir.js'
 import { IconChevronDown, IconGrip, IconStar, IconTrash } from '../../components/Icons.jsx'
 import { comprimirCapa, comprimirFoto } from '../../utils/comprimirImagem.js'
 import { completarUrlLink } from '../../utils/paginaConfig.js'
-import { LIMITES, normalizarBotao } from '../../utils/pagina/modelo.js'
+import { LIMITES, botaoDoItem } from '../../utils/pagina/modelo.js'
 import { UploadImagem } from './comum.jsx'
+import BotaoControles, { botaoGravavel } from './BotaoControles.jsx'
 
 const VISUAIS = [
   { value: 'nada', label: 'Nada' },
@@ -23,7 +23,6 @@ const VISUAIS = [
   { value: 'imagem_pequena', label: 'Imagem pequena' },
   { value: 'imagem_grande', label: 'Imagem grande' },
 ]
-const ESTILO_BOTAO = [{ value: 'solido', label: 'Sólido' }, { value: 'contorno', label: 'Contorno' }]
 const CANTOS = [{ value: 'none', label: 'Reto' }, { value: 'sm', label: 'P' }, { value: 'md', label: 'M' }, { value: 'lg', label: 'G' }, { value: 'full', label: 'Pílula' }]
 
 // visual escolhido no editor (imagem_modo sem imagem = modo escolhido, aguardando o envio)
@@ -91,10 +90,15 @@ export default function ItemEditor({
   }
 
   const botaoProprio = item.estilo?.botao || null
-  const botao = normalizarBotao(botaoProprio || {}, botaoPagina)
-  const mudarBotao = obj => patchEstilo({ botao: { ...(botaoProprio || {}), ...obj } })
+  const botao = botaoDoItem(botaoPagina, botaoProprio)
+  const mudarBotao = obj => patchEstilo({ botao: botaoGravavel(botaoProprio, botao, obj) })
   function usarEstiloProprio(ligado) {
-    if (ligado) { patchEstilo({ botao: { ...botaoPagina } }); setEstiloAberto(true); return }
+    if (ligado) {
+      const { preenchimento, contorno, cor_contorno, texto, cantos } = botaoPagina
+      patchEstilo({ botao: { preenchimento, contorno, cor_contorno, texto, cantos } })
+      setEstiloAberto(true)
+      return
+    }
     onMudar(it => {
       const { botao: _fora, ...resto } = it.estilo || {} // eslint-disable-line no-unused-vars
       return { ...it, estilo: resto }
@@ -199,25 +203,12 @@ export default function ItemEditor({
             </div>
             {estiloAberto && (
               <div className="mpe-estilo-proprio">
-                <Linha rotulo="Estilo próprio" dica="Desligado = segue os botões da página.">
+                <Linha rotulo="Estilo próprio" dica={ehDestaque ? 'Desligado = destaque na cor de destaque da página.' : 'Desligado = segue os botões da página.'}>
                   <FmSwitch ligado={!!botaoProprio} disabled={off} rotulo={`Estilo próprio do item ${n}`} onChange={usarEstiloProprio} />
                 </Linha>
                 {botaoProprio && (
                   <>
-                    <Linha rotulo="Estilo">
-                      <Segmentos rotulo={`Estilo do botão ${n}`} valor={botao.estilo} opcoes={ESTILO_BOTAO} disabled={off} onChange={v => mudarBotao({ estilo: v })} />
-                    </Linha>
-                    {botao.estilo === 'solido' ? (
-                      <>
-                        <Linha rotulo="Cor"><ColorPicker rotulo={`Cor do botão ${n}`} valor={botao.cor} disabled={off} onChange={v => mudarBotao({ cor: v })} /></Linha>
-                        <Linha rotulo="Texto"><ColorPicker rotulo={`Cor do texto do botão ${n}`} valor={botao.cor_texto} disabled={off} onChange={v => mudarBotao({ cor_texto: v })} /></Linha>
-                      </>
-                    ) : (
-                      <>
-                        <Linha rotulo="Contorno"><ColorPicker rotulo={`Cor do contorno do botão ${n}`} valor={botao.cor_contorno} disabled={off} onChange={v => mudarBotao({ cor_contorno: v })} /></Linha>
-                        <Linha rotulo="Texto"><ColorPicker rotulo={`Cor do texto do botão ${n}`} valor={botao.cor_texto_contorno || botao.cor_contorno} disabled={off} onChange={v => mudarBotao({ cor_texto_contorno: v })} /></Linha>
-                      </>
-                    )}
+                    <BotaoControles botao={botao} mudar={mudarBotao} off={off} rotulo={`botões do item ${n}`} />
                     <Linha rotulo="Cantos">
                       <Segmentos rotulo={`Cantos do botão ${n}`} valor={botao.cantos} opcoes={CANTOS} disabled={off} onChange={v => mudarBotao({ cantos: v })} />
                     </Linha>

@@ -1,4 +1,4 @@
-// Minha Página v2 (migration_056): um documento por escritório, em
+// Minha Página v2 (migrations 056/057): um documento por escritório, em
 // paginas.rascunho (editor e prévia) e paginas.publicado (página pública).
 //
 // Duas leituras diferentes do mesmo documento:
@@ -11,6 +11,7 @@
 //   listas fechadas daqui — mudar nos dois lugares.
 
 import { FONTES, TEXTURAS, SOMBRAS } from '../paginaConfig.js'
+import { FONTE_IDS, FONTE_PADRAO } from './fontes.js'
 import { PATTERNS } from '../pagePatterns.js'
 import { ICONE_IDS } from '../../components/minhapagina/icones/icones.js'
 
@@ -22,12 +23,18 @@ export const LISTAS = {
   capa_estilo: ['nenhuma', 'banner', 'capa', 'hero'],
   capa_foco: ['topo', 'centro', 'base'],
   foto_formato: ['quadrado', 'arredondado', 'redondo'],
-  fonte: FONTES.map(f => f.id),
+  fonte: FONTE_IDS,
+  // fonte_titulo/fonte_corpo de rascunhos anteriores à 057: aceitas no banco
+  // (lista antiga + nova), lidas só se estiverem na lista nova
+  fonte_legada: [...new Set([...FONTES.map(f => f.id), ...FONTE_IDS])],
+  tamanho: ['p', 'm', 'g', 'gg'],
+  elemento: ['titulo', 'subtitulo', 'descricao', 'botoes'],
   fundo_tipo: ['cor', 'pattern', 'textura', 'sombra'],
   fundo_pattern: Object.keys(PATTERNS),
   fundo_imagem: [...TEXTURAS, ...SOMBRAS].map(t => t.id),
   botao_estilo: ['solido', 'contorno'],
   botao_espessura: [1, 2, 3],
+  botao_contorno: [0, 1, 2, 3], // 0 = sem contorno
   botao_cantos: ['none', 'sm', 'md', 'lg', 'full'],
   botao_sombra: ['none', 'soft', 'strong', 'hard'],
   item_tipo: ['link', 'formulario', 'secao'],
@@ -36,9 +43,21 @@ export const LISTAS = {
 }
 export const OPACIDADE = [0.05, 0.4]
 
+// Botão: preenchimento, contorno e texto independentes (057). As chaves de
+// antes (estilo Sólido/Contorno + cores) continuam valendo: sem as novas,
+// preenchimento/contorno/texto são derivados delas — a aparência não muda.
 export const BOTAO_PADRAO = {
   estilo: 'solido', cor: '#1a1a1a', cor_texto: '#ffffff', cor_contorno: '#1a1a1a',
   cor_texto_contorno: '', espessura_contorno: 2, cantos: 'md', sombra: 'none',
+  preenchimento: '#1a1a1a', contorno: 0, texto: '#ffffff',
+}
+export const CHAVES_BOTAO_NOVAS = ['preenchimento', 'contorno', 'texto']
+
+// preenchimento/contorno/texto a partir de Sólido/Contorno e das cores de antes
+export function derivarBotao(v) {
+  return v.estilo === 'contorno'
+    ? { preenchimento: 'nenhum', contorno: v.espessura_contorno, texto: v.cor_texto_contorno || v.cor_contorno }
+    : { preenchimento: v.cor, contorno: 0, texto: v.cor_texto }
 }
 
 export const PADRAO_V2 = {
@@ -48,7 +67,9 @@ export const PADRAO_V2 = {
   perfil: { nome: '', subtitulo: '', bio: '', foto: null, foto_formato: 'redondo', foto_oculta: false },
   capa: { estilo: 'nenhuma', imagem: null, foco: 'centro' },
   aparencia: {
-    fonte_titulo: 'Inter', fonte_corpo: 'Inter',
+    fonte: FONTE_PADRAO,
+    fontes: { titulo: null, subtitulo: null, descricao: null, botoes: null }, // null = igual à principal
+    tamanhos: { titulo: 'm', subtitulo: 'm', descricao: 'm', botoes: 'm' },
     cor_texto: '#1a1a1a', cor_texto_suave: '#555555', cor_destaque: null,
     fundo: { tipo: 'cor', cor: '#f8f7f5', pattern: null, pattern_cor: '#000000', pattern_opacidade: 0.1, imagem: null, imagem_opacidade: 0.15 },
     botao: BOTAO_PADRAO,
@@ -71,10 +92,13 @@ const imagem = v => (typeof v === 'string' && v.length <= LIMITES.url && IMG_RE.
 const bool = (v, padrao) => (typeof v === 'boolean' ? v : padrao)
 const opacidade = (v, padrao) => (Number.isFinite(v) ? Math.min(OPACIDADE[1], Math.max(OPACIDADE[0], Math.round(v * 100) / 100)) : padrao)
 
-// botão completo (aparencia.botao) ou só as chaves válidas presentes (estilo.botao de um item)
+const preenchimentoValido = v => v === 'nenhum' || (typeof v === 'string' && COR_RE.test(v))
+
+// botão completo (aparencia.botao): chaves de antes + preenchimento/contorno/texto
+// (presentes e válidas, ou derivadas de Sólido/Contorno)
 export function normalizarBotao(bruto, base = BOTAO_PADRAO) {
   const b = obj(bruto)
-  return {
+  const velho = {
     estilo: opcao(b.estilo, LISTAS.botao_estilo, base.estilo),
     cor: cor(b.cor, base.cor),
     cor_texto: cor(b.cor_texto, base.cor_texto),
@@ -84,13 +108,60 @@ export function normalizarBotao(bruto, base = BOTAO_PADRAO) {
     cantos: opcao(b.cantos, LISTAS.botao_cantos, base.cantos),
     sombra: opcao(b.sombra, LISTAS.botao_sombra, base.sombra),
   }
+  const d = derivarBotao(velho)
+  return {
+    ...velho,
+    preenchimento: preenchimentoValido(b.preenchimento) ? b.preenchimento.toLowerCase() : d.preenchimento,
+    contorno: opcao(b.contorno, LISTAS.botao_contorno, d.contorno),
+    texto: cor(b.texto, d.texto),
+  }
 }
 
 // estilo próprio de um item: só as chaves presentes e válidas (null = nenhuma)
 function botaoParcial(bruto) {
   if (!bruto || typeof bruto !== 'object') return null
-  const n = Object.entries(normalizarBotao(bruto, {})).filter(([, v]) => v !== undefined && v !== null)
-  return n.length ? Object.fromEntries(n) : null
+  const n = {}
+  if (LISTAS.botao_estilo.includes(bruto.estilo)) n.estilo = bruto.estilo
+  for (const k of ['cor', 'cor_texto', 'cor_contorno', 'texto']) if (cor(bruto[k], null)) n[k] = bruto[k].toLowerCase()
+  if (bruto.cor_texto_contorno === '' || cor(bruto.cor_texto_contorno, null)) n.cor_texto_contorno = bruto.cor_texto_contorno.toLowerCase()
+  if (LISTAS.botao_espessura.includes(bruto.espessura_contorno)) n.espessura_contorno = bruto.espessura_contorno
+  if (LISTAS.botao_cantos.includes(bruto.cantos)) n.cantos = bruto.cantos
+  if (LISTAS.botao_sombra.includes(bruto.sombra)) n.sombra = bruto.sombra
+  if (preenchimentoValido(bruto.preenchimento)) n.preenchimento = bruto.preenchimento.toLowerCase()
+  if (LISTAS.botao_contorno.includes(bruto.contorno)) n.contorno = bruto.contorno
+  return Object.keys(n).length ? n : null
+}
+
+// botão efetivo de um item: página + estilo próprio. Estilo próprio só com
+// chaves de antes (rascunho convertido) deriva preenchimento/contorno/texto
+// delas; com as novas, as novas valem.
+export function botaoDoItem(paginaBotao, proprio) {
+  if (!proprio) return paginaBotao
+  if (CHAVES_BOTAO_NOVAS.some(k => k in proprio)) return { ...paginaBotao, ...proprio }
+  const velho = { ...paginaBotao, ...proprio }
+  return ['estilo', 'cor', 'cor_texto', 'cor_contorno', 'cor_texto_contorno', 'espessura_contorno'].some(k => k in proprio)
+    ? { ...velho, ...derivarBotao(velho) }
+    : velho
+}
+
+// fonte principal + por elemento (null = igual à principal) e tamanhos P/M/G/GG.
+// Rascunho anterior à 057: fonte_corpo vira a principal e fonte_titulo, se
+// diferente, a do título — só se estiverem na lista nova.
+function normalizarTipografia(a) {
+  const fonte = opcao(a.fonte, LISTAS.fonte, null) ?? opcao(a.fonte_corpo, LISTAS.fonte, null) ?? FONTE_PADRAO
+  const f = obj(a.fontes)
+  const t = obj(a.tamanhos)
+  const tituloLegado = !a.fontes && LISTAS.fonte.includes(a.fonte_titulo) && a.fonte_titulo !== fonte ? a.fonte_titulo : null
+  return {
+    fonte,
+    fontes: {
+      titulo: opcao(f.titulo, LISTAS.fonte, tituloLegado),
+      subtitulo: opcao(f.subtitulo, LISTAS.fonte, null),
+      descricao: opcao(f.descricao, LISTAS.fonte, null),
+      botoes: opcao(f.botoes, LISTAS.fonte, null),
+    },
+    tamanhos: Object.fromEntries(LISTAS.elemento.map(e => [e, opcao(t[e], LISTAS.tamanho, 'm')])),
+  }
 }
 
 function normalizarFundo(bruto) {
@@ -171,8 +242,7 @@ export function normalizarDoc(bruto) {
       foco: opcao(c.foco, LISTAS.capa_foco, P.capa.foco),
     },
     aparencia: {
-      fonte_titulo: opcao(a.fonte_titulo, LISTAS.fonte, P.aparencia.fonte_titulo),
-      fonte_corpo: opcao(a.fonte_corpo, LISTAS.fonte, P.aparencia.fonte_corpo),
+      ...normalizarTipografia(a),
       cor_texto: cor(a.cor_texto, P.aparencia.cor_texto),
       cor_texto_suave: cor(a.cor_texto_suave, P.aparencia.cor_texto_suave),
       cor_destaque: cor(a.cor_destaque, null),

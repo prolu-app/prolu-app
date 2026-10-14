@@ -8,16 +8,18 @@ import { varsDoItem } from '../../../utils/pagina/tema.js'
 
 const POSICAO = { topo: 'center top', centro: 'center', base: 'center bottom' }
 
-// banner (contido, com margem), capa (largura da coluna) ou hero (alto).
-// É a maior imagem da página (LCP): carrega com prioridade.
-export function Capa({ capa }) {
-  const img = (
-    <img
-      className="pg-capa-img" src={capa.imagem} alt="" decoding="async" fetchpriority="high"
-      style={{ objectPosition: POSICAO[capa.foco] }}
-    />
+// banner (contido, com margem), capa (largura da coluna) ou hero (alto, com o
+// perfil por cima — children). É a maior imagem da página (LCP): carrega com prioridade.
+export function Capa({ capa, children }) {
+  return (
+    <div className={`pg-capa pg-capa--${capa.estilo}`}>
+      <img
+        className="pg-capa-img" src={capa.imagem} alt="" decoding="async" fetchpriority="high"
+        style={{ objectPosition: POSICAO[capa.foco] }}
+      />
+      {children}
+    </div>
   )
-  return <div className={`pg-capa pg-capa--${capa.estilo}`}>{img}</div>
 }
 
 // SVG constante deste código (ICONES), escolhido por id de lista fechada

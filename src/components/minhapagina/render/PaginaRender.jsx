@@ -16,9 +16,9 @@
 //   alturaTela px da tela da prévia (só no modo prévia)
 
 import { useEffect } from 'react'
-import { carregarFonte } from '../../../utils/paginaConfig.js'
+import { carregarFonteV2 } from '../../../utils/pagina/fontes.js'
 import { itemVisivel } from '../../../utils/pagina/modelo.js'
-import { variaveisDeDesign } from '../../../utils/pagina/tema.js'
+import { fontesDoDoc, variaveisDeDesign } from '../../../utils/pagina/tema.js'
 import { ehDominioCurto } from '../../../utils/slug.js'
 import { layoutDe } from './layouts/index.js'
 import './PaginaRender.css'
@@ -48,8 +48,9 @@ function Selo({ previa }) {
 
 export default function PaginaRender({ doc, selo, escritorio = '', slug = '', modo = 'publico', alturaTela }) {
   const previa = modo === 'previa'
-  const { fonte_titulo, fonte_corpo } = doc.aparencia
-  useEffect(() => { carregarFonte(fonte_titulo); carregarFonte(fonte_corpo) }, [fonte_titulo, fonte_corpo])
+  // só as fontes usadas na página (principal + as escolhidas por elemento)
+  const usadas = [...new Set([doc.aparencia.fonte, ...Object.values(fontesDoDoc(doc))])].join('|')
+  useEffect(() => { usadas.split('|').forEach(carregarFonteV2) }, [usadas])
 
   const visiveis = doc.itens.filter(itemVisivel)
   const destaque = visiveis.find(it => it.tipo !== 'secao' && it.estilo?.destaque) || null

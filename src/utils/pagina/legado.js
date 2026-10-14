@@ -46,7 +46,8 @@ export function converterLegado(config, links = []) {
     perfil: def({ nome: c.nome_exibicao, bio: c.bio, foto: c.foto_perfil || null, foto_formato: c.foto_perfil_formato }),
     capa: c.banner_url ? { estilo: 'banner', imagem: c.banner_url, foco: 'centro' } : { estilo: 'nenhuma', imagem: null, foco: 'centro' },
     aparencia: def({
-      fonte_titulo: c.fonte, fonte_corpo: c.fonte,
+      // ausente na página antiga = Inter (padrão de lá); fora da lista nova → padrão v2
+      fonte: c.fonte || 'Inter',
       cor_texto: c.cor_texto, cor_texto_suave: c.cor_texto_bio,
       fundo: Object.keys(fundo).length ? fundo : undefined,
       botao: Object.keys(botao).length ? botao : undefined,
