@@ -118,6 +118,90 @@ try {
   confere('ao salvar sem destaque, o documento não muda', modelo.semDestaque(limpo) === limpo)
   confere('itens novos e conversão sem destaque', !JSON.stringify(TIPOS_ITEM.link.criar()).includes('destaque') && !JSON.stringify(converterLegado({}, [{ id: id(1), tipo: 'link', titulo: 'a', url: 'https://a.co', estilo: {} }])).includes('destaque'))
 
+  // ── layouts: matriz layout × visual × quantidade × seção × perfil × título longo ──
+  const VISUAIS_T = {
+    nada: {},
+    icone: { estilo: { icone: 'instagram' } },
+    imagem_pequena: { imagem_url: IMG, imagem_modo: 'icone' },
+    imagem_grande: { imagem_url: IMG, imagem_modo: 'banner' },
+  }
+  const LONGO = 'Título bem longo para conferir a quebra de linha em telas estreitas de 360 pixels sem estourar'
+  let combinacoes = 0
+  for (const l of LAYOUTS) for (const [vis, extra] of Object.entries(VISUAIS_T)) for (const qtd of [2, 3]) for (const comSecao of [false, true])
+    for (const semSub of [false, true]) for (const semFoto of [false, true]) for (const longo of [false, true]) {
+      const its = []
+      if (comSecao) its.push({ id: id(900), tipo: 'secao', ativo: true, titulo: 'Seção A' })
+      for (let k = 1; k <= qtd; k++) its.push(link(k, { titulo: longo && k === 1 ? LONGO : `Link ${k}`, descricao: 'Desc curta', ...extra }))
+      const doc = { layout: l.id, perfil: { nome: 'Ana', subtitulo: semSub ? '' : 'Sub', bio: 'Bio', foto: semFoto ? null : IMG }, itens: its }
+      let h = ''
+      let erro = null
+      try { h = html(doc) } catch (e) { erro = e }
+      combinacoes++
+      const nomeC = `${l.id}/${vis}/${qtd}${comSecao ? '/secao' : ''}${semSub ? '/semsub' : ''}${semFoto ? '/semfoto' : ''}${longo ? '/longo' : ''}`
+      if (erro) { confere(`layout ${nomeC} desenha`, false, erro.message); continue }
+      const ok = its.filter(it => it.tipo !== 'secao').every(it => h.includes(it.titulo))
+        && (!comSecao || h.includes('Seção A'))
+        && (semSub ? !h.includes('pg-subtitulo') : h.includes('pg-subtitulo'))
+        && (semFoto ? !h.includes('class="pg-foto') && !h.includes('pg-hero-foto') : true)
+        && !/href="javascript:/i.test(h) && !/plano|starter|upgrade|limite/i.test(h)
+        && [...h.matchAll(/src="([^"]+)"/g)].every(m => m[1].startsWith('https://') || m[1].startsWith('/'))
+      if (!ok) confere(`layout ${nomeC}`, false, h.slice(0, 300))
+    }
+  confere(`matriz de layouts (${combinacoes} combinações) desenha tudo`, combinacoes === 4 * 4 * 2 * 2 * 2 * 2 * 2)
+
+  // Clássico não mudou: mesma marcação de antes para a mesma página
+  const docCl = { perfil: { nome: 'Ana', subtitulo: 'S', bio: 'B', foto: IMG }, capa: { estilo: 'banner', imagem: IMG }, itens: [link(1), link(2, { estilo: { icone: 'link' } })] }
+  confere('sem layout = Clássico', html(docCl) === html({ ...docCl, layout: 'classico' }) && html(docCl).includes('pg-layout-classico'))
+  confere('layout desconhecido = Clássico', html({ ...docCl, layout: 'tipografico' }).includes('pg-layout-classico'))
+
+  // capa só no Clássico; nos outros não é desenhada, mas fica no documento
+  for (const l of LAYOUTS.filter(x => x.id !== 'classico')) {
+    const d = { ...docCl, layout: l.id, capa: { estilo: 'hero', imagem: IMG } }
+    confere(`${l.id}: sem capa desenhada, imagem guardada`, !html(d).includes('pg-capa') && normalizarDoc(d).capa.imagem === IMG)
+    confere(`${l.id}: capa sem imagem não bloqueia a publicação`, !modelo.capaSemImagem(normalizarDoc({ ...d, capa: { estilo: 'capa', imagem: null } })))
+  }
+  confere('Clássico: capa sem imagem continua bloqueando', modelo.capaSemImagem(normalizarDoc({ capa: { estilo: 'capa', imagem: null } })))
+
+  // estilo próprio respeitado em todos os layouts
+  for (const l of LAYOUTS) {
+    const h = html({ layout: l.id, itens: [link(1, { estilo: { botao: { preenchimento: '#123456', contorno: 0, texto: '#ffffff' } } }), link(2)] })
+    confere(`${l.id}: estilo próprio do item`, (h.match(/--pg-botao-fundo:#123456/g) || []).length === 1)
+  }
+
+  // Editorial
+  const hEdL = html({ layout: 'editorial', itens: [link(1, { descricao: 'Desc' }), link(2, { imagem_url: IMG, imagem_modo: 'banner' })] })
+  confere('Editorial: Linhas por padrão, com seta e divisor', hEdL.includes('pg-ed-linha ') && (hEdL.match(/pg-ed-linha-seta/g) || []).length === 2 && hEdL.includes('pg-ed-linha-desc'))
+  confere('Editorial: imagem grande larga acima da linha', /pg-ed-linha-img[^]*?pg-ed-linha-corpo/.test(hEdL))
+  const hEdB = html({ layout: 'editorial', layout_opcoes: { editorial_links: 'botoes' }, itens: [link(1), link(2)] })
+  confere('Editorial: Botões usa os botões da página', (hEdB.match(/pg-item pg-item--nada pg-ed-botao/g) || []).length === 2 && !hEdB.includes('pg-ed-linha '))
+  confere('Editorial: item com estilo próprio vira botão nas Linhas', html({ layout: 'editorial', itens: [link(1, { estilo: { botao: { texto: '#ff0000' } } }), link(2)] }).includes('pg-ed-botao'))
+  confere('Editorial: seção pequena (Subtítulo M) e destacada (G)',
+    !html({ layout: 'editorial', itens: [{ id: id(9), tipo: 'secao', titulo: 'S' }] }).includes('pg-ed-secao--destacada')
+    && html({ layout: 'editorial', aparencia: { tamanhos: { subtitulo: 'g' } }, itens: [{ id: id(9), tipo: 'secao', titulo: 'S' }] }).includes('pg-ed-secao--destacada'))
+
+  // Quadrados
+  const hQ3 = html({ layout: 'quadrados', itens: [link(1, { descricao: 'Não aparece' }), link(2), link(3)] })
+  confere('Quadrados: 3 itens → o último ocupa a largura toda', (hQ3.match(/class="pg-qd /g) || []).length === 3 && (hQ3.match(/pg-qd--largo/g) || []).length === 1 && hQ3.lastIndexOf('pg-qd--largo') > hQ3.lastIndexOf('Link 2'))
+  confere('Quadrados: descrição curta não aparece', !hQ3.includes('Não aparece'))
+  confere('Quadrados: 2 itens → nenhum largo', !html({ layout: 'quadrados', itens: [link(1), link(2)] }).includes('pg-qd--largo'))
+  const hQs = html({ layout: 'quadrados', itens: [link(1), { id: id(9), tipo: 'secao', titulo: 'S' }, link(2), link(3)] })
+  confere('Quadrados: seção ocupa as 2 colunas e reinicia a contagem de ímpares', hQs.includes('pg-qd-secao') && (hQs.match(/pg-qd--largo/g) || []).length === 1 && hQs.indexOf('pg-qd--largo') < hQs.indexOf('pg-qd-secao'))
+  confere('Quadrados: imagem preenche com título por cima', html({ layout: 'quadrados', itens: [link(1, { imagem_url: IMG, imagem_modo: 'icone' })] }).includes('pg-qd pg-qd--imagem'))
+  confere('Quadrados: ícone grande no topo', html({ layout: 'quadrados', itens: [link(1, { estilo: { icone: 'link' } })] }).includes('pg-qd-icone'))
+  confere('Quadrados: gradiente e texto branco na imagem (CSS)', (() => { const c = fs.readFileSync(path.join(raiz, 'src/components/minhapagina/render/layouts/Quadrados.css'), 'utf8'); return c.includes('.pg-qd--imagem::after') && c.includes('linear-gradient(to top, rgba(0, 0, 0, 0.78)') && /\.pg-qd--imagem \.pg-qd-titulo \{ color: #ffffff; \}/.test(c) })())
+
+  // Cartões
+  const hCt = html({ layout: 'cartoes', perfil: { nome: 'Ana' }, itens: [link(1, { descricao: 'Desc', estilo: { icone: 'link' } }), link(2, { imagem_url: IMG, imagem_modo: 'banner' })] })
+  confere('Cartões: cabeçalho num cartão e links como cartões', hCt.includes('pg-ct-cabecalho') && (hCt.match(/class="pg-ct-item /g) || []).length === 2 && hCt.includes('pg-ct-desc'))
+  confere('Cartões: seta por padrão', (hCt.match(/pg-ct-seta/g) || []).length === 2)
+  confere('Cartões: seta ocultável', !html({ layout: 'cartoes', layout_opcoes: { cartoes_seta: false }, itens: [link(1)] }).includes('pg-ct-seta'))
+  confere('Cartões: imagem grande no topo do cartão', /pg-ct-img[^]*?pg-ct-linha/.test(hCt))
+  confere('Cartões: sem perfil, sem cartão de cabeçalho vazio', !html({ layout: 'cartoes', itens: [link(1)] }, { escritorio: '' }).includes('pg-ct-cabecalho'))
+
+  // opções de layout tolerantes
+  const nOp = normalizarDoc({ layout_opcoes: { editorial_links: 'cards', cartoes_seta: 'sim', outra: 1 } })
+  confere('layout_opcoes inválidas = padrão', nOp.layout_opcoes.editorial_links === 'linhas' && nOp.layout_opcoes.cartoes_seta === true && !('outra' in nOp.layout_opcoes))
+
   // ── espaçamentos (PaginaRender.css) ──
   const cssRender = fs.readFileSync(path.join(raiz, 'src/components/minhapagina/render/PaginaRender.css'), 'utf8')
   // corpo da regra CSS cujo seletor é exatamente `sel`
@@ -204,7 +288,8 @@ try {
   confere('29 ícones', ICONE_IDS.length === 29, ICONE_IDS.length)
 
   // ── paridade das listas com as migrations 056 + 057 (vale a definição mais recente) ──
-  const sql = ['supabase/migration_056_minha_pagina_v2.sql', 'supabase/migration_057_minha_pagina_fontes_botoes.sql']
+  const sql = ['supabase/migration_056_minha_pagina_v2.sql', 'supabase/migration_057_minha_pagina_fontes_botoes.sql',
+    'supabase/migration_058_minha_pagina_sem_destaque.sql', 'supabase/migration_059_minha_pagina_layouts.sql']
     .map(f => fs.readFileSync(path.join(raiz, f), 'utf8')).join('\n')
   const lista = nome => {
     const m = [...sql.matchAll(new RegExp(`${nome} constant text\\[\\] := array\\[([^\\]]+)\\]`, 'g'))].pop()
@@ -220,6 +305,12 @@ try {
   confere('SQL x JS: tamanhos', igual(lista('TAMANHOS') || [], LISTAS.tamanho))
   confere('SQL x JS: contorno 0-3', sql.includes("b->'contorno' in ('0'::jsonb, '1'::jsonb, '2'::jsonb, '3'::jsonb)") && igual(LISTAS.botao_contorno.map(String), ['0', '1', '2', '3']))
   confere('fontes.js x LISTAS', igual(FONTES_V2.map(f => f.id), LISTAS.fonte) && FONTES_V2.length === 12)
+  {
+    const i059 = sql.lastIndexOf("_pv2_opc(x, 'editorial_links', array[")
+    const vals = i059 >= 0 ? [...sql.slice(i059, sql.indexOf(']', i059)).matchAll(/'([^']+)'/g)].map(x => x[1]).slice(1) : []
+    confere('SQL x JS: editorial_links', igual(vals, LISTAS.editorial_links), vals)
+    confere('SQL x JS: layout_opcoes (chaves)', sql.includes("_pv2_so(x, array['editorial_links','cartoes_seta'])") && igual(Object.keys(modelo.PADRAO_V2.layout_opcoes), ['editorial_links', 'cartoes_seta']))
+  }
   for (const [chave, trecho] of [['layout', "_pv2_opc(d, 'layout', array["], ['capa_estilo', "_pv2_opc(c, 'estilo', array["], ['capa_foco', "_pv2_opc(c, 'foco', array["], ['item_tipo', "_pv2_opc(it, 'tipo', array["]]) {
     const i = sql.indexOf(trecho)
     const valores = i >= 0 ? [...sql.slice(i, sql.indexOf(']', i)).matchAll(/'([^']+)'/g)].map(x => x[1]).slice(1) : []
@@ -308,6 +399,8 @@ try {
     ['Conteúdo', React.createElement(AreaConteudo, { ...comum, formularios: [{ id: id(50), nome: 'Form', slug: 'form', ativo: true }] })],
     ['Aparência', React.createElement(AreaAparencia, comum)],
     ['Aparência (Sem capa com imagem guardada)', React.createElement(AreaAparencia, { ...comum, docNormal: normalizarDoc({ ...docEditor, capa: { estilo: 'nenhuma', imagem: IMG } }) })],
+    ['Aparência (Editorial)', React.createElement(AreaAparencia, { ...comum, docNormal: normalizarDoc({ ...docEditor, layout: 'editorial', capa: { estilo: 'capa', imagem: IMG } }) })],
+    ['Aparência (Cartões)', React.createElement(AreaAparencia, { ...comum, docNormal: normalizarDoc({ ...docEditor, layout: 'cartoes', layout_opcoes: { cartoes_seta: false } }) })],
     ['Publicação', React.createElement(AreaPublicacao, { ...comum, servidor: servidorFicticio, seloFixo: true, onDefinirNoAr: () => {} })],
   ]) {
     let saida = ''
@@ -330,7 +423,15 @@ try {
       confere('editor: atalhos Sólido e Contorno + controles independentes', ['>Sólido<', '>Contorno<', 'Preenchimento', 'Sem preenchimento', '>Nenhum<'].every(t => saida.includes(t)))
       confere('editor: fonte principal e "Por elemento" recolhido', saida.includes('Fonte principal') && /<details class="mpe-avancado"><summary>Por elemento/.test(saida) && saida.includes('Igual à principal'))
       confere('editor: 12 fontes na lista', (saida.match(/<option value="Space Grotesk">/g) || []).length >= 1 && !saida.includes('<option value="Rubik">'))
-      confere('editor: layouts não implementados "Em breve" e desabilitados', (saida.match(/Em breve/g) || []).length === 3 && [...saida.matchAll(/<button[^>]*>/g)].filter(m => m[0].includes('em-breve') && m[0].includes('disabled')).length === 3)
+      confere('editor: os 4 layouts disponíveis (sem "Em breve")', !saida.includes('Em breve') && ['Clássico', 'Editorial', 'Quadrados', 'Cartões'].every(n => saida.includes(`>${n}</span>`)))
+    }
+    if (nome === 'Aparência (Editorial)') {
+      confere('editor: Editorial mostra "Estilo dos links" (Linhas/Botões)', saida.includes('Estilo dos links') && saida.includes('>Linhas<') && saida.includes('>Botões<'))
+      confere('editor: Editorial sugere foto quadrada sem forçar', saida.includes('Usar foto quadrada'))
+      confere('editor: fora do Clássico, aviso da capa e sem controles de capa', saida.includes('A capa está disponível no layout Clássico') && !saida.includes('Estilo da capa') && saida.includes('A imagem fica guardada'))
+    }
+    if (nome === 'Aparência (Cartões)') {
+      confere('editor: Cartões mostra "Seta nos cartões"', saida.includes('Seta nos cartões') && saida.includes('>Oculta<'))
     }
     if (nome.startsWith('Aparência (Sem capa')) {
       confere('editor: "Sem capa" avisa que a imagem continua guardada', saida.includes('A imagem da capa continua guardada'))

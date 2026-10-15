@@ -15,7 +15,7 @@ import { useConta } from '../contexts/ContaContext.jsx'
 import PageHeader, { PageContainer } from '../components/PageHeader.jsx'
 import PaginaRender from '../components/minhapagina/render/PaginaRender.jsx'
 import { urlPaginaPublica } from '../utils/paginaConfig.js'
-import { capaSemImagem, normalizarDoc } from '../utils/pagina/modelo.js'
+import { capaNoLayout, capaSemImagem, normalizarDoc } from '../utils/pagina/modelo.js'
 import usePaginaRascunho from './minhapagina/usePaginaRascunho.js'
 import AreaConteudo from './minhapagina/AreaConteudo.jsx'
 import AreaAparencia, { gifNaCapa } from './minhapagina/AreaAparencia.jsx'
@@ -132,7 +132,7 @@ export default function MinhaPagina() {
   async function publicar() {
     if (publicando) return false
     if (capaSemImagem(docNormal)) { toast('A capa escolhida precisa de imagem — envie uma ou escolha "Sem capa"'); irParaCapa(); return false }
-    if (gifNaCapa(docNormal.capa)) { toast('GIF não é aceito em Capa e Hero — envie JPG, PNG ou WEBP'); irParaCapa(); return false }
+    if (capaNoLayout(docNormal) && gifNaCapa(docNormal.capa)) { toast('GIF não é aceito em Capa e Hero — envie JPG, PNG ou WEBP'); irParaCapa(); return false }
     setPublicando(true)
     const res = await r.publicar()
     setPublicando(false)

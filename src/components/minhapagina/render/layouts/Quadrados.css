@@ -1,0 +1,65 @@
+/* Layout Quadrados (Quadrados.jsx) — grade de 2 colunas de quadrados 1:1.
+   Só variáveis de design (utils/pagina/tema.js). */
+.pg-qd-grade {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 36px;
+}
+.pg-qd-layout .pg-qd-secao { grid-column: 1 / -1; margin: 10px 0 0; }
+.pg-qd-layout .pg-qd-grade > .pg-qd-secao:first-child { margin-top: 0; }
+
+.pg-qd {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  aspect-ratio: 1 / 1;
+  min-width: 0;
+  padding: 14px;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: var(--pg-botao-fundo);
+  color: var(--pg-botao-texto);
+  border: var(--pg-botao-borda);
+  /* pílula num quadrado vira círculo: aqui o canto máximo é o G (como no card) */
+  border-radius: var(--pg-raio-card);
+  box-shadow: var(--pg-sombra);
+  font-family: var(--pg-fonte-botoes);
+  text-decoration: none;
+  text-align: center;
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+.pg-qd:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.pg-qd:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+/* último ímpar do grupo: largura toda, metade da altura */
+.pg-qd--largo { grid-column: 1 / -1; aspect-ratio: 2 / 1; }
+
+.pg-qd-titulo {
+  position: relative;
+  z-index: 1;
+  font-size: var(--pg-tam-botoes);
+  font-weight: var(--pg-peso-botoes);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pg-qd-icone { width: 34%; max-width: 56px; height: auto; aspect-ratio: 1 / 1; }
+
+/* imagem preenche o quadrado; gradiente escuro + título branco por cima */
+.pg-qd--imagem { justify-content: flex-end; align-items: flex-start; text-align: left; }
+.pg-qd-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.pg-qd--imagem::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0.08) 70%);
+  pointer-events: none;
+}
+.pg-qd--imagem .pg-qd-titulo { color: #ffffff; }

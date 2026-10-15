@@ -1,0 +1,56 @@
+/* Layout Editorial (Editorial.jsx) — à esquerda, nome grande, respiro.
+   Só variáveis de design (utils/pagina/tema.js). */
+.pg-ed .pg-ed-conteudo { align-items: stretch; text-align: left; padding: 56px 28px 24px; }
+.pg-ed-perfil { display: flex; flex-direction: column; align-items: flex-start; }
+.pg-ed .pg-ed-foto { width: 72px; height: 72px; margin-bottom: 20px; }
+/* nome em corpo grande: 1,4× o tamanho escolhido (M = 28px; GG = 39px) */
+.pg-ed .pg-nome { font-size: calc(var(--pg-tam-titulo) * 1.4); line-height: 1.15; letter-spacing: -0.01em; }
+.pg-ed .pg-subtitulo { margin-top: 10px; }
+.pg-ed .pg-subtitulo + .pg-bio { margin-top: 12px; }
+.pg-ed .pg-bio { margin-top: 12px; max-width: 34em; }
+
+.pg-ed-itens { display: flex; flex-direction: column; margin-top: 40px; }
+.pg-ed-itens--botoes { gap: 14px; }
+
+/* título de seção: pequeno em caixa alta (Subtítulo P/M) ou destacado (G/GG) */
+.pg-ed .pg-ed-secao { text-align: left; margin: 28px 0 6px; }
+.pg-ed .pg-ed-itens > .pg-ed-secao:first-child { margin-top: 0; }
+.pg-ed .pg-ed-secao--destacada {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--pg-tam-subtitulo);
+  color: var(--pg-texto);
+}
+.pg-ed .pg-ed-itens--botoes .pg-ed-secao { margin: 14px 0 0; }
+
+/* Linhas: índice com divisor fino, seta à direita, sem preenchimento */
+.pg-ed-linha {
+  display: block;
+  color: var(--pg-texto);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.14);
+  border-bottom-color: color-mix(in srgb, var(--pg-texto) 18%, transparent);
+  font-family: var(--pg-fonte-botoes);
+  transition: opacity 0.12s ease;
+}
+.pg-ed-itens--linhas > .pg-ed-linha:first-child,
+.pg-ed-itens--linhas > .pg-ed-secao + .pg-ed-linha {
+  border-top: 1px solid rgba(0, 0, 0, 0.14);
+  border-top-color: color-mix(in srgb, var(--pg-texto) 18%, transparent);
+}
+.pg-ed-linha:hover { opacity: 0.72; }
+.pg-ed-linha:focus-visible { outline: 3px solid currentColor; outline-offset: 2px; }
+.pg-ed-linha-corpo { display: flex; align-items: center; gap: 14px; padding: 18px 2px; min-height: 28px; }
+.pg-ed-linha-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pg-ed-linha-titulo { font-size: var(--pg-tam-botoes); font-weight: var(--pg-peso-botoes); line-height: 1.3; overflow-wrap: anywhere; }
+.pg-ed-linha-desc { font-size: calc(var(--pg-tam-botoes) - 2px); color: var(--pg-texto-suave); line-height: 1.4; }
+.pg-ed-linha-icone { flex-shrink: 0; width: 20px; height: 20px; }
+.pg-ed-linha-mini { flex-shrink: 0; width: 40px; height: 40px; object-fit: cover; border-radius: var(--pg-raio-icone); }
+.pg-ed-linha-seta { flex-shrink: 0; width: 18px; height: 18px; opacity: 0.6; }
+/* imagem grande: larga, acima da linha */
+.pg-ed-linha-img { display: block; width: 100%; aspect-ratio: 2 / 1; object-fit: cover; margin-top: 18px; border-radius: var(--pg-raio-card); }
+.pg-ed-linha--imagem-grande .pg-ed-linha-corpo { padding-top: 14px; }
+
+/* Botões: os da página, com o texto à esquerda */
+.pg-ed .pg-ed-botao { align-items: flex-start; text-align: left; }
+.pg-ed .pg-ed-botao.pg-item--icone, .pg-ed .pg-ed-botao.pg-item--imagem-pequena { padding-right: 20px; }

@@ -10,18 +10,7 @@
 // Estilo com imagem ausente não desenha capa (o editor avisa e a publicação
 // é bloqueada).
 
-import { Capa, ItemPagina } from '../partes.jsx'
-
-function Perfil({ perfil, nome, classeFoto }) {
-  return (
-    <>
-      {perfil.foto && classeFoto && <img className={classeFoto} src={perfil.foto} alt={nome} decoding="async" />}
-      {nome && <h1 className="pg-nome">{nome}</h1>}
-      {perfil.subtitulo.trim() && <p className="pg-subtitulo">{perfil.subtitulo}</p>}
-      {perfil.bio.trim() && <p className="pg-bio">{perfil.bio}</p>}
-    </>
-  )
-}
+import { Capa, ItemPagina, Perfil } from '../partes.jsx'
 
 export default function Classico({ doc, nome, itens, hrefDe, previa, selo }) {
   const { perfil, capa } = doc

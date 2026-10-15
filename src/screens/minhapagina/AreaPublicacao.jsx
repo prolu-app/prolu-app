@@ -23,7 +23,8 @@ const textoCurto = t => {
 function dadosDoCartao(servidor, escritorio) {
   if (servidor.temPublicado && servidor.publicado) {
     const p = servidor.publicado
-    const capa = p.capa.estilo !== 'nenhuma' ? p.capa.imagem : null
+    // a capa só é desenhada (e só vai para o OG) no Clássico
+    const capa = p.layout === 'classico' && p.capa.estilo !== 'nenhuma' ? p.capa.imagem : null
     return { titulo: p.perfil.nome.trim() || escritorio, descricao: textoCurto(p.perfil.bio), imagem: capa || p.perfil.foto, grande: !!capa }
   }
   const c = servidor.legado.config || {}

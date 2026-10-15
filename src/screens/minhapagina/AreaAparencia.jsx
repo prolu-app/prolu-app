@@ -24,6 +24,7 @@ const DICA_CAPA = {
   hero: 'Imagem alta com o nome sobre ela. Ex.: 1440×1440 px. JPG, PNG ou WEBP.',
 }
 const FORMATO_FOTO = [{ value: 'quadrado', label: 'Quadrado' }, { value: 'arredondado', label: 'Arredondado' }, { value: 'redondo', label: 'Redondo' }]
+const LINKS_EDITORIAL = [{ value: 'linhas', label: 'Linhas' }, { value: 'botoes', label: 'Botões' }]
 const FOCO = [{ value: 'topo', label: 'Topo' }, { value: 'centro', label: 'Centro' }, { value: 'base', label: 'Base' }]
 const CANTOS = [{ value: 'none', label: 'Reto' }, { value: 'sm', label: 'P' }, { value: 'md', label: 'M' }, { value: 'lg', label: 'G' }, { value: 'full', label: 'Pílula' }]
 const SOMBRA = [{ value: 'none', label: 'Nenhuma' }, { value: 'soft', label: 'Suave' }, { value: 'strong', label: 'Forte' }, { value: 'hard', label: 'Marcada' }]
@@ -67,8 +68,10 @@ export default function AreaAparencia({ doc, docNormal, alterar, alterarDoc, emp
   const { capa } = docNormal
   const a = docNormal.aparencia
   const b = a.botao
-  const precisaImagem = capa.estilo !== 'nenhuma' && !capa.imagem
+  const precisaImagem = docNormal.layout === 'classico' && capa.estilo !== 'nenhuma' && !capa.imagem
   const grande = capa.estilo === 'capa' || capa.estilo === 'hero'
+  // capa (e o "mostrar foto" do Hero) só existem no Clássico
+  const classico = docNormal.layout === 'classico'
 
   // "Sem capa" só desliga a capa: a imagem fica guardada e volta ao escolher
   // outro estilo. Para apagar a imagem, "Remover" no envio da imagem.
@@ -91,6 +94,29 @@ export default function AreaAparencia({ doc, docNormal, alterar, alterarDoc, emp
               onEscolher={id => alterar(['layout'], id)} />
           ))}
         </div>
+        {docNormal.layout === 'editorial' && (
+          <div className="fm-publico mpe-layout-opcoes">
+            <Linha rotulo="Estilo dos links" dica="Linhas: índice com divisor e seta. Botões: usa o estilo de Botões.">
+              <Segmentos rotulo="Estilo dos links no Editorial" valor={docNormal.layout_opcoes.editorial_links} opcoes={LINKS_EDITORIAL}
+                disabled={off} onChange={v => alterar(['layout_opcoes', 'editorial_links'], v)} />
+            </Linha>
+            {docNormal.perfil.foto_formato !== 'quadrado' && (
+              <p className="mpe-nota mpe-nota-topo">
+                Dica: no Editorial, a foto quadrada combina melhor.{' '}
+                {!off && <button type="button" className="fm-link-btn" onClick={() => alterar(['perfil', 'foto_formato'], 'quadrado')}>Usar foto quadrada</button>}
+              </p>
+            )}
+          </div>
+        )}
+        {docNormal.layout === 'cartoes' && (
+          <div className="fm-publico mpe-layout-opcoes">
+            <Linha rotulo="Seta nos cartões" dica="O botão de seta à direita de cada link.">
+              <FmSwitch ligado={docNormal.layout_opcoes.cartoes_seta} disabled={off} rotulo="Mostrar a seta nos cartões"
+                onChange={v => alterar(['layout_opcoes', 'cartoes_seta'], v)} />
+              <span className="fm-status-texto">{docNormal.layout_opcoes.cartoes_seta ? 'Visível' : 'Oculta'}</span>
+            </Linha>
+          </div>
+        )}
       </section>
 
       <section className="fm-publico mpe-bloco" aria-labelledby="mpe-cabecalho" id="mpe-capa-bloco">
@@ -106,7 +132,7 @@ export default function AreaAparencia({ doc, docNormal, alterar, alterarDoc, emp
         <Linha rotulo="Formato">
           <Segmentos rotulo="Formato da foto de perfil" valor={docNormal.perfil.foto_formato} opcoes={FORMATO_FOTO} disabled={off} onChange={v => alterar(['perfil', 'foto_formato'], v)} />
         </Linha>
-        {capa.estilo === 'hero' && (
+        {classico && capa.estilo === 'hero' && (
           <Linha rotulo="Mostrar foto" dica="No Hero: pequena, sobre a imagem, acima do nome.">
             <FmSwitch ligado={!docNormal.perfil.foto_oculta} disabled={off} rotulo="Mostrar a foto de perfil sobre a capa" onChange={v => alterar(['perfil', 'foto_oculta'], !v)} />
             <span className="fm-status-texto">{docNormal.perfil.foto_oculta ? 'Oculta' : 'Visível'}</span>
@@ -114,6 +140,10 @@ export default function AreaAparencia({ doc, docNormal, alterar, alterarDoc, emp
         )}
 
         <h3 className="mpe-subtitulo-bloco" id="mpe-capa">Capa</h3>
+        {!classico && (
+          <p className="mpe-nota mpe-nota-topo">A capa está disponível no layout Clássico.{capa.imagem ? ' A imagem fica guardada para quando você voltar a ele.' : ''}</p>
+        )}
+        {classico && (<>
         <Linha rotulo="Estilo" dica={DICA_CAPA[capa.estilo]}>
           <Segmentos rotulo="Estilo da capa" valor={capa.estilo} opcoes={ESTILOS_CAPA} disabled={off} onChange={escolherCapa} />
         </Linha>
@@ -136,6 +166,7 @@ export default function AreaAparencia({ doc, docNormal, alterar, alterarDoc, emp
             </Linha>
           </>
         )}
+        </>)}
       </section>
 
       <section className="fm-publico mpe-bloco" aria-labelledby="mpe-botoes">

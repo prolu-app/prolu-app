@@ -20,6 +20,7 @@ export const LIMITES = { nome: 80, subtitulo: 40, bio: 300, titulo: 100, descric
 
 export const LISTAS = {
   layout: ['classico', 'editorial', 'quadrados', 'cartoes'],
+  editorial_links: ['linhas', 'botoes'], // 059: estilo dos links no Editorial
   capa_estilo: ['nenhuma', 'banner', 'capa', 'hero'],
   capa_foco: ['topo', 'centro', 'base'],
   foto_formato: ['quadrado', 'arredondado', 'redondo'],
@@ -63,6 +64,7 @@ export function derivarBotao(v) {
 export const PADRAO_V2 = {
   v: VERSAO,
   layout: 'classico',
+  layout_opcoes: { editorial_links: 'linhas', cartoes_seta: true }, // 059
   tema: null,
   perfil: { nome: '', subtitulo: '', bio: '', foto: null, foto_formato: 'redondo', foto_oculta: false },
   capa: { estilo: 'nenhuma', imagem: null, foco: 'centro' },
@@ -222,6 +224,10 @@ export function normalizarDoc(bruto) {
   return {
     v: VERSAO,
     layout: opcao(d.layout, LISTAS.layout, P.layout),
+    layout_opcoes: {
+      editorial_links: opcao(obj(d.layout_opcoes).editorial_links, LISTAS.editorial_links, P.layout_opcoes.editorial_links),
+      cartoes_seta: bool(obj(d.layout_opcoes).cartoes_seta, P.layout_opcoes.cartoes_seta),
+    },
     tema: null,
     perfil: {
       nome: texto(p.nome, LIMITES.nome),
@@ -307,8 +313,12 @@ export function visualDoItem(it) {
   return 'nada'
 }
 
-// capa que precisa de imagem e está sem: bloqueia a publicação (o servidor também confere)
-export const capaSemImagem = doc => doc.capa.estilo !== 'nenhuma' && !doc.capa.imagem
+// a capa (Banner, Capa, Hero) só é desenhada no Clássico; nos outros layouts
+// imagem e chaves ficam guardadas para quando voltar
+export const capaNoLayout = doc => doc.layout === 'classico'
+
+// capa que precisa de imagem e está sem: bloqueia a publicação (o servidor também confere, 059)
+export const capaSemImagem = doc => capaNoLayout(doc) && doc.capa.estilo !== 'nenhuma' && !doc.capa.imagem
 
 // ── edição: altera só um caminho, preservando o resto do documento ──
 export function comCaminho(alvo, caminho, valor) {
