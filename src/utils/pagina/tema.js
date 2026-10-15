@@ -14,7 +14,15 @@ const RAIO = { none: '0px', sm: '4px', md: '8px', lg: '16px', full: '9999px' }
 const RAIO_ICONE = { none: '0px', sm: '3px', md: '6px', lg: '10px', full: '50%' }
 // imagem grande (card): pílula vira G, não pílula de verdade
 const RAIO_CARD = { none: '0px', sm: '4px', md: '8px', lg: '16px', full: '16px' }
-const SOMBRA = { none: 'none', soft: '0 2px 8px rgba(0,0,0,0.12)', strong: '0 4px 16px rgba(0,0,0,0.25)', hard: '4px 4px 0px rgba(0,0,0,0.8)' }
+// sombra: forma + opacidade de cada opção; a cor vem de botao.cor_sombra
+// (preta por padrão — gera exatamente o CSS de antes)
+const SOMBRA = { soft: ['0 2px 8px', 0.12], strong: ['0 4px 16px', 0.25], hard: ['4px 4px 0px', 0.8] }
+export function sombraCss(sombra, corHex = '#000000') {
+  if (!SOMBRA[sombra]) return 'none'
+  const n = parseInt(corHex.slice(1), 16)
+  const [forma, opacidade] = SOMBRA[sombra]
+  return `${forma} rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${opacidade})`
+}
 
 // Escala de tamanhos (px). M = o tamanho de antes; P/G/GG proporcionais, com
 // teto que cabe em 360px de largura (inclusive no Hero, texto sobre a imagem).
@@ -61,7 +69,7 @@ export function varsDoBotao(b) {
     '--pg-raio': RAIO[b.cantos],
     '--pg-raio-icone': RAIO_ICONE[b.cantos],
     '--pg-raio-card': RAIO_CARD[b.cantos],
-    '--pg-sombra': SOMBRA[b.sombra],
+    '--pg-sombra': sombraCss(b.sombra, b.cor_sombra),
   }
 }
 

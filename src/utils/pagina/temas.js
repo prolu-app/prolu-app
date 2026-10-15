@@ -12,23 +12,23 @@ import { comCaminho, normalizarDoc } from './modelo.js'
 
 const ELEMENTOS = ['titulo', 'subtitulo', 'descricao', 'botoes']
 
-// botao: preenchimento ('nenhum' ou cor), contorno (0-3) e cor_contorno, texto, cantos, sombra
+// botao: preenchimento ('nenhum' ou cor), contorno (0-3) e cor_contorno, texto, cantos, sombra e cor_sombra
 export const TEMAS = [
   { id: 'claro', rotulo: 'Claro', fundo: '#f6f4ef', nome: '#1a1a1a', texto: '#555555', fonte: 'Inter',
-    botao: { preenchimento: 'nenhum', contorno: 1, cor_contorno: '#1a1a1a', texto: '#1a1a1a', cantos: 'md', sombra: 'none' } },
+    botao: { preenchimento: 'nenhum', contorno: 1, cor_contorno: '#1a1a1a', texto: '#1a1a1a', cantos: 'md', sombra: 'none', cor_sombra: '#000000' } },
   { id: 'grafite', rotulo: 'Grafite', fundo: '#1a1a1a', nome: '#ffffff', texto: '#b8b8b8', fonte: 'Montserrat',
-    botao: { preenchimento: '#f2f2f2', contorno: 0, cor_contorno: '#f2f2f2', texto: '#1a1a1a', cantos: 'lg', sombra: 'soft' } },
+    botao: { preenchimento: '#f2f2f2', contorno: 0, cor_contorno: '#f2f2f2', texto: '#1a1a1a', cantos: 'lg', sombra: 'soft', cor_sombra: '#000000' } },
   // botão #A8573C → #974E36: a descrição curta (branco a 80%) ficava em 3,9:1
   { id: 'terra', rotulo: 'Terra', fundo: '#f1e7dc', nome: '#3b2a20', texto: '#6b5547', fonte: 'DM Sans', fontes: { titulo: 'Lora' },
-    botao: { preenchimento: '#974e36', contorno: 0, cor_contorno: '#974e36', texto: '#ffffff', cantos: 'lg', sombra: 'none' } },
+    botao: { preenchimento: '#974e36', contorno: 0, cor_contorno: '#974e36', texto: '#ffffff', cantos: 'lg', sombra: 'none', cor_sombra: '#000000' } },
   { id: 'concreto', rotulo: 'Concreto', fundo: '#e4e4e2', nome: '#1f1f1f', texto: '#4a4a4a', fonte: 'Space Grotesk',
-    botao: { preenchimento: 'nenhum', contorno: 2, cor_contorno: '#1f1f1f', texto: '#1f1f1f', cantos: 'none', sombra: 'hard' } },
+    botao: { preenchimento: 'nenhum', contorno: 2, cor_contorno: '#1f1f1f', texto: '#1f1f1f', cantos: 'none', sombra: 'hard', cor_sombra: '#000000' } },
   { id: 'linho', rotulo: 'Linho', fundo: '#faf6ee', nome: '#2e2a25', texto: '#6a6258', fonte: 'Work Sans', fontes: { titulo: 'Playfair Display' }, tamanhos: { titulo: 'g' },
-    botao: { preenchimento: '#eadfcb', contorno: 1, cor_contorno: '#2e2a25', texto: '#2e2a25', cantos: 'full', sombra: 'none' } },
+    botao: { preenchimento: '#eadfcb', contorno: 1, cor_contorno: '#2e2a25', texto: '#2e2a25', cantos: 'full', sombra: 'none', cor_sombra: '#000000' } },
   { id: 'oliva', rotulo: 'Oliva', fundo: '#eef0e4', nome: '#2f3a24', texto: '#5c6650', fonte: 'DM Sans',
-    botao: { preenchimento: '#4f6b3a', contorno: 0, cor_contorno: '#4f6b3a', texto: '#ffffff', cantos: 'md', sombra: 'soft' } },
+    botao: { preenchimento: '#4f6b3a', contorno: 0, cor_contorno: '#4f6b3a', texto: '#ffffff', cantos: 'md', sombra: 'soft', cor_sombra: '#000000' } },
   { id: 'editorial-pb', rotulo: 'Editorial P&B', fundo: '#ffffff', nome: '#000000', texto: '#444444', fonte: 'Inter', fontes: { titulo: 'Cormorant Garamond' }, tamanhos: { titulo: 'g' },
-    botao: { preenchimento: 'nenhum', contorno: 1, cor_contorno: '#000000', texto: '#000000', cantos: 'none', sombra: 'none' } },
+    botao: { preenchimento: 'nenhum', contorno: 1, cor_contorno: '#000000', texto: '#000000', cantos: 'none', sombra: 'none', cor_sombra: '#000000' } },
 ]
 
 // valores que o tema define, já no formato de aparencia (normalizado)
@@ -81,8 +81,9 @@ export function temaDoDoc(docNormal) {
       && a.fonte === v.fonte
       && ELEMENTOS.every(e => a.fontes[e] === v.fontes[e] && a.tamanhos[e] === v.tamanhos[e])
       && Object.entries(v.botao).every(([k, val]) => a.botao[k] === val
-        // sem contorno, a cor do contorno não aparece: não conta
-        || (k === 'cor_contorno' && v.botao.contorno === 0))
+        // sem contorno (ou sem sombra), a cor dele não aparece: não conta
+        || (k === 'cor_contorno' && v.botao.contorno === 0)
+        || (k === 'cor_sombra' && v.botao.sombra === 'none'))
     if (iguais) return tema.id
   }
   return null

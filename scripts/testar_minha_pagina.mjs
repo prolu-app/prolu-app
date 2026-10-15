@@ -42,7 +42,7 @@ try {
   const PaginaRender = (await carregar('/src/components/minhapagina/render/PaginaRender.jsx')).default
   const { normalizarDoc, docGravavel, comCaminho, LISTAS, LIMITES } = modelo
   const { FONTES_V2, FONTE_PADRAO, cssDasFontes, urlDaFonte } = await carregar('/src/utils/pagina/fontes.js')
-  const { ESCALA, variaveisDeDesign } = await carregar('/src/utils/pagina/tema.js')
+  const { ESCALA, variaveisDeDesign, sombraCss } = await carregar('/src/utils/pagina/tema.js')
   const { TEMAS, aplicarTema, temaDoDoc, valoresDoTema } = await carregar('/src/utils/pagina/temas.js')
 
   const html = (bruto, props = {}) => renderToStaticMarkup(React.createElement(PaginaRender, {
@@ -203,6 +203,16 @@ try {
   const nOp = normalizarDoc({ layout_opcoes: { editorial_links: 'cards', cartoes_seta: 'sim', outra: 1 } })
   confere('layout_opcoes inválidas = padrão', nOp.layout_opcoes.editorial_links === 'linhas' && nOp.layout_opcoes.cartoes_seta === true && !('outra' in nOp.layout_opcoes))
 
+  const sql060 = fs.readFileSync(path.join(raiz, 'supabase/migration_060_minha_pagina_cor_sombra.sql'), 'utf8')
+  // ── cor da sombra (060) ──
+  const varsSombra = d => variaveisDeDesign(normalizarDoc(d))
+  confere('sombra preta = o CSS de antes', sombraCss('soft') === '0 2px 8px rgba(0,0,0,0.12)' && sombraCss('strong') === '0 4px 16px rgba(0,0,0,0.25)' && sombraCss('hard') === '4px 4px 0px rgba(0,0,0,0.8)' && sombraCss('none') === 'none')
+  confere('sem cor_sombra no documento = sombra preta', varsSombra({ aparencia: { botao: { sombra: 'soft' } } })['--pg-sombra'] === '0 2px 8px rgba(0,0,0,0.12)')
+  confere('cor da sombra com a mesma intensidade', varsSombra({ aparencia: { botao: { sombra: 'hard', cor_sombra: '#c0392b' } } })['--pg-sombra'] === '4px 4px 0px rgba(192,57,43,0.8)')
+  confere('cor da sombra inválida é ignorada', varsSombra({ aparencia: { botao: { sombra: 'soft', cor_sombra: 'red' } } })['--pg-sombra'] === '0 2px 8px rgba(0,0,0,0.12)')
+  confere('cor da sombra no estilo próprio do item', html({ aparencia: { botao: { sombra: 'soft' } }, itens: [link(1, { estilo: { botao: { cor_sombra: '#123456' } } })] }).includes('rgba(18,52,86,0.12)'))
+  confere('paridade: SQL 060 aceita cor_sombra no botão', /'preenchimento','contorno','texto','cor_sombra']/.test(sql060) && sql060.includes("_pv2_cor(b, 'cor_sombra')") && modelo.BOTAO_PADRAO.cor_sombra === '#000000')
+
   // ── temas prontos ──
   const lumHex = h => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255] }
   const lumRgb = rgb => rgb.map(c => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4 }).reduce((a, c, i) => a + c * [0.2126, 0.7152, 0.0722][i], 0)
@@ -229,6 +239,9 @@ try {
       && a.fonte === t.fonte && LISTAS.elemento.every(e => a.fontes[e] === (t.fontes?.[e] || null) && a.tamanhos[e] === (t.tamanhos?.[e] || 'm'))
       && Object.entries(t.botao).every(([k, val]) => a.botao[k] === val), JSON.stringify(a))
     confere(`tema ${t.rotulo}: fica selecionado`, temaDoDoc(n) === t.id)
+    confere(`tema ${t.rotulo}: sombra volta a ser preta`, a.botao.cor_sombra === '#000000')
+    if (t.botao.sombra === 'none') confere(`tema ${t.rotulo}: sem sombra, a cor dela não conta`, temaDoDoc(normalizarDoc(comCaminho(aplicado, ['aparencia', 'botao', 'cor_sombra'], '#ff0000'))) === t.id)
+    else confere(`tema ${t.rotulo}: com sombra, trocar a cor vira Personalizado`, temaDoDoc(normalizarDoc(comCaminho(aplicado, ['aparencia', 'botao', 'cor_sombra'], '#ff0000'))) === null)
     confere(`tema ${t.rotulo}: não mexe em layout, capa, foto, itens, ícones, estilo próprio nem chave desconhecida`,
       JSON.stringify([aplicado.layout, aplicado.layout_opcoes, aplicado.capa, aplicado.perfil, aplicado.itens, aplicado.futura])
         === JSON.stringify([docRico.layout, docRico.layout_opcoes, docRico.capa, docRico.perfil, docRico.itens, docRico.futura]))
@@ -338,7 +351,8 @@ try {
 
   // ── paridade das listas com as migrations 056 + 057 (vale a definição mais recente) ──
   const sql = ['supabase/migration_056_minha_pagina_v2.sql', 'supabase/migration_057_minha_pagina_fontes_botoes.sql',
-    'supabase/migration_058_minha_pagina_sem_destaque.sql', 'supabase/migration_059_minha_pagina_layouts.sql']
+    'supabase/migration_058_minha_pagina_sem_destaque.sql', 'supabase/migration_059_minha_pagina_layouts.sql',
+    'supabase/migration_060_minha_pagina_cor_sombra.sql']
     .map(f => fs.readFileSync(path.join(raiz, f), 'utf8')).join('\n')
   const lista = nome => {
     const m = [...sql.matchAll(new RegExp(`${nome} constant text\\[\\] := array\\[([^\\]]+)\\]`, 'g'))].pop()
@@ -448,6 +462,7 @@ try {
     ['Conteúdo', React.createElement(AreaConteudo, { ...comum, formularios: [{ id: id(50), nome: 'Form', slug: 'form', ativo: true }] })],
     ['Aparência', React.createElement(AreaAparencia, comum)],
     ['Aparência (Sem capa com imagem guardada)', React.createElement(AreaAparencia, { ...comum, docNormal: normalizarDoc({ ...docEditor, capa: { estilo: 'nenhuma', imagem: IMG } }) })],
+    ['Aparência (tema Claro)', React.createElement(AreaAparencia, { ...comum, docNormal: normalizarDoc(aplicarTema(docEditor, TEMAS.find(t => t.id === 'claro'))) })],
     ['Aparência (tema Oliva)', React.createElement(AreaAparencia, { ...comum, docNormal: normalizarDoc(aplicarTema(docEditor, TEMAS.find(t => t.id === 'oliva'))) })],
     ['Aparência (Editorial)', React.createElement(AreaAparencia, { ...comum, docNormal: normalizarDoc({ ...docEditor, layout: 'editorial', capa: { estilo: 'capa', imagem: IMG } }) })],
     ['Aparência (Cartões)', React.createElement(AreaAparencia, { ...comum, docNormal: normalizarDoc({ ...docEditor, layout: 'cartoes', layout_opcoes: { cartoes_seta: false } }) })],
@@ -478,6 +493,12 @@ try {
     if (nome === 'Aparência') {
       confere('editor: bloco Tema no topo de Aparência com 7 cartões', saida.indexOf('id="mpe-tema"') >= 0 && saida.indexOf('id="mpe-tema"') < saida.indexOf('id="mpe-layout"') && (saida.match(/class="mpe-layout mpe-tema/g) || []).length === 7)
       confere('editor: sem tema que bata = Personalizado', saida.includes('Personalizado'))
+    }
+    if (nome === 'Aparência (tema Oliva)') {
+      confere('editor: com sombra, aparece a cor da sombra', saida.includes('Cor da sombra dos botões'))
+    }
+    if (nome === 'Aparência (tema Claro)') {
+      confere('editor: sem sombra, sem cor da sombra', !saida.includes('Cor da sombra dos botões'))
     }
     if (nome === 'Aparência (tema Oliva)') {
       confere('editor: tema aplicado aparece selecionado', /class="mpe-layout mpe-tema on"[^>]*aria-label="Tema Oliva"|aria-checked="true"[^>]*class="mpe-layout mpe-tema on"/.test(saida) && !saida.includes('Personalizado'))

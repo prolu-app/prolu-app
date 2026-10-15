@@ -180,6 +180,9 @@ export default function AreaAparencia({ doc, docNormal, alterar, alterarDoc, emp
         </Linha>
         <Linha rotulo="Sombra">
           <Segmentos rotulo="Sombra dos botões" valor={b.sombra} opcoes={SOMBRA} disabled={off} onChange={v => mudarBotao('sombra', v)} />
+          {b.sombra !== 'none' && (
+            <ColorPicker rotulo="Cor da sombra dos botões" valor={b.cor_sombra} disabled={off} onChange={v => mudarBotao('cor_sombra', v)} />
+          )}
         </Linha>
       </section>
 

@@ -51,6 +51,7 @@ export const BOTAO_PADRAO = {
   estilo: 'solido', cor: '#1a1a1a', cor_texto: '#ffffff', cor_contorno: '#1a1a1a',
   cor_texto_contorno: '', espessura_contorno: 2, cantos: 'md', sombra: 'none',
   preenchimento: '#1a1a1a', contorno: 0, texto: '#ffffff',
+  cor_sombra: '#000000', // 060: ausente = preta, como antes
 }
 export const CHAVES_BOTAO_NOVAS = ['preenchimento', 'contorno', 'texto']
 
@@ -116,6 +117,7 @@ export function normalizarBotao(bruto, base = BOTAO_PADRAO) {
     preenchimento: preenchimentoValido(b.preenchimento) ? b.preenchimento.toLowerCase() : d.preenchimento,
     contorno: opcao(b.contorno, LISTAS.botao_contorno, d.contorno),
     texto: cor(b.texto, d.texto),
+    cor_sombra: cor(b.cor_sombra, base.cor_sombra || BOTAO_PADRAO.cor_sombra),
   }
 }
 
@@ -124,7 +126,7 @@ function botaoParcial(bruto) {
   if (!bruto || typeof bruto !== 'object') return null
   const n = {}
   if (LISTAS.botao_estilo.includes(bruto.estilo)) n.estilo = bruto.estilo
-  for (const k of ['cor', 'cor_texto', 'cor_contorno', 'texto']) if (cor(bruto[k], null)) n[k] = bruto[k].toLowerCase()
+  for (const k of ['cor', 'cor_texto', 'cor_contorno', 'texto', 'cor_sombra']) if (cor(bruto[k], null)) n[k] = bruto[k].toLowerCase()
   if (bruto.cor_texto_contorno === '' || cor(bruto.cor_texto_contorno, null)) n.cor_texto_contorno = bruto.cor_texto_contorno.toLowerCase()
   if (LISTAS.botao_espessura.includes(bruto.espessura_contorno)) n.espessura_contorno = bruto.espessura_contorno
   if (LISTAS.botao_cantos.includes(bruto.cantos)) n.cantos = bruto.cantos
