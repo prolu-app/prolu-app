@@ -43,6 +43,7 @@ try {
   const { normalizarDoc, docGravavel, comCaminho, LISTAS, LIMITES } = modelo
   const { FONTES_V2, FONTE_PADRAO, cssDasFontes, urlDaFonte } = await carregar('/src/utils/pagina/fontes.js')
   const { ESCALA, variaveisDeDesign } = await carregar('/src/utils/pagina/tema.js')
+  const { TEMAS, aplicarTema, temaDoDoc, valoresDoTema } = await carregar('/src/utils/pagina/temas.js')
 
   const html = (bruto, props = {}) => renderToStaticMarkup(React.createElement(PaginaRender, {
     doc: normalizarDoc(bruto), selo: true, escritorio: 'Escritório Exemplo', slug: 'exemplo', ...props,
@@ -201,6 +202,54 @@ try {
   // opções de layout tolerantes
   const nOp = normalizarDoc({ layout_opcoes: { editorial_links: 'cards', cartoes_seta: 'sim', outra: 1 } })
   confere('layout_opcoes inválidas = padrão', nOp.layout_opcoes.editorial_links === 'linhas' && nOp.layout_opcoes.cartoes_seta === true && !('outra' in nOp.layout_opcoes))
+
+  // ── temas prontos ──
+  const lumHex = h => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255] }
+  const lumRgb = rgb => rgb.map(c => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4 }).reduce((a, c, i) => a + c * [0.2126, 0.7152, 0.0722][i], 0)
+  const razao = (a, b) => { const [x, y] = [lumRgb(a), lumRgb(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05) }
+  const mistura = (a, b, t) => a.map((v, i) => Math.round(v * t + b[i] * (1 - t)))
+  const docRico = {
+    v: 2, layout: 'cartoes', layout_opcoes: { cartoes_seta: false }, futura: { x: 1 },
+    perfil: { nome: 'Ana', subtitulo: 'Sub', bio: 'Bio', foto: IMG, foto_formato: 'quadrado' },
+    capa: { estilo: 'hero', imagem: IMG, foco: 'topo' },
+    aparencia: { fonte: 'Oswald', fontes: { titulo: 'Lora', subtitulo: 'Inter', descricao: null, botoes: 'Poppins' }, tamanhos: { titulo: 'gg', subtitulo: 'p', descricao: 'g', botoes: 'p' },
+      fundo: { tipo: 'pattern', cor: '#123123', pattern: 'grade', pattern_cor: '#000000', pattern_opacidade: 0.2 },
+      botao: { estilo: 'solido', cor: '#ff0000', preenchimento: '#ff0000', contorno: 3, cor_contorno: '#00ff00', texto: '#0000ff', cantos: 'full', sombra: 'hard' } },
+    itens: [link(1, { estilo: { v: 1, icone: 'instagram', botao: { preenchimento: '#abcdef', contorno: 0, texto: '#000000' }, legado: { a: 1 } } }), { id: id(2), tipo: 'secao', ativo: true, titulo: 'S' }, link(3, { imagem_url: IMG, imagem_modo: 'banner' })],
+  }
+  const original = JSON.stringify(docRico)
+  confere('7 temas', TEMAS.length === 7 && TEMAS.map(t => t.id).join() === 'claro,grafite,terra,concreto,linho,oliva,editorial-pb')
+  confere('documento sem tema conhecido = Personalizado', temaDoDoc(normalizarDoc(docRico)) === null)
+  for (const t of TEMAS) {
+    const aplicado = aplicarTema(docRico, t)
+    const n = normalizarDoc(aplicado)
+    const v = valoresDoTema(t)
+    const a = n.aparencia
+    confere(`tema ${t.rotulo}: valores aplicados`, a.fundo.tipo === 'cor' && a.fundo.cor === v.fundo.cor && a.cor_texto === v.cor_texto && a.cor_texto_suave === v.cor_texto_suave
+      && a.fonte === t.fonte && LISTAS.elemento.every(e => a.fontes[e] === (t.fontes?.[e] || null) && a.tamanhos[e] === (t.tamanhos?.[e] || 'm'))
+      && Object.entries(t.botao).every(([k, val]) => a.botao[k] === val), JSON.stringify(a))
+    confere(`tema ${t.rotulo}: fica selecionado`, temaDoDoc(n) === t.id)
+    confere(`tema ${t.rotulo}: não mexe em layout, capa, foto, itens, ícones, estilo próprio nem chave desconhecida`,
+      JSON.stringify([aplicado.layout, aplicado.layout_opcoes, aplicado.capa, aplicado.perfil, aplicado.itens, aplicado.futura])
+        === JSON.stringify([docRico.layout, docRico.layout_opcoes, docRico.capa, docRico.perfil, docRico.itens, docRico.futura]))
+    confere(`tema ${t.rotulo}: documento original intacto (Desfazer volta a ele)`, JSON.stringify(docRico) === original)
+    const mexido = normalizarDoc(comCaminho(aplicado, ['aparencia', 'cor_texto'], '#123456'))
+    confere(`tema ${t.rotulo}: mudar um controle vira Personalizado`, temaDoDoc(mexido) === null)
+    // contraste: nome/texto no fundo; texto do botão e descrição (80%) no botão ou no fundo
+    const fundo = lumHex(v.fundo.cor)
+    const fundoBotao = t.botao.preenchimento === 'nenhum' ? fundo : lumHex(t.botao.preenchimento)
+    const textoBotao = lumHex(t.botao.texto)
+    const razoes = [razao(lumHex(v.cor_texto), fundo), razao(lumHex(v.cor_texto_suave), fundo), razao(textoBotao, fundoBotao), razao(mistura(textoBotao, fundoBotao, 0.8), fundoBotao)]
+    confere(`tema ${t.rotulo}: contraste ≥ 4,5 (${razoes.map(r => r.toFixed(2)).join(' / ')})`, razoes.every(r => r >= 4.5))
+    for (const l of LAYOUTS) {
+      let h = ''
+      let erro = null
+      try { h = html({ ...aplicado, layout: l.id }) } catch (e) { erro = e }
+      confere(`tema ${t.rotulo} × ${l.id}: desenha`, !erro && h.includes(`--pg-fundo:${v.fundo.cor}`) && h.includes('Link 1'), erro?.message)
+    }
+    // o servidor aceita (mesmas chaves e listas do validador)
+    confere(`tema ${t.rotulo}: só chaves conhecidas em aparência`, Object.keys(docGravavel(aplicado).aparencia).every(k => ['fonte', 'fontes', 'tamanhos', 'cor_texto', 'cor_texto_suave', 'fundo', 'botao'].includes(k)))
+  }
 
   // ── espaçamentos (PaginaRender.css) ──
   const cssRender = fs.readFileSync(path.join(raiz, 'src/components/minhapagina/render/PaginaRender.css'), 'utf8')
@@ -399,6 +448,7 @@ try {
     ['Conteúdo', React.createElement(AreaConteudo, { ...comum, formularios: [{ id: id(50), nome: 'Form', slug: 'form', ativo: true }] })],
     ['Aparência', React.createElement(AreaAparencia, comum)],
     ['Aparência (Sem capa com imagem guardada)', React.createElement(AreaAparencia, { ...comum, docNormal: normalizarDoc({ ...docEditor, capa: { estilo: 'nenhuma', imagem: IMG } }) })],
+    ['Aparência (tema Oliva)', React.createElement(AreaAparencia, { ...comum, docNormal: normalizarDoc(aplicarTema(docEditor, TEMAS.find(t => t.id === 'oliva'))) })],
     ['Aparência (Editorial)', React.createElement(AreaAparencia, { ...comum, docNormal: normalizarDoc({ ...docEditor, layout: 'editorial', capa: { estilo: 'capa', imagem: IMG } }) })],
     ['Aparência (Cartões)', React.createElement(AreaAparencia, { ...comum, docNormal: normalizarDoc({ ...docEditor, layout: 'cartoes', layout_opcoes: { cartoes_seta: false } }) })],
     ['Publicação', React.createElement(AreaPublicacao, { ...comum, servidor: servidorFicticio, seloFixo: true, onDefinirNoAr: () => {} })],
@@ -424,6 +474,13 @@ try {
       confere('editor: fonte principal e "Por elemento" recolhido', saida.includes('Fonte principal') && /<details class="mpe-avancado"><summary>Por elemento/.test(saida) && saida.includes('Igual à principal'))
       confere('editor: 12 fontes na lista', (saida.match(/<option value="Space Grotesk">/g) || []).length >= 1 && !saida.includes('<option value="Rubik">'))
       confere('editor: os 4 layouts disponíveis (sem "Em breve")', !saida.includes('Em breve') && ['Clássico', 'Editorial', 'Quadrados', 'Cartões'].every(n => saida.includes(`>${n}</span>`)))
+    }
+    if (nome === 'Aparência') {
+      confere('editor: bloco Tema no topo de Aparência com 7 cartões', saida.indexOf('id="mpe-tema"') >= 0 && saida.indexOf('id="mpe-tema"') < saida.indexOf('id="mpe-layout"') && (saida.match(/class="mpe-layout mpe-tema/g) || []).length === 7)
+      confere('editor: sem tema que bata = Personalizado', saida.includes('Personalizado'))
+    }
+    if (nome === 'Aparência (tema Oliva)') {
+      confere('editor: tema aplicado aparece selecionado', /class="mpe-layout mpe-tema on"[^>]*aria-label="Tema Oliva"|aria-checked="true"[^>]*class="mpe-layout mpe-tema on"/.test(saida) && !saida.includes('Personalizado'))
     }
     if (nome === 'Aparência (Editorial)') {
       confere('editor: Editorial mostra "Estilo dos links" (Linhas/Botões)', saida.includes('Estilo dos links') && saida.includes('>Linhas<') && saida.includes('>Botões<'))

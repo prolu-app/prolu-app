@@ -1,6 +1,5 @@
-// Área "Aparência" do editor da Minha Página v2: layout, cabeçalho (foto de
-// perfil e capa), botões (todos, de uma vez), fundo e texto. Temas prontos
-// entram na Fase 2.
+// Área "Aparência" do editor da Minha Página v2: tema, layout, cabeçalho
+// (foto de perfil e capa), botões (todos, de uma vez), fundo e texto.
 // Capa e Hero exigem imagem (sem ela: aviso + envio, sem trocar de estilo em
 // silêncio; a publicação fica bloqueada) e não aceitam GIF.
 
@@ -16,6 +15,7 @@ import { ESCALA } from '../../utils/pagina/tema.js'
 import { comCaminho } from '../../utils/pagina/modelo.js'
 import { UploadImagem } from './comum.jsx'
 import BotaoControles, { botaoGravavel } from './BotaoControles.jsx'
+import BlocoTemas from './BlocoTemas.jsx'
 
 const ESTILOS_CAPA = [{ value: 'nenhuma', label: 'Sem capa' }, { value: 'banner', label: 'Banner' }, { value: 'capa', label: 'Capa' }, { value: 'hero', label: 'Hero' }]
 const DICA_CAPA = {
@@ -86,6 +86,8 @@ export default function AreaAparencia({ doc, docNormal, alterar, alterarDoc, emp
 
   return (
     <>
+      <BlocoTemas doc={doc} docNormal={docNormal} alterarDoc={alterarDoc} empresa={empresa} off={off} />
+
       <section className="mpe-bloco" aria-labelledby="mpe-layout">
         <h2 className="mpe-titulo" id="mpe-layout">Layout</h2>
         <div className="mpe-layouts" role="radiogroup" aria-labelledby="mpe-layout">
