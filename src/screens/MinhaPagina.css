@@ -149,24 +149,69 @@
 .mpe-estilo-proprio { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--cream, #f3f2ed); }
 .mp-link-card.mpe-secao { background: var(--cream, #f3f2ed); }
 
-/* layout */
-.mpe-layouts { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 12px; }
-.mpe-layout {
-  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px;
-  border: 1px solid var(--line, #e4e3dc); border-radius: 12px; background: var(--white, #fff); cursor: pointer; font: inherit;
+/* layout: wireframes (SeletorLayout.jsx) — 4 colunas; 2×2 no celular */
+.mpe-wires { display: grid; grid-template-columns: repeat(4, 88px); gap: 10px; }
+.mpe-wire {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 0; border: 0; background: none; cursor: pointer; font: inherit; color: var(--ink-60, #5f5f58);
 }
-.mpe-layout.on { border: 2px solid var(--ink, #121210); }
-.mpe-layout:disabled { cursor: default; }
-.mpe-layout.em-breve { opacity: 0.55; }
-.mpe-layout-mini { position: relative; width: 117px; height: 208px; overflow: hidden; border-radius: 8px; background: var(--cream, #f3f2ed); }
-.mpe-layout-tela { position: absolute; top: 0; left: 0; width: 390px; height: 693px; transform: scale(0.3); transform-origin: top left; pointer-events: none; }
-.mpe-layout-breve { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 12px; font-weight: 600; color: var(--ink-60, #6b6b66); }
+.mpe-wire:disabled { cursor: default; }
+.mpe-wire-mini {
+  display: block; width: 88px; aspect-ratio: 3 / 4; overflow: hidden; box-sizing: border-box;
+  border: 1px solid var(--ink-30, #b7b7ae); border-radius: 8px; background: var(--white, #fff);
+  color: var(--ink-60, #5f5f58); transition: border-color 0.12s ease;
+}
+.mpe-wire-svg { display: block; width: 100%; height: 100%; }
+.mpe-wire:hover .mpe-wire-mini { border-color: var(--ink-60, #5f5f58); }
+.mpe-wire.on .mpe-wire-mini { border: 2px solid var(--green-ink, #54650a); }
+.mpe-wire:focus-visible { outline: none; }
+.mpe-wire:focus-visible .mpe-wire-mini { box-shadow: 0 0 0 2px var(--white, #fff), 0 0 0 4px var(--ink, #121210); }
+.mpe-wire-nome { font-size: 12.5px; line-height: 1.2; }
+.mpe-wire.on .mpe-wire-nome { font-weight: 700; color: var(--ink, #121210); }
+@media (max-width: 600px) { .mpe-wires { grid-template-columns: repeat(2, 76px); } .mpe-wire-mini { width: 76px; } }
 .mpe-layout-opcoes { margin-top: 14px; }
+
+/* tema: amostras redondas (36px numa área de toque de 44px; 10px entre bolinhas) */
+.mpe-temas .mpe-titulo { margin-bottom: 4px; }
+.mpe-temas .mpe-nota-topo { margin: 0 0 4px; }
+.mpe-swatches { display: flex; flex-wrap: wrap; gap: 2px; margin: 0 -4px; }
+.mpe-swatch {
+  position: relative; width: 44px; height: 44px; padding: 4px; box-sizing: border-box;
+  border: 0; background: none; cursor: pointer; border-radius: 50%;
+}
+.mpe-swatch:disabled { cursor: default; }
+.mpe-swatch-cor {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; box-sizing: border-box; border-radius: 50%;
+  border: 1px solid var(--ink-30, #b7b7ae);
+  transition: transform 0.12s ease;
+}
+.mpe-swatch:hover .mpe-swatch-cor, .mpe-swatch:focus-visible .mpe-swatch-cor { transform: scale(1.08); }
+.mpe-swatch:focus-visible { outline: none; }
+.mpe-swatch:focus-visible .mpe-swatch-cor { box-shadow: 0 0 0 2px var(--white, #fff), 0 0 0 4px var(--ink, #121210); }
+/* selecionada: anel de 2px na cor de destaque (tom escuro, legível) com 3px de folga + check */
+.mpe-swatch.on .mpe-swatch-cor { outline: 2px solid var(--green-ink, #54650a); outline-offset: 3px; }
+.mpe-swatch-check { width: 18px; height: 18px; }
+/* Personalizado: tracejado, sem cor de tema, ícone de ajustes */
+.mpe-swatch--livre .mpe-swatch-cor { border: 1.5px dashed var(--ink-40, #9b9b92); background: var(--white, #fff); color: var(--ink-60, #5f5f58); }
+.mpe-swatch--livre.on .mpe-swatch-cor { color: var(--ink, #121210); }
+.mpe-swatch-ajustes { width: 17px; height: 17px; }
+/* nome no hover (só onde há hover — no toque, não) e no foco por teclado */
+.mpe-swatch::after {
+  content: attr(data-nome);
+  position: absolute; left: 50%; bottom: calc(100% + 2px); transform: translateX(-50%);
+  padding: 3px 8px; border-radius: 6px; white-space: nowrap; pointer-events: none;
+  background: var(--ink, #121210); color: var(--white, #fff); font-size: 11.5px; font-weight: 500;
+  opacity: 0; transition: opacity 0.12s ease; z-index: 5;
+}
+@media (hover: hover) { .mpe-swatch:hover::after { opacity: 1; } }
+.mpe-swatch:focus-visible::after { opacity: 1; }
+.mpe-tema-nome { margin: 2px 0 0; font-size: 13px; line-height: 1.4; color: var(--ink-60, #5f5f58); }
+.mpe-tema-nome strong { color: var(--ink, #121210); font-weight: 600; }
 .mpe-tema-desfazer {
-  display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 8px 12px;
+  display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 6px 12px;
   border-radius: 10px; background: var(--cream, #f3f2ed); font-size: 13px;
 }
-.mpe-layout-nome { font-size: 13px; font-weight: 600; }
 
 .mpe-atalhos { display: flex; gap: 8px; flex-wrap: wrap; }
 .mpe-avancado { display: flex; flex-direction: column; gap: 12px; }

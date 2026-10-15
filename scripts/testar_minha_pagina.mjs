@@ -450,6 +450,12 @@ try {
   const AreaConteudo = (await carregar('/src/screens/minhapagina/AreaConteudo.jsx')).default
   const AreaAparencia = (await carregar('/src/screens/minhapagina/AreaAparencia.jsx')).default
   const AreaPublicacao = (await carregar('/src/screens/minhapagina/AreaPublicacao.jsx')).default
+  const { acaoDoTema, PERSONALIZADO } = await carregar('/src/screens/minhapagina/BlocoTemas.jsx')
+  // trecho do HTML de um radiogroup pelo aria-label
+  const grupo = (h, rotulo) => { const i = h.indexOf(`role="radiogroup" aria-label="${rotulo}"`); return i < 0 ? '' : h.slice(i, h.indexOf('</div>', i)) }
+  const radios = g => [...g.matchAll(/<button[^>]*role="radio"[^>]*>/g)].map(m => m[0])
+  const marcados = g => radios(g).filter(b => b.includes('aria-checked="true"'))
+  const rotuloDe = b => (b.match(/aria-label="([^"]+)"/) || [])[1]
   const docEditor = docGravavel({
     v: 2, perfil: { nome: 'Ana', subtitulo: 'Sub', foto: IMG }, capa: { estilo: 'hero', imagem: null },
     itens: [link(1, { estilo: { destaque: true, botao: { cor: '#ff0000' } } }), link(2, { estilo: { icone: 'instagram' } }),
@@ -489,10 +495,18 @@ try {
       confere('editor: fonte principal e "Por elemento" recolhido', saida.includes('Fonte principal') && /<details class="mpe-avancado"><summary>Por elemento/.test(saida) && saida.includes('Igual à principal'))
       confere('editor: 12 fontes na lista', (saida.match(/<option value="Space Grotesk">/g) || []).length >= 1 && !saida.includes('<option value="Rubik">'))
       confere('editor: os 4 layouts disponíveis (sem "Em breve")', !saida.includes('Em breve') && ['Clássico', 'Editorial', 'Quadrados', 'Cartões'].every(n => saida.includes(`>${n}</span>`)))
+      const gl = grupo(saida, 'Layout')
+      confere('editor: seletor de layout com 4 opções e 1 marcada (Clássico)', radios(gl).length === 4 && marcados(gl).length === 1 && rotuloDe(marcados(gl)[0]) === 'Clássico' && radios(gl).map(rotuloDe).join() === 'Clássico,Editorial,Quadrados,Cartões')
+      confere('editor: layout em wireframe (sem desenhar a página)', gl.includes('mpe-wire-svg') && !gl.includes('pg-pagina') && !/<img/.test(gl))
+      confere('editor: só a opção marcada entra no Tab (setas movem o foco)', radios(gl).filter(b => b.includes('tabindex="0"')).length === 1)
     }
     if (nome === 'Aparência') {
-      confere('editor: bloco Tema no topo de Aparência com 7 cartões', saida.indexOf('id="mpe-tema"') >= 0 && saida.indexOf('id="mpe-tema"') < saida.indexOf('id="mpe-layout"') && (saida.match(/class="mpe-layout mpe-tema/g) || []).length === 7)
-      confere('editor: sem tema que bata = Personalizado', saida.includes('Personalizado'))
+      const gt = grupo(saida, 'Tema')
+      confere('editor: bloco Tema no topo de Aparência', saida.indexOf('id="mpe-tema"') >= 0 && saida.indexOf('id="mpe-tema"') < saida.indexOf('id="mpe-layout"'))
+      confere('editor: seletor de tema com 8 amostras (7 temas + Personalizado) e 1 marcada', radios(gt).length === 8 && marcados(gt).length === 1 && rotuloDe(radios(gt)[7]) === 'Personalizado')
+      confere('editor: sem tema que bata = Personalizado marcado', rotuloDe(marcados(gt)[0]) === 'Personalizado' && saida.includes('<strong>Personalizado</strong> · suas próprias escolhas'))
+      confere('editor: amostras sem miniatura de página', !gt.includes('pg-pagina') && (gt.match(/linear-gradient\(135deg/g) || []).length === 7 && gt.includes('mpe-swatch--livre'))
+      confere('editor: texto do Tema enxuto', saida.includes('Um clique troca cores, fontes e botões.') && !saida.includes('Depois dá para ajustar qualquer controle') && !saida.includes('Atual: '))
     }
     if (nome === 'Aparência (tema Oliva)') {
       confere('editor: com sombra, aparece a cor da sombra', saida.includes('Cor da sombra dos botões'))
@@ -501,7 +515,9 @@ try {
       confere('editor: sem sombra, sem cor da sombra', !saida.includes('Cor da sombra dos botões'))
     }
     if (nome === 'Aparência (tema Oliva)') {
-      confere('editor: tema aplicado aparece selecionado', /class="mpe-layout mpe-tema on"[^>]*aria-label="Tema Oliva"|aria-checked="true"[^>]*class="mpe-layout mpe-tema on"/.test(saida) && !saida.includes('Personalizado'))
+      const gto = grupo(saida, 'Tema')
+      confere('editor: tema aplicado aparece selecionado (só ele)', marcados(gto).length === 1 && rotuloDe(marcados(gto)[0]) === 'Oliva' && saida.includes('<strong>Oliva</strong> · verdes naturais, botões cheios'))
+      confere('editor: amostra marcada tem check', /aria-label="Oliva"[^>]*>[^]*?mpe-swatch-check/.test(gto))
     }
     if (nome === 'Aparência (Editorial)') {
       confere('editor: Editorial mostra "Estilo dos links" (Linhas/Botões)', saida.includes('Estilo dos links') && saida.includes('>Linhas<') && saida.includes('>Botões<'))
@@ -519,6 +535,34 @@ try {
       confere('editor: hiperlink para Configurações → Escritório', saida.includes('href="/configuracoes?tab=escritorio#endereco"'))
       confere('editor: selo travado no Starter', /aria-checked="true"[^>]*disabled=""[^>]*>|disabled=""[^>]*aria-checked="true"/.test(saida) || saida.includes('Ver planos'))
     }
+  }
+
+  // ── toda classe mpe-* do editor existe no MinhaPagina.css ──
+  {
+    const cssEditor = fs.readFileSync(path.join(raiz, 'src/screens/MinhaPagina.css'), 'utf8')
+    const arquivosEditor = ['src/screens/MinhaPagina.jsx', ...fs.readdirSync(path.join(raiz, 'src/screens/minhapagina')).filter(f => f.endsWith('.jsx')).map(f => 'src/screens/minhapagina/' + f)]
+    const usadas = new Set()
+    for (const f of arquivosEditor) {
+      for (const m of fs.readFileSync(path.join(raiz, f), 'utf8').matchAll(/className=(?:"([^"]+)"|{`([^`]+)`}|{'([^']+)'})/g)) {
+        for (const c of (m[1] || m[2] || m[3]).replace(/${[^}]*}/g, ' ').split(/s+/)) if (/^mpe-[w-]+$/.test(c)) usadas.add(c)
+      }
+    }
+    const faltando = [...usadas].filter(c => !new RegExp(`\.${c}(?![\w-])`).test(cssEditor))
+    confere(`editor: classes mpe-* com CSS (${usadas.size} usadas)`, faltando.length === 0, faltando.join(', '))
+  }
+
+  // ── clique nas amostras de tema ──
+  confere('clique: amostra já marcada não faz nada', acaoDoTema('terra', 'terra') === 'nada' && acaoDoTema(PERSONALIZADO, PERSONALIZADO) === 'nada')
+  confere('clique: Personalizado com tema marcado só desmarca', acaoDoTema(PERSONALIZADO, 'terra') === 'desmarcar')
+  confere('clique: outro tema aplica', acaoDoTema('terra', PERSONALIZADO) === 'aplicar' && acaoDoTema('oliva', 'terra') === 'aplicar')
+  {
+    // "desmarcar" não chama alterarDoc: o documento fica exatamente igual
+    const antes = aplicarTema(docEditor, TEMAS.find(t => t.id === 'terra'))
+    const congelado = JSON.stringify(antes)
+    const alterarDocEspiao = () => { throw new Error('alterou o documento') }
+    let erro = null
+    try { if (acaoDoTema(PERSONALIZADO, 'terra') === 'aplicar') alterarDocEspiao() } catch (e) { erro = e }
+    confere('clique: Personalizado não altera nenhum valor do documento', !erro && JSON.stringify(antes) === congelado && temaDoDoc(normalizarDoc(antes)) === 'terra')
   }
 
   // ── backup real (opcional, fora do git) ──

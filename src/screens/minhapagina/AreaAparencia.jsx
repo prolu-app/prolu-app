@@ -7,8 +7,6 @@ import { FmSwitch } from '../Formularios.jsx'
 import { Linha, Segmentos } from '../FormularioAparencia.jsx'
 import ColorPicker from '../../components/minhapagina/ColorPicker.jsx'
 import FundoSelector from '../../components/minhapagina/FundoSelector.jsx'
-import PaginaRender from '../../components/minhapagina/render/PaginaRender.jsx'
-import { LAYOUTS } from '../../components/minhapagina/render/layouts/index.js'
 import { comprimirCapa, comprimirFoto } from '../../utils/comprimirImagem.js'
 import { FONTES_V2 } from '../../utils/pagina/fontes.js'
 import { ESCALA } from '../../utils/pagina/tema.js'
@@ -16,6 +14,7 @@ import { comCaminho } from '../../utils/pagina/modelo.js'
 import { UploadImagem } from './comum.jsx'
 import BotaoControles, { botaoGravavel } from './BotaoControles.jsx'
 import BlocoTemas from './BlocoTemas.jsx'
+import SeletorLayout from './SeletorLayout.jsx'
 
 const ESTILOS_CAPA = [{ value: 'nenhuma', label: 'Sem capa' }, { value: 'banner', label: 'Banner' }, { value: 'capa', label: 'Capa' }, { value: 'hero', label: 'Hero' }]
 const DICA_CAPA = {
@@ -46,24 +45,6 @@ const FUNDO_CHAVES = {
 
 export const gifNaCapa = capa => (capa.estilo === 'capa' || capa.estilo === 'hero') && /\.gif($|\?)/i.test(capa.imagem || '')
 
-function CartaoLayout({ layout, atual, docNormal, empresa, off, onEscolher }) {
-  const on = atual === layout.id
-  return (
-    <button
-      type="button" role="radio" aria-checked={on} disabled={off || !layout.disponivel}
-      className={`mpe-layout${on ? ' on' : ''}${layout.disponivel ? '' : ' em-breve'}`}
-      onClick={() => onEscolher(layout.id)} aria-label={layout.disponivel ? layout.rotulo : `${layout.rotulo} (em breve)`}
-    >
-      <span className="mpe-layout-mini" aria-hidden="true">
-        {layout.disponivel
-          ? <span className="mpe-layout-tela"><PaginaRender doc={{ ...docNormal, layout: layout.id }} selo={false} escritorio={empresa.nome} slug={empresa.slug} modo="previa" alturaTela={700} /></span>
-          : <span className="mpe-layout-breve">Em breve</span>}
-      </span>
-      <span className="mpe-layout-nome">{layout.rotulo}</span>
-    </button>
-  )
-}
-
 export default function AreaAparencia({ doc, docNormal, alterar, alterarDoc, empresa, empresaId, off }) {
   const { capa } = docNormal
   const a = docNormal.aparencia
@@ -86,16 +67,11 @@ export default function AreaAparencia({ doc, docNormal, alterar, alterarDoc, emp
 
   return (
     <>
-      <BlocoTemas doc={doc} docNormal={docNormal} alterarDoc={alterarDoc} empresa={empresa} off={off} />
+      <BlocoTemas doc={doc} docNormal={docNormal} alterarDoc={alterarDoc} off={off} />
 
       <section className="mpe-bloco" aria-labelledby="mpe-layout">
         <h2 className="mpe-titulo" id="mpe-layout">Layout</h2>
-        <div className="mpe-layouts" role="radiogroup" aria-labelledby="mpe-layout">
-          {LAYOUTS.map(l => (
-            <CartaoLayout key={l.id} layout={l} atual={docNormal.layout} docNormal={docNormal} empresa={empresa} off={off}
-              onEscolher={id => alterar(['layout'], id)} />
-          ))}
-        </div>
+        <SeletorLayout atual={docNormal.layout} off={off} onEscolher={id => alterar(['layout'], id)} />
         {docNormal.layout === 'editorial' && (
           <div className="fm-publico mpe-layout-opcoes">
             <Linha rotulo="Estilo dos links" dica="Linhas: índice com divisor e seta. Botões: usa o estilo de Botões.">
