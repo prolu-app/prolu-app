@@ -6,7 +6,10 @@
 //
 // Roda com a service role key, então ignora RLS: por isso a checagem de
 // permissão (quem pode convidar com qual role) é feita aqui dentro, e não
-// só no front-end.
+// só no front-end. Quem convida sai do JWT do header Authorization
+// (supabase.functions.invoke já envia o da sessão) — o `convidado_por` do
+// corpo é ignorado, senão bastaria saber o id de um master para convidar
+// em nome dele.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -22,12 +25,17 @@ function jsonResponse(body, status) {
   })
 }
 
-// Mesma regra de src/contexts/AuthContext.jsx (roleValido): Master e Prolu
-// admin atribuem qualquer papel; Gestor nunca pode convidar como Master.
+// Mesma regra de src/contexts/AuthContext.jsx (roleValido): só Master (e
+// Prolu admin) convida Master; Gestor convida Gestor ou Colaborador;
+// Colaborador não convida. Papel fora da lista é recusado.
+const PAPEIS_CONVIDAVEIS = {
+  prolu_admin: ['master', 'gestor', 'comum'],
+  master: ['master', 'gestor', 'comum'],
+  gestor: ['gestor', 'comum'],
+}
+
 function roleValido(roleCriador, roleConvite) {
-  if (roleCriador === 'master' || roleCriador === 'prolu_admin') return true
-  if (roleCriador === 'gestor') return roleConvite !== 'master'
-  return false
+  return (PAPEIS_CONVIDAVEIS[roleCriador] || []).includes(roleConvite)
 }
 
 Deno.serve(async (req) => {
@@ -42,9 +50,10 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Corpo da requisição inválido.' }, 400)
   }
 
-  const { email, nome, role, empresa_id, convidado_por } = body
+  // `convidado_por` ainda chega do front atual, mas não é usado
+  const { email, nome, role, empresa_id } = body
 
-  if (!email || !role || !empresa_id || !convidado_por) {
+  if (!email || !role || !empresa_id) {
     return jsonResponse({ error: 'Dados incompletos para o convite.' }, 400)
   }
 
@@ -53,15 +62,25 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
   )
 
+  // Quem está chamando: valida o JWT no Supabase Auth. A anon key (sem
+  // usuário) ou um token expirado/forjado não passam daqui.
+  const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim()
+  const { data: authData, error: authErr } = token
+    ? await supabase.auth.getUser(token)
+    : { data: null, error: true }
+  if (authErr || !authData?.user) {
+    return jsonResponse({ error: 'Faça login para convidar.' }, 401)
+  }
+
   // Confirma quem está convidando e se pode atribuir esse papel dentro
   // dessa empresa — a service role ignora RLS, então essa é a única
   // barreira real contra um gestor convidando alguém como master (ou
   // convidando para uma empresa que não é a dele).
   const { data: criador, error: criadorErr } = await supabase
     .from('usuarios')
-    .select('role, empresa_id')
-    .eq('id', convidado_por)
-    .single()
+    .select('id, role, empresa_id')
+    .eq('auth_id', authData.user.id)
+    .maybeSingle()
 
   if (criadorErr || !criador || criador.empresa_id !== empresa_id) {
     return jsonResponse({ error: 'Não autorizado a convidar para esse escritório.' }, 403)
@@ -86,7 +105,7 @@ Deno.serve(async (req) => {
   // novo em /aceitar-convite (via a linha em `convites`, fonte da verdade).
   const { error: inviteErr } = await supabase.auth.admin.inviteUserByEmail(email, {
     redirectTo: `${Deno.env.get('SITE_URL')}/aceitar-convite`,
-    data: { nome, role, empresa_id, convidado_por },
+    data: { nome, role, empresa_id, convidado_por: criador.id },
   })
 
   if (inviteErr) {
@@ -101,7 +120,7 @@ Deno.serve(async (req) => {
     nome,
     role,
     empresa_id,
-    convidado_por,
+    convidado_por: criador.id,
     status: 'pendente',
   }, { onConflict: 'empresa_id,email' })
 

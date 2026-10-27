@@ -288,7 +288,13 @@ function AbaEquipe({ user, isEmpresaMaster, isGestor, activeEmpresaId, toast }) 
   }
 
   async function alterarRole(usuarioId, role) {
-    await supabase.from('usuarios').update({ role }).eq('id', usuarioId)
+    // .select() devolve as linhas alteradas: lista vazia = a RLS recusou sem erro
+    const { data, error } = await supabase.from('usuarios').update({ role }).eq('id', usuarioId).select('id')
+    if (error || !data?.length) {
+      if (error) console.error('[Equipe] Erro ao alterar permissão:', error)
+      toast('Não foi possível alterar a permissão')
+      return
+    }
     setUsuarios((prev) => prev.map((u) => (u.id === usuarioId ? { ...u, role } : u)))
     setSelected((s) => (s && s.id === usuarioId ? { ...s, role } : s))
     toast('Permissão atualizada')
