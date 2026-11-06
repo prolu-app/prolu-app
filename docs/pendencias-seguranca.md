@@ -59,8 +59,26 @@ Itens conhecidos, ainda não corrigidos, para entrar no roadmap.
 
 ## Fase 0b: varredura de policies (próxima migration livre: 062)
 
+- **Resolvido em:** migration_062 (Fase 0b), exceto a criação de empresas sem limite. CRM (`crm_colunas`, `crm_linhas`, `crm_fichas`, `oportunidade_comentarios`), precificações e filhas, `precificacao_etiquetas_cadastro`, modelos de precificação e indicadores agora são lidos só pelo master do escritório ou pelo prolu_admin (qualquer escritório), e gravados só no próprio escritório por master ou prolu_admin. Gestor e comum não recebem nenhuma linha. Os modelos da Prolu (`is_prolu`) são lidos por master e prolu_admin, e só o prolu_admin os grava ou marca. `fn_fechamentos` e `fn_fechamentos_periodo` devolvem vazio para gestor e comum. `clientes` ficou de fora de propósito (não tem coluna em R$ e a Gestão de Projetos precisa dela para todos os papéis).
 - **Registrado em:** 2026-10-27, na varredura da Fase 0a
 - **prolu_admin escreve na precificação de qualquer escritório:** `precificacoes`, `precificacao_etapas`, `precificacao_tarefas`, `precificacao_subtarefas`, `precificacao_custos_extras` e `precificacao_etiquetas` têm uma policy ALL com `... OR auth_is_prolu_admin()`. Isso contraria a regra de que o prolu_admin só lê escritórios dos outros. Correção: separar SELECT (com prolu_admin) de INSERT/UPDATE/DELETE (só o próprio escritório).
 - **Seção Comercial gravável por qualquer papel pela API:** `clientes`, `crm_colunas`, `crm_linhas`, `oportunidade_comentarios`, `indicadores`, `indicador_metas`, `indicador_resultados` e `precificacao*` aceitam escrita de gestor e comum do escritório (só `empresa_id = auth_empresa_id()`). Na tela, a seção é só do master. O `USING` impede mover linhas para outro escritório, então o problema é só de papel. Antes de restringir, conferir o que gestor e comum usam de fato (ex.: Contatos é gestor ou superior).
 - **Criação de empresas sem limite:** a policy "usuario autenticado cria empresa" deixa qualquer login criar quantas empresas quiser (sempre starter/ativa, sem acesso, porque o usuário só pode ter um cadastro). O risco é lixo no banco. Correção: entra junto com a RPC `completar_cadastro`.
 - **Sem problema encontrado:** `empresas` (o master não altera plano, status ou exclusão, que estão travados pelo gatilho da 045; não há colunas de trial ou de limite), `convites` (o `USING` vale como check e a constraint de role exclui prolu_admin).
+
+## Gestão de Projetos não lê o CRM
+
+- **Registrado em:** 2026-11-06 (Fase 0b, decisão)
+- **Regra:** gestor e comum não têm nenhum acesso a `crm_linhas` e às demais tabelas financeiras (migration_062), sem exceção. Tudo o que a Gestão de Projetos mostrar vindo do CRM (cliente, cidade, tipo de projeto etc.) é **copiado para o próprio projeto** quando ele é criado ou vinculado. A tela de projeto nunca consulta `crm_linhas`. Valores em R$ do projeto ficam numa tabela separada, só do master.
+
+## "Entrar como escritório": botões de editar dados financeiros
+
+- **Registrado em:** 2026-11-06 (Fase 0b, backlog de front)
+- **Situação:** desde a migration_062, o prolu_admin só lê dados financeiros de outros escritórios. Quando ele entra como outro escritório, as telas de CRM, Precificação, Modelos e Indicadores ainda mostram os botões de criar, editar e excluir, e essas ações falham no servidor.
+- **Correção proposta:** com `impersonatedEmpresaId` ativo, esconder ou desabilitar as ações de escrita nessas telas, com um aviso de "somente leitura".
+
+## Gestor apaga cliente e desvincula precificação
+
+- **Registrado em:** 2026-11-06 (Fase 0b)
+- **Situação:** `precificacoes.cliente_id` tem `ON DELETE SET NULL`. Quando um gestor apaga um cliente em Contatos, as precificações daquele cliente ficam sem vínculo. Nenhum valor vaza, mas o master perde a ligação.
+- **Correção proposta:** avisar na exclusão quando o cliente tiver precificação ou negócio no CRM, ou restringir a exclusão de cliente com vínculo ao master.
