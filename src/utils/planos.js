@@ -2,7 +2,7 @@
 // matriz plano × recurso. O banco tem o espelho da matriz em
 // empresa_libera() (supabase/migration_045_planos_conta.sql): ao mudar o plano
 // mínimo de um recurso aqui, mudar lá também (versão atual da função:
-// supabase/migration_055_base_propria_painel_preco.sql).
+// supabase/migration_063_gestao_projetos_base.sql).
 //
 // Regra central: o PERFIL (role) decide o que aparece no menu; o PLANO nunca
 // esconde nada — só decide se o que está visível fica liberado ou vira
@@ -141,23 +141,13 @@ export const RECURSOS = {
     rotulo: 'Painel de progresso da equipe',
     beneficio: 'Acompanhe quantas aulas cada pessoa da equipe já concluiu, curso a curso.',
   },
-  // Projetos: ainda sem funcionalidade (menu desativado, "em breve" em /planos).
-  // Fora de empresa_libera() no banco de propósito: não há dado nem escrita
-  // para bloquear no servidor até a área existir.
-  projetos_visao_geral: {
+  // Gestão de Projetos (migration_063): também em empresa_libera() no banco,
+  // que bloqueia a escrita em projetos, projeto_financeiro e projeto_itens.
+  // O menu segue desativado ("em breve") até a área ficar completa.
+  gestao_projetos: {
     plano: 'business',
-    rotulo: 'Visão Geral',
-    beneficio: 'Números e andamento de todos os projetos do escritório em um só lugar.',
-  },
-  projetos_etapas_tarefas: {
-    plano: 'business',
-    rotulo: 'Etapas e Tarefas',
-    beneficio: 'Projetos com etapas, tarefas e responsáveis para a equipe toda.',
-  },
-  projetos_cronograma: {
-    plano: 'business',
-    rotulo: 'Cronograma',
-    beneficio: 'Prazos e entregas dos projetos ao longo do tempo.',
+    rotulo: 'Gestão de Projetos',
+    beneficio: 'Projetos com etapas, tarefas, prazos e responsáveis para a equipe toda.',
   },
   ferramentas_mentoria: {
     plano: 'mentoria',
@@ -186,9 +176,9 @@ export const COMPARATIVO = [
     grupo: 'Projetos',
     emBreve: true,
     itens: [
-      { rotulo: 'Visão Geral', recurso: 'projetos_visao_geral', emBreve: true },
-      { rotulo: 'Etapas e Tarefas', recurso: 'projetos_etapas_tarefas', emBreve: true },
-      { rotulo: 'Cronograma', recurso: 'projetos_cronograma', emBreve: true },
+      { rotulo: 'Visão Geral', recurso: 'gestao_projetos', emBreve: true },
+      { rotulo: 'Etapas e Tarefas', recurso: 'gestao_projetos', emBreve: true },
+      { rotulo: 'Cronograma', recurso: 'gestao_projetos', emBreve: true },
     ],
   },
   {

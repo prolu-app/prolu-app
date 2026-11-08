@@ -41,6 +41,8 @@ const AdminModelosFormulario = lazy(() => import('./screens/admin/AdminModelosFo
 const AdminPlanoPraticoPadrao = lazy(() => import('./screens/admin/AdminPlanoPraticoPadrao.jsx'))
 const AdminCursos = lazy(() => import('./screens/admin/AdminCursos.jsx'))
 const Planos = lazy(() => import('./screens/Planos.jsx'))
+const Projetos = lazy(() => import('./screens/Projetos.jsx'))
+const ProjetoDetalhe = lazy(() => import('./screens/ProjetoDetalhe.jsx'))
 const ContaSuspensa = lazy(() => import('./screens/ContaSuspensa.jsx'))
 
 // enquanto o pedaço de uma tela baixa (fora do AppLayout)
@@ -156,6 +158,9 @@ export default function App() {
         <Route path="/cliente-ideal" element={<RotaProtegida temAcesso={acesso.clienteIdeal}><BloqueioPlano recurso="ferramentas_mentoria"><ClienteIdeal /></BloqueioPlano></RotaProtegida>} />
         <Route path="/indicadores" element={<RotaProtegida temAcesso={acesso.indicadores}><BloqueioPlano recurso="indicadores"><Indicadores /></BloqueioPlano></RotaProtegida>} />
         <Route path="/agente-prolu" element={<RotaProtegida temAcesso={acesso.agenteProlu}><BloqueioPlano recurso="ferramentas_mentoria"><AgentePrl /></BloqueioPlano></RotaProtegida>} />
+        {/* Gestão de Projetos: só por URL direta por enquanto (menu segue "em breve") */}
+        <Route path="/projetos" element={<RotaProtegida temAcesso={acesso.projetos}><BloqueioPlano recurso="gestao_projetos"><Projetos /></BloqueioPlano></RotaProtegida>} />
+        <Route path="/projetos/:id" element={<RotaProtegida temAcesso={acesso.projetos}><BloqueioPlano recurso="gestao_projetos"><ProjetoDetalhe /></BloqueioPlano></RotaProtegida>} />
         {/* /equipe foi substituída pela aba "Equipe" de /configuracoes */}
         <Route path="/equipe" element={<Navigate to="/configuracoes" replace />} />
         <Route path="/configuracoes" element={<RotaProtegida temAcesso={acesso.configuracoes}><Configuracoes /></RotaProtegida>} />

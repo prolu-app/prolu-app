@@ -254,6 +254,9 @@ export function AuthProvider({ children }) {
     projetosVisaoGeral: isEmpresaMaster,
     projetosTarefas:  true,
     projetosCronograma: true,
+    // Gestão de Projetos (/projetos, migration_063): todos os papéis veem;
+    // o que cada um grava é decidido no servidor e em utils/projetos.js
+    projetos:         true,
     contatos:         isGestorOuSuperior,
     configuracoes:    true, // todos (abas diferentes por role)
     equipe:           isGestorOuSuperior,
